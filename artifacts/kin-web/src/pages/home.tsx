@@ -1,4 +1,5 @@
 import { PwaInstallButton } from "@/components/pwa-install-button";
+import { RwandaMapAnimation } from "@/components/rwanda-map";
 import { Button } from "@/components/ui/button";
 
 export default function Home() {
@@ -15,21 +16,19 @@ export default function Home() {
   return (
     <main className="min-h-screen bg-night text-bone overflow-hidden">
       {/* HERO SECTION */}
-      <section className="relative h-[90vh] min-h-[600px] flex items-center justify-center pt-16 overflow-hidden">
-        {/* Background sliding banner */}
-        <div className="absolute inset-0 z-0">
-          <div className="absolute inset-0 bg-night/70 z-10"></div>
-          <div className="absolute inset-0 bg-gradient-to-t from-night via-night/50 to-transparent z-10"></div>
-          <div className="absolute inset-0 bg-gradient-to-r from-night via-transparent to-night z-10"></div>
-          
+      <section className="relative h-[100vh] min-h-[640px] flex items-center justify-center pt-16 overflow-hidden">
+
+        {/* Layer 1 — photo carousel (dimmed, far back) */}
+        <div className="absolute inset-0 z-0 opacity-20">
           <div className="w-[200%] h-full flex scroller">
             <div className="scroller-inner h-full flex gap-4 pr-4">
               {[...images, ...images].map((src, i) => (
                 <div key={i} className="h-full w-auto min-w-[30vw] flex-shrink-0">
-                  <img 
-                    src={src} 
-                    alt="Rwandan couple" 
-                    className="w-full h-full object-cover rounded-xl grayscale-[20%] sepia-[20%]"
+                  <img
+                    src={src}
+                    alt=""
+                    aria-hidden="true"
+                    className="w-full h-full object-cover rounded-xl"
                   />
                 </div>
               ))}
@@ -37,24 +36,58 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Hero Content */}
-        <div className="relative z-20 container mx-auto px-4 flex flex-col items-center text-center">
-          <span className="inline-block px-4 py-1.5 mb-6 border border-gold/30 rounded-full text-gold text-sm font-medium tracking-wide uppercase tracking-[0.2em]">
+        {/* Layer 2 — deep gradient overlay */}
+        <div className="absolute inset-0 z-[1]"
+          style={{
+            background:
+              "radial-gradient(ellipse 70% 80% at 50% 50%, transparent 0%, #0D1117 75%), " +
+              "linear-gradient(to bottom, #0D1117 0%, transparent 20%, transparent 80%, #0D1117 100%)",
+          }}
+        />
+
+        {/* Layer 3 — Rwanda map animation */}
+        <div className="absolute inset-0 z-[2] flex items-center justify-center">
+          <div className="w-full h-full max-w-4xl mx-auto relative">
+            <RwandaMapAnimation />
+          </div>
+        </div>
+
+        {/* Layer 4 — radial ambient glow */}
+        <div className="absolute inset-0 z-[3] pointer-events-none"
+          style={{
+            background:
+              "radial-gradient(ellipse 50% 40% at 50% 50%, rgba(37,99,235,0.08) 0%, transparent 70%)",
+          }}
+        />
+
+        {/* Layer 5 — hero text + CTA */}
+        <div className="relative z-[4] container mx-auto px-4 flex flex-col items-center text-center">
+          <span className="inline-block px-4 py-1.5 mb-6 border border-gold/30 rounded-full text-gold text-xs font-semibold tracking-[0.2em] uppercase backdrop-blur-sm bg-night/20">
             Rwanda's Trusted Network
           </span>
-          <h1 className="font-serif text-5xl md:text-7xl lg:text-8xl font-bold text-bone mb-6 leading-tight max-w-4xl drop-shadow-2xl">
-            Abantu bawe <br/><span className="text-gold italic">bari hano.</span>
+          <h1 className="font-serif text-5xl md:text-7xl lg:text-8xl font-bold text-bone mb-5 leading-[1.05] max-w-4xl"
+            style={{ textShadow: "0 2px 40px rgba(0,0,0,0.8)" }}>
+            Abantu bawe <br />
+            <span className="italic text-gold">bari hano.</span>
           </h1>
-          <p className="text-lg md:text-xl text-bone-dim max-w-2xl mb-10 font-medium drop-shadow-md">
-            Not a dating app. A warm, private introduction through a trusted elder. 
+          <p className="text-lg md:text-xl text-bone-dim max-w-xl mb-10 font-medium leading-relaxed"
+            style={{ textShadow: "0 1px 12px rgba(0,0,0,0.9)" }}>
+            Not a dating app. A warm, private introduction through a trusted elder.
             For serious people ready to find their person.
           </p>
           <div className="flex flex-col sm:flex-row items-center gap-4">
             <PwaInstallButton className="px-8 py-6 text-lg rounded-full" />
-            <Button variant="outline" className="px-8 py-6 text-lg rounded-full border-bone-ghost text-bone hover:bg-bone hover:text-night transition-colors" onClick={() => document.getElementById('how')?.scrollIntoView({ behavior: 'smooth' })}>
+            <Button
+              variant="outline"
+              className="px-8 py-6 text-lg rounded-full border-bone-ghost/60 text-bone hover:bg-bone hover:text-night transition-colors backdrop-blur-sm"
+              onClick={() => document.getElementById("how")?.scrollIntoView({ behavior: "smooth" })}
+            >
               Learn how it works
             </Button>
           </div>
+          <p className="mt-8 text-xs text-bone-ghost tracking-wide">
+            Two people. Somewhere in Rwanda. Looking for the same thing.
+          </p>
         </div>
       </section>
 

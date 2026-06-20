@@ -99,3 +99,53 @@
     transform: translate(calc(-50% - 0.5rem));
   }
 }
+
+/* ── Rwanda map animation keyframes ─────────────────────────── */
+
+@keyframes kin-met-pulse {
+  0%   { r: 10; }
+  40%  { r: 15; }
+  70%  { r: 9; }
+  100% { r: 10; }
+}
+
+@keyframes kin-ring-expand {
+  0%   { r: 10; opacity: 0.7; }
+  100% { r: 52; opacity: 0; }
+}
+
+@keyframes kin-ring-mid {
+  0%   { opacity: 0.6; }
+  50%  { opacity: 0.3; }
+  100% { opacity: 0.5; }
+}
+
+@keyframes kin-fade-in {
+  from { opacity: 0; transform: translateX(-4px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+.kin-met-pulse {
+  animation: kin-met-pulse 0.5s ease-out forwards;
+}
+
+.kin-ring-expand {
+  animation: kin-ring-expand 1.2s ease-out forwards;
+}
+
+.kin-ring-mid {
+  animation: kin-ring-mid 1.8s ease-in-out infinite alternate;
+}
+
+.kin-fade-in {
+  animation: kin-fade-in 0.5s ease forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .kin-met-pulse,
+  .kin-ring-expand,
+  .kin-ring-mid,
+  .kin-fade-in {
+    animation: none;
+  }
+}
