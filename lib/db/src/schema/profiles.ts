@@ -41,6 +41,8 @@ export const profilesTable = pgTable("profiles", {
 
   onboardingComplete: boolean("onboarding_complete").default(false),
 
+  pushNotificationToken: text("push_notification_token"),
+
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
   lastActive: timestamp("last_active", { withTimezone: true }).defaultNow(),
 });

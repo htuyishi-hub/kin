@@ -7,7 +7,7 @@ import {
 } from "@workspace/api-client-react";
 import * as Haptics from "expo-haptics";
 import { router, useLocalSearchParams } from "expo-router";
-import React, { useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
@@ -20,6 +20,7 @@ import {
 } from "react-native";
 import { KeyboardAvoidingView } from "react-native-keyboard-controller";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useQueryClient } from "@tanstack/react-query";
 
 import { useAuth } from "@/contexts/AuthContext";
 import { useColors } from "@/hooks/useColors";
@@ -32,15 +33,99 @@ const PHASE_SUBTITLES = [
   "The conversation is yours now.",
 ];
 
+type MessageItem = {
+  id: string;
+  matchId: string;
+  senderId: string;
+  content: string;
+  phase: number;
+  promptKey: string | null;
+  isSystem: boolean;
+  readAt: string | null;
+  createdAt: string;
+};
+
+function useMatchWebSocket(matchId: string, token: string | null) {
+  const queryClient = useQueryClient();
+  const wsRef = useRef<WebSocket | null>(null);
+  const reconnectTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const mountedRef = useRef(true);
+
+  const connect = useCallback(() => {
+    if (!token || !mountedRef.current) return;
+
+    const domain = process.env.EXPO_PUBLIC_DOMAIN ?? "";
+    const wsUrl = `wss://${domain}/ws`;
+
+    try {
+      const ws = new WebSocket(wsUrl);
+      wsRef.current = ws;
+
+      ws.onopen = () => {
+        ws.send(JSON.stringify({ type: "auth", token }));
+        ws.send(JSON.stringify({ type: "subscribe", matchId }));
+      };
+
+      ws.onmessage = (event) => {
+        try {
+          const msg = JSON.parse(event.data as string) as { type: string; message?: MessageItem };
+          if (msg.type === "new_message" && msg.message) {
+            const incoming = msg.message;
+            // Append to React Query cache without triggering a network refetch
+            queryClient.setQueryData<MessageItem[]>(
+              ["getMessages", matchId],
+              (prev) => {
+                if (!prev) return [incoming];
+                // Deduplicate by id
+                const exists = prev.some((m) => m.id === incoming.id);
+                if (exists) return prev;
+                return [...prev, incoming];
+              }
+            );
+          }
+        } catch {
+          // ignore parse errors
+        }
+      };
+
+      ws.onclose = () => {
+        wsRef.current = null;
+        if (mountedRef.current) {
+          reconnectTimer.current = setTimeout(connect, 3000);
+        }
+      };
+
+      ws.onerror = () => {
+        ws.close();
+      };
+    } catch {
+      // WebSocket not available (web dev mode etc.) — polling fallback active
+    }
+  }, [matchId, token, queryClient]);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    connect();
+    return () => {
+      mountedRef.current = false;
+      if (reconnectTimer.current) clearTimeout(reconnectTimer.current);
+      wsRef.current?.close();
+      wsRef.current = null;
+    };
+  }, [connect]);
+}
+
 export default function MatchScreen() {
   const { matchId } = useLocalSearchParams<{ matchId: string }>();
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const isWeb = Platform.OS === "web";
-  const { userId } = useAuth();
+  const { userId, token } = useAuth();
 
   const [content, setContent] = useState("");
   const flatRef = useRef<FlatList>(null);
+
+  useMatchWebSocket(String(matchId), token);
 
   const { data: match, isLoading: matchLoading } = useGetMatch(String(matchId), {
     query: { refetchInterval: 10000 } as any,

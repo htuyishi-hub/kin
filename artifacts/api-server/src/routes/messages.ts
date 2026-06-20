@@ -1,11 +1,12 @@
 import { Router } from "express";
-import { eq, and, or, lt, desc } from "drizzle-orm";
-import { db, messagesTable, matchesTable, promptDefinitionsTable } from "@workspace/db";
+import { eq, and, or, desc } from "drizzle-orm";
+import { db, messagesTable, matchesTable, profilesTable } from "@workspace/db";
 import { requireAuth, type AuthedRequest } from "../middlewares/auth.js";
+import { broadcastToMatch } from "../lib/ws-manager.js";
+import { sendPushNotification } from "../lib/notifications.js";
 
 const router = Router();
 
-// Phase 1 prompts (Values)
 const PHASE1_PROMPTS = [
   "What does a good home mean to you?",
   "What did you learn about relationships from your family?",
@@ -38,9 +39,7 @@ router.get("/matches/:matchId/messages", requireAuth, async (req, res) => {
   const userId = (req as AuthedRequest).userId;
   const { matchId } = req.params;
   const limit = Math.min(Number(req.query["limit"] ?? 50), 100);
-  const before = req.query["before"] as string | undefined;
 
-  // Verify membership
   const [match] = await db
     .select()
     .from(matchesTable)
@@ -57,12 +56,10 @@ router.get("/matches/:matchId/messages", requireAuth, async (req, res) => {
     return;
   }
 
-  const conditions = [eq(messagesTable.matchId, String(matchId))];
-
   const messages = await db
     .select()
     .from(messagesTable)
-    .where(and(...conditions))
+    .where(eq(messagesTable.matchId, String(matchId)))
     .orderBy(desc(messagesTable.createdAt))
     .limit(limit);
 
@@ -102,7 +99,6 @@ router.post("/matches/:matchId/messages", requireAuth, async (req, res) => {
     return;
   }
 
-  // Phase 1: Only assigned user can send first message
   if (!match.firstMessageSent && match.assignedFirstUser !== userId) {
     res.status(403).json({
       error: "forbidden",
@@ -126,7 +122,6 @@ router.post("/matches/:matchId/messages", requireAuth, async (req, res) => {
     })
     .returning();
 
-  // Update match
   const updates: Partial<typeof matchesTable.$inferInsert> = {
     lastMessageAt: new Date(),
     firstMessageSent: true,
@@ -138,7 +133,34 @@ router.post("/matches/:matchId/messages", requireAuth, async (req, res) => {
 
   await db.update(matchesTable).set(updates as any).where(eq(matchesTable.id, String(matchId)));
 
-  res.status(201).json(mapMessage(message!));
+  const mapped = mapMessage(message!);
+
+  // Respond immediately, then do real-time + push in the background
+  res.status(201).json(mapped);
+
+  // Real-time: push to any open WebSocket subscribers for this match
+  broadcastToMatch(String(matchId), { type: "new_message", message: mapped });
+
+  // Push notification: send to the OTHER user if they have a token
+  const recipientId = match.userA === userId ? match.userB : match.userA;
+  try {
+    const [sender, recipient] = await Promise.all([
+      db.select({ fullName: profilesTable.fullName }).from(profilesTable).where(eq(profilesTable.id, userId)).limit(1),
+      db.select({ pushNotificationToken: profilesTable.pushNotificationToken }).from(profilesTable).where(eq(profilesTable.id, recipientId)).limit(1),
+    ]);
+
+    const senderName = sender[0]?.fullName ?? "Your match";
+    const token = recipient[0]?.pushNotificationToken;
+
+    await sendPushNotification({
+      to: token,
+      title: senderName,
+      body: content.trim().length > 80 ? content.trim().slice(0, 80) + "…" : content.trim(),
+      data: { matchId: String(matchId), screen: "chat" },
+    });
+  } catch {
+    // non-fatal
+  }
 });
 
 // POST /matches/:matchId/phase-complete
@@ -173,7 +195,6 @@ router.post("/matches/:matchId/phase-complete", requireAuth, async (req, res) =>
     updates[isA ? "phase2CompleteA" : "phase2CompleteB"] = true;
   }
 
-  // Check if both complete after update
   const updatedA = phase === 1 ? (isA ? true : match.phase1CompleteA) : (isA ? true : match.phase2CompleteA);
   const updatedB = phase === 1 ? (!isA ? true : match.phase1CompleteB) : (!isA ? true : match.phase2CompleteB);
 
@@ -194,7 +215,7 @@ router.post("/matches/:matchId/phase-complete", requireAuth, async (req, res) =>
     ? (isAFinal ? updated!.phase2CompleteA : updated!.phase2CompleteB)
     : true;
 
-  res.json({
+  const response = {
     id: updated!.id,
     otherUserId: isAFinal ? updated!.userB : updated!.userA,
     otherUserName: "—",
@@ -209,7 +230,12 @@ router.post("/matches/:matchId/phase-complete", requireAuth, async (req, res) =>
     createdAt: updated!.createdAt?.toISOString() ?? new Date().toISOString(),
     myPhaseComplete: myPhaseComplete ?? false,
     unreadCount: 0,
-  });
+  };
+
+  res.json(response);
+
+  // Notify the other user's WebSocket that the phase changed
+  broadcastToMatch(String(matchId), { type: "phase_updated", match: response });
 });
 
 export default router;
