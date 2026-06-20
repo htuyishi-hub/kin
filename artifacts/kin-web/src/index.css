@@ -100,6 +100,29 @@
   }
 }
 
+/* ── Successive photo strip (hero bottom) ───────────────────── */
+
+.photo-strip {
+  /* edge fades are handled by sibling divs in the JSX */
+}
+
+.photo-strip-inner {
+  /* 6 images × 280px = 1680px per set; 4 sets rendered → translate by 1 set */
+  will-change: transform;
+  animation: photo-strip-scroll 28s linear infinite;
+}
+
+@keyframes photo-strip-scroll {
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(-1680px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .photo-strip-inner {
+    animation: none;
+  }
+}
+
 /* ── Rwanda map animation keyframes ─────────────────────────── */
 
 @keyframes kin-met-pulse {

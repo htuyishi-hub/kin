@@ -1,57 +1,113 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
+// Geographic coordinates updated to match real Rwanda shape
 const KIGALI: [number, number] = [500, 388];
 
 const ROUTES = [
   {
     id: "musanze",
-    from: [252, 192] as [number, number],
-    path: "M 252 192 Q 318 262 500 388",
+    from: [338, 158] as [number, number],
+    path: "M 338 158 Q 400 268 500 388",
     color: "#2563EB",
     glow: "rgba(37,99,235,0.85)",
     delay: 0,
     dur: 2.9,
     label: "Musanze",
     labelAnchor: "middle" as const,
-    labelX: 252,
-    labelY: 177,
+    labelX: 338,
+    labelY: 143,
   },
   {
     id: "huye",
-    from: [448, 588] as [number, number],
-    path: "M 448 588 Q 415 485 500 388",
+    from: [420, 575] as [number, number],
+    path: "M 420 575 Q 458 482 500 388",
     color: "#C9A84C",
     glow: "rgba(201,168,76,0.85)",
     delay: 0.38,
     dur: 2.6,
     label: "Huye",
     labelAnchor: "middle" as const,
-    labelX: 448,
-    labelY: 608,
+    labelX: 420,
+    labelY: 596,
   },
   {
     id: "rubavu",
-    from: [120, 248] as [number, number],
-    path: "M 120 248 Q 298 302 500 388",
+    from: [148, 252] as [number, number],
+    path: "M 148 252 Q 314 308 500 388",
     color: "#1D9E75",
     glow: "rgba(29,158,117,0.75)",
     delay: 0.7,
     dur: 2.4,
     label: "Rubavu",
     labelAnchor: "end" as const,
-    labelX: 112,
-    labelY: 248,
+    labelX: 140,
+    labelY: 252,
   },
 ];
 
+// Real Rwanda border — clockwise from NE (Uganda-Tanzania corner).
+// Western border follows Lake Kivu (jagged). Northern border = Uganda.
+// Eastern border = Tanzania. Southern border = Burundi.
 const RWANDA =
-  "M 265 108 L 322 82 L 392 68 L 462 56 L 537 53 L 602 61 L 668 72 L 722 88 L 770 110 L 810 146 L 838 186 L 845 232 L 830 282 L 812 338 L 804 396 L 780 452 L 750 502 L 712 546 L 670 582 L 620 610 L 560 628 L 494 640 L 428 644 L 366 632 L 306 612 L 256 584 L 204 547 L 164 502 L 133 453 L 110 398 L 96 340 L 100 284 L 116 236 L 140 194 L 174 160 L 210 130 Z";
+  "M 758 93 " +
+  // ── Northern border (Uganda) west across the top ───────────────────
+  "L 718 90 L 658 89 L 592 90 L 528 90 L 465 92 L 402 94 " +
+  "L 342 98 L 285 105 L 245 113 L 208 130 L 185 155 " +
+  // ── Lake Kivu western border (jagged – DRC/Congo) ──────────────────
+  "L 162 188 " +
+  "L 144 222 " +
+  "L 153 252 " +   // near Rubavu
+  "L 128 282 " +
+  "L 148 312 " +
+  "L 118 342 " +
+  "L 140 370 " +
+  "L 132 400 " +
+  "L 150 430 " +
+  "L 153 460 " +
+  "L 162 485 " +
+  // ── South-west corner + Burundian border east ──────────────────────
+  "L 180 512 " +
+  "L 218 538 " +
+  "L 268 560 " +
+  "L 325 576 " +
+  "L 385 590 " +
+  "L 448 598 " +   // near Huye
+  "L 508 592 " +
+  "L 558 575 " +
+  "L 600 550 " +
+  // ── Eastern border (Tanzania) going north ─────────────────────────
+  "L 632 522 " +
+  "L 656 490 " +
+  "L 670 458 " +
+  "L 680 422 " +
+  "L 688 385 " +
+  "L 690 348 " +
+  "L 684 310 " +
+  "L 676 272 " +
+  "L 668 235 " +
+  "L 664 198 " +
+  "L 668 160 " +
+  // ── NE corner back to start ────────────────────────────────────────
+  "L 690 128 L 722 106 L 758 93 Z";
+
+// Interior reference dots (population texture), all verified inside the new outline
+const POP_DOTS: [number, number][] = [
+  [340, 165], [420, 145], [480, 150], [540, 158], [600, 175],
+  [650, 210], [660, 260], [655, 310], [640, 360], [620, 405],
+  [580, 445], [540, 480], [490, 510], [445, 540], [390, 555],
+  [340, 535], [295, 510], [258, 480], [235, 448], [225, 415],
+  [220, 380], [228, 345], [240, 310], [258, 278], [282, 248],
+  [318, 225], [358, 205], [400, 192], [450, 182], [500, 280],
+  [450, 340], [400, 390], [550, 340], [480, 440], [380, 460],
+];
 
 type Phase = "idle" | "appear" | "travel" | "arrived" | "hold" | "fadeout";
 
 function usePrefersReducedMotion() {
-  return typeof window !== "undefined" &&
-    window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  return (
+    typeof window !== "undefined" &&
+    window.matchMedia("(prefers-reduced-motion: reduce)").matches
+  );
 }
 
 export function RwandaMapAnimation() {
@@ -84,19 +140,10 @@ export function RwandaMapAnimation() {
     setTraveling(false);
     setPhase("appear");
 
-    after(() => {
-      setTraveling(true);
-      setPhase("travel");
-    }, 600);
-
+    after(() => { setTraveling(true); setPhase("travel"); }, 600);
     after(() => setPhase("arrived"), 4000);
     after(() => setPhase("hold"), 4600);
-
-    after(() => {
-      setPhase("fadeout");
-      setTraveling(false);
-    }, 7200);
-
+    after(() => { setPhase("fadeout"); setTraveling(false); }, 7200);
     after(() => cycleRef.current?.(), 8000);
   }, [prefersReduced]);
 
@@ -136,33 +183,32 @@ export function RwandaMapAnimation() {
         transition: fading ? "opacity 0.7s ease" : "opacity 0.5s ease",
       }}
     >
-      {/* Rwanda map outline */}
+      {/* Rwanda map fill */}
       <path
         d={RWANDA}
         fill="#1A1A2E"
-        fillOpacity={0.55}
-        stroke="#4A4742"
-        strokeWidth="1.5"
+        fillOpacity={0.6}
+        stroke="#2D3748"
+        strokeWidth="1.8"
         strokeLinejoin="round"
       />
 
-      {/* Subtle population-dot texture inside map */}
-      {[
-        [350,200],[420,240],[480,180],[550,210],[600,250],[480,300],
-        [540,350],[460,410],[380,370],[320,430],[580,380],[640,440],
-        [420,480],[500,520],[350,500],[580,510],[480,560],[440,360],
-      ].map(([cx, cy], i) => (
-        <circle
-          key={i}
-          cx={cx}
-          cy={cy}
-          r={1.2}
-          fill="#4A4742"
-          opacity={0.35}
-        />
+      {/* Population texture dots */}
+      {POP_DOTS.map(([cx, cy], i) => (
+        <circle key={i} cx={cx} cy={cy} r={1.2} fill="#4A4742" opacity={0.4} />
       ))}
 
-      {/* Route dashed trails — appear when traveling */}
+      {/* Lake Kivu highlight — western edge */}
+      <path
+        d="M 185 155 L 162 188 L 144 222 L 153 252 L 128 282 L 148 312 L 118 342 L 140 370 L 132 400 L 150 430 L 153 460 L 162 485"
+        fill="none"
+        stroke="#1D4E89"
+        strokeWidth="3"
+        strokeLinecap="round"
+        opacity={0.35}
+      />
+
+      {/* Route dashed trails */}
       {ROUTES.map((route) => (
         <path
           key={`trail-${route.id}`}
@@ -171,12 +217,12 @@ export function RwandaMapAnimation() {
           stroke={route.color}
           strokeWidth="1.2"
           strokeDasharray="5 8"
-          opacity={traveling && !arrived ? 0.28 : 0}
+          opacity={traveling && !arrived ? 0.3 : 0}
           style={{ transition: "opacity 0.4s ease" }}
         />
       ))}
 
-      {/* Animated dots */}
+      {/* Animated dots traveling to Kigali */}
       {ROUTES.map((route) => {
         const dotStyle: React.CSSProperties = arrived
           ? { opacity: 0, transition: "opacity 0.3s ease" }
@@ -201,104 +247,53 @@ export function RwandaMapAnimation() {
           : { opacity: 0 };
 
         return (
-          <circle
-            key={`dot-${route.id}`}
-            r={7}
-            fill={route.color}
-            style={dotStyle}
-          />
+          <circle key={`dot-${route.id}`} r={7} fill={route.color} style={dotStyle} />
         );
       })}
 
       {/* City labels */}
-      {showLabels && ROUTES.map((route) => (
-        <text
-          key={`label-${route.id}`}
-          x={route.labelX}
-          y={route.labelY}
-          textAnchor={route.labelAnchor}
-          fill="#4A4742"
-          fontSize="12"
-          fontFamily="Inter, sans-serif"
-          letterSpacing="0.04em"
-          style={{
-            opacity: arrived ? 0 : 1,
-            transition: "opacity 0.4s ease",
-          }}
-        >
-          {route.label}
-        </text>
-      ))}
+      {showLabels &&
+        ROUTES.map((route) => (
+          <text
+            key={`label-${route.id}`}
+            x={route.labelX}
+            y={route.labelY}
+            textAnchor={route.labelAnchor}
+            fill="#6B7280"
+            fontSize="11"
+            fontFamily="Inter, sans-serif"
+            letterSpacing="0.05em"
+            style={{ opacity: arrived ? 0 : 1, transition: "opacity 0.4s ease" }}
+          >
+            {route.label}
+          </text>
+        ))}
 
-      {/* Start dots (static position markers) */}
-      {(phase === "appear") && ROUTES.map((route) => (
-        <circle
-          key={`start-${route.id}`}
-          cx={route.from[0]}
-          cy={route.from[1]}
-          r={4}
-          fill={route.color}
-          opacity={0.5}
-        />
-      ))}
+      {/* Static city markers (appear phase) */}
+      {phase === "appear" &&
+        ROUTES.map((route) => (
+          <circle
+            key={`start-${route.id}`}
+            cx={route.from[0]}
+            cy={route.from[1]}
+            r={4}
+            fill={route.color}
+            opacity={0.5}
+          />
+        ))}
 
-      {/* Meeting point: pulse rings + merged dot */}
+      {/* Meeting point — pulse rings + merged dot */}
       {arrived && (
         <>
-          {/* Outer expanding ring */}
-          <circle
-            cx={KIGALI[0]}
-            cy={KIGALI[1]}
-            r={32}
-            fill="none"
-            stroke="#2563EB"
-            strokeWidth="1.5"
-            className="kin-ring-expand"
-            opacity={0.3}
-          />
-          {/* Mid ring */}
-          <circle
-            cx={KIGALI[0]}
-            cy={KIGALI[1]}
-            r={18}
-            fill="none"
-            stroke="#2563EB"
-            strokeWidth="1.5"
-            opacity={0.5}
-            className="kin-ring-mid"
-          />
-          {/* Core dot */}
-          <circle
-            cx={KIGALI[0]}
-            cy={KIGALI[1]}
-            r={10}
-            fill="#2563EB"
-            className="kin-met-pulse"
-            style={{
-              filter: "drop-shadow(0 0 14px rgba(37,99,235,0.95))",
-            }}
-          />
-          {/* White center */}
-          <circle
-            cx={KIGALI[0]}
-            cy={KIGALI[1]}
-            r={3.5}
-            fill="rgba(255,255,255,0.9)"
-          />
-          {/* Gold accent ring */}
-          <circle
-            cx={KIGALI[0]}
-            cy={KIGALI[1]}
-            r={14}
-            fill="none"
-            stroke="#C9A84C"
-            strokeWidth="1"
-            opacity={0.4}
-          />
+          <circle cx={KIGALI[0]} cy={KIGALI[1]} r={32} fill="none" stroke="#2563EB" strokeWidth="1.5" className="kin-ring-expand" opacity={0.3} />
+          <circle cx={KIGALI[0]} cy={KIGALI[1]} r={18} fill="none" stroke="#2563EB" strokeWidth="1.5" opacity={0.5} className="kin-ring-mid" />
+          <circle cx={KIGALI[0]} cy={KIGALI[1]} r={10} fill="#2563EB" className="kin-met-pulse" style={{ filter: "drop-shadow(0 0 14px rgba(37,99,235,0.95))" }} />
+          <circle cx={KIGALI[0]} cy={KIGALI[1]} r={3.5} fill="rgba(255,255,255,0.9)" />
+          <circle cx={KIGALI[0]} cy={KIGALI[1]} r={14} fill="none" stroke="#C9A84C" strokeWidth="1" opacity={0.4} />
         </>
       )}
 
-      {/* Kigali label at meeting point */}
+      {/* Kigali label */}
       {arrived && (
         <text
           x={KIGALI[0] + 20}
