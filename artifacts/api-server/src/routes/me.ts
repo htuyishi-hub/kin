@@ -151,6 +151,24 @@ router.post("/me/pause", requireAuth, async (req, res) => {
   res.json(mapProfile(updated!));
 });
 
+// POST /me/push-token — store Expo push notification token
+router.post("/me/push-token", requireAuth, async (req, res) => {
+  const userId = (req as AuthedRequest).userId;
+  const { token } = req.body as { token?: string };
+
+  if (!token || typeof token !== "string" || token.trim().length === 0) {
+    res.status(400).json({ error: "bad_request", message: "token is required" });
+    return;
+  }
+
+  await db
+    .update(profilesTable)
+    .set({ pushNotificationToken: token.trim() } as any)
+    .where(eq(profilesTable.id, userId));
+
+  res.json({ ok: true });
+});
+
 // POST /me/exit — archive profile, move to real life
 router.post("/me/exit", requireAuth, async (req, res) => {
   const userId = (req as AuthedRequest).userId;
