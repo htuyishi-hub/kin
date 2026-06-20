@@ -18,60 +18,33 @@ export default function Home() {
       {/* HERO SECTION */}
       <section className="relative h-[100vh] min-h-[640px] flex items-center justify-center pt-16 overflow-hidden">
 
-        {/* Layer 1 — photo carousel (dimmed, far back) */}
-        <div className="absolute inset-0 z-0 opacity-20">
-          <div className="w-[200%] h-full flex scroller">
-            <div className="scroller-inner h-full flex gap-4 pr-4">
-              {[...images, ...images].map((src, i) => (
-                <div key={i} className="h-full w-auto min-w-[30vw] flex-shrink-0">
-                  <img
-                    src={src}
-                    alt=""
-                    aria-hidden="true"
-                    className="w-full h-full object-cover rounded-xl"
-                  />
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* Layer 2 — deep gradient overlay */}
-        <div className="absolute inset-0 z-[1]"
-          style={{
-            background:
-              "radial-gradient(ellipse 70% 80% at 50% 50%, transparent 0%, #0D1117 75%), " +
-              "linear-gradient(to bottom, #0D1117 0%, transparent 20%, transparent 80%, #0D1117 100%)",
-          }}
-        />
-
-        {/* Layer 3 — Rwanda map animation */}
-        <div className="absolute inset-0 z-[2] flex items-center justify-center">
-          <div className="w-full h-full max-w-4xl mx-auto relative">
+        {/* Layer 1 — Rwanda map (primary hero visual) */}
+        <div className="absolute inset-0 z-[1] flex items-center justify-center">
+          <div className="w-full h-full max-w-5xl mx-auto relative">
             <RwandaMapAnimation />
           </div>
         </div>
 
-        {/* Layer 4 — radial ambient glow */}
-        <div className="absolute inset-0 z-[3] pointer-events-none"
+        {/* Layer 2 — radial vignette so text stays legible */}
+        <div className="absolute inset-0 z-[2] pointer-events-none"
           style={{
             background:
-              "radial-gradient(ellipse 50% 40% at 50% 50%, rgba(37,99,235,0.08) 0%, transparent 70%)",
+              "radial-gradient(ellipse 68% 55% at 50% 46%, transparent 0%, rgba(13,17,23,0.82) 70%, #0D1117 100%)",
           }}
         />
 
-        {/* Layer 5 — hero text + CTA */}
-        <div className="relative z-[4] container mx-auto px-4 flex flex-col items-center text-center">
-          <span className="inline-block px-4 py-1.5 mb-6 border border-gold/30 rounded-full text-gold text-xs font-semibold tracking-[0.2em] uppercase backdrop-blur-sm bg-night/20">
+        {/* Layer 3 — hero text + CTA */}
+        <div className="relative z-[3] container mx-auto px-4 flex flex-col items-center text-center" style={{ paddingBottom: "220px" }}>
+          <span className="inline-block px-4 py-1.5 mb-6 border border-gold/30 rounded-full text-gold text-xs font-semibold tracking-[0.2em] uppercase backdrop-blur-sm bg-night/30">
             Rwanda's Trusted Network
           </span>
           <h1 className="font-serif text-5xl md:text-7xl lg:text-8xl font-bold text-bone mb-5 leading-[1.05] max-w-4xl"
-            style={{ textShadow: "0 2px 40px rgba(0,0,0,0.8)" }}>
+            style={{ textShadow: "0 2px 40px rgba(0,0,0,0.9)" }}>
             Abantu bawe <br />
             <span className="italic text-gold">bari hano.</span>
           </h1>
           <p className="text-lg md:text-xl text-bone-dim max-w-xl mb-10 font-medium leading-relaxed"
-            style={{ textShadow: "0 1px 12px rgba(0,0,0,0.9)" }}>
+            style={{ textShadow: "0 1px 16px rgba(0,0,0,0.95)" }}>
             Not a dating app. A warm, private introduction through a trusted elder.
             For serious people ready to find their person.
           </p>
@@ -85,9 +58,33 @@ export default function Home() {
               Learn how it works
             </Button>
           </div>
-          <p className="mt-8 text-xs text-bone-ghost tracking-wide">
-            Two people. Somewhere in Rwanda. Looking for the same thing.
-          </p>
+        </div>
+
+        {/* Layer 4 — photo strip: successive, seamless, anchored to the bottom of hero */}
+        <div className="absolute bottom-0 left-0 right-0 z-[4]" style={{ height: "210px" }}>
+          {/* top fade so strip blends into map */}
+          <div className="absolute inset-x-0 top-0 h-20 pointer-events-none z-10"
+            style={{ background: "linear-gradient(to bottom, #0D1117, transparent)" }} />
+          {/* bottom fade */}
+          <div className="absolute inset-x-0 bottom-0 h-20 pointer-events-none z-10"
+            style={{ background: "linear-gradient(to top, #0D1117, transparent)" }} />
+
+          <div className="photo-strip h-full overflow-hidden">
+            <div className="photo-strip-inner h-full flex">
+              {/* Quadruple the images so the seamless loop never shows a gap */}
+              {[...images, ...images, ...images, ...images].map((src, i) => (
+                <div key={i} className="flex-shrink-0 h-full" style={{ width: "280px" }}>
+                  <img
+                    src={src}
+                    alt=""
+                    aria-hidden="true"
+                    className="w-full h-full object-cover"
+                    style={{ filter: "brightness(0.55) saturate(0.85)" }}
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       </section>
 
