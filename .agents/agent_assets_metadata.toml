@@ -1,0 +1,38 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "pnrRAkf2TkpjyEsdbOQtf"
+uri = "file://artifacts/kin-web/public/images/couple1.jpg"
+type = "image"
+title = "Black couple laughing together romantic warm"
+
+[[outputs]]
+id = "F2_XSl6MmA_VmW40UOpQd"
+uri = "file://artifacts/kin-web/public/images/couple2.jpg"
+type = "image"
+title = "African couple romantic holding hands"
+
+[[outputs]]
+id = "Aw4q-0ThosYE9OegzTNA-"
+uri = "file://artifacts/kin-web/public/images/couple3.jpg"
+type = "image"
+title = "Black man woman holding hands smiling warm"
+
+[[outputs]]
+id = "PK7WzgnYA7hv3SLyBuEb0"
+uri = "file://artifacts/kin-web/public/images/couple4.jpg"
+type = "image"
+title = "Rwandan couple joyful evening"
+
+[[outputs]]
+id = "sdCVxlYfWP4FEV4sySJgY"
+uri = "file://artifacts/kin-web/public/images/couple5.jpg"
+type = "image"
+title = "Black people in relationship laughing indoors"
+
+[[outputs]]
+id = "A-aGApmhii-AckiXvXXGE"
+uri = "file://artifacts/kin-web/public/images/couple6.jpg"
+type = "image"
+title = "Black couple dinner elegant romance"

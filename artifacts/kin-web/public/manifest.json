@@ -1,0 +1,15 @@
+{
+  "name": "Kin — Abantu bawe bari hano.",
+  "short_name": "Kin",
+  "description": "A trusted introduction network for serious people in Rwanda.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0D1117",
+  "theme_color": "#0D1117",
+  "orientation": "portrait-primary",
+  "lang": "rw",
+  "categories": ["social", "lifestyle"],
+  "icons": [
+    { "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}

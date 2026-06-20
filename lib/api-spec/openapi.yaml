@@ -1,0 +1,1330 @@
+openapi: 3.1.0
+info:
+  # Do not change the title, if the title changes, the import paths will be broken
+  title: Api
+  version: 0.1.0
+  description: Kin – trusted introduction network API
+servers:
+  - url: /api
+    description: Base API path
+tags:
+  - name: health
+    description: Health operations
+  - name: auth
+    description: Phone OTP authentication
+  - name: me
+    description: Current user profile management
+  - name: photos
+    description: Profile photo management
+  - name: prompts
+    description: Micro-prompt definitions and user answers
+  - name: vouches
+    description: Vouch network operations
+  - name: matchQueue
+    description: Match discovery queue
+  - name: interests
+    description: Interest expressions (double-blind tap)
+  - name: matches
+    description: Active match management
+  - name: messages
+    description: In-match structured messaging
+  - name: reports
+    description: User reports and moderation
+  - name: payments
+    description: Token and payment management
+
+paths:
+  /healthz:
+    get:
+      operationId: healthCheck
+      tags: [health]
+      summary: Health check
+      responses:
+        "200":
+          description: Healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+
+  # ── Auth ────────────────────────────────────────────────────────────────────
+  /auth/send-otp:
+    post:
+      operationId: sendOtp
+      tags: [auth]
+      summary: Send OTP to phone number
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SendOtpRequest"
+      responses:
+        "200":
+          description: OTP sent
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SendOtpResponse"
+        "400":
+          description: Invalid phone number
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /auth/verify-otp:
+    post:
+      operationId: verifyOtp
+      tags: [auth]
+      summary: Verify OTP and return session token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VerifyOtpRequest"
+      responses:
+        "200":
+          description: Authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthSession"
+        "401":
+          description: Invalid or expired OTP
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  # ── Me ──────────────────────────────────────────────────────────────────────
+  /me:
+    get:
+      operationId: getMe
+      tags: [me]
+      summary: Get current user profile
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Profile data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MyProfile"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    patch:
+      operationId: updateMe
+      tags: [me]
+      summary: Update current user profile
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateProfileRequest"
+      responses:
+        "200":
+          description: Updated profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MyProfile"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /me/onboarding:
+    post:
+      operationId: completeOnboarding
+      tags: [me]
+      summary: Complete onboarding and receive invisible tier classification
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OnboardingRequest"
+      responses:
+        "200":
+          description: Onboarding complete
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MyProfile"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /me/pause:
+    post:
+      operationId: pauseProfile
+      tags: [me]
+      summary: Pause or unpause profile
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                paused:
+                  type: boolean
+              required: [paused]
+      responses:
+        "200":
+          description: Profile pause state updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MyProfile"
+
+  /me/exit:
+    post:
+      operationId: exitApp
+      tags: [me]
+      summary: User chooses to exit – archive profile and move to real life
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Profile archived
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+
+  # ── Photos ──────────────────────────────────────────────────────────────────
+  /me/photos:
+    get:
+      operationId: getMyPhotos
+      tags: [photos]
+      summary: Get own photo list
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Photo list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Photo"
+    post:
+      operationId: addPhoto
+      tags: [photos]
+      summary: Add a new photo (base64 encoded)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AddPhotoRequest"
+      responses:
+        "201":
+          description: Photo added
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Photo"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /me/photos/{photoId}:
+    delete:
+      operationId: deletePhoto
+      tags: [photos]
+      summary: Delete a photo
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: photoId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "404":
+          description: Photo not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  # ── Prompts ─────────────────────────────────────────────────────────────────
+  /prompts:
+    get:
+      operationId: getPrompts
+      tags: [prompts]
+      summary: Get available micro-prompt definitions
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Prompt list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PromptDefinition"
+
+  /me/prompts:
+    get:
+      operationId: getMyPrompts
+      tags: [prompts]
+      summary: Get own micro-prompt answers
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Answers
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/MicroPromptAnswer"
+    put:
+      operationId: setMyPrompts
+      tags: [prompts]
+      summary: Set micro-prompt answers (replaces all existing)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                answers:
+                  type: array
+                  items:
+                    $ref: "#/components/schemas/MicroPromptInput"
+              required: [answers]
+      responses:
+        "200":
+          description: Updated answers
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/MicroPromptAnswer"
+
+  # ── Vouches ─────────────────────────────────────────────────────────────────
+  /vouches/request:
+    post:
+      operationId: requestVouch
+      tags: [vouches]
+      summary: Request a vouch from an existing user by phone number
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VouchRequestBody"
+      responses:
+        "201":
+          description: Vouch request sent
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Vouch"
+        "400":
+          description: Cannot vouch (self, duplicate, etc.)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /vouches/incoming:
+    get:
+      operationId: getIncomingVouches
+      tags: [vouches]
+      summary: Get pending vouch requests I need to confirm
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Pending vouches
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Vouch"
+
+  /vouches/outgoing:
+    get:
+      operationId: getOutgoingVouches
+      tags: [vouches]
+      summary: Get vouch requests I have sent
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Sent vouches
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Vouch"
+
+  /vouches/{vouchId}/confirm:
+    post:
+      operationId: confirmVouch
+      tags: [vouches]
+      summary: Confirm a vouch request
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: vouchId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Vouch confirmed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Vouch"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /vouches/{vouchId}/decline:
+    post:
+      operationId: declineVouch
+      tags: [vouches]
+      summary: Decline a vouch request
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: vouchId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Vouch declined
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Vouch"
+
+  # ── Match Queue ──────────────────────────────────────────────────────────────
+  /match-queue:
+    get:
+      operationId: getMatchQueue
+      tags: [matchQueue]
+      summary: Get ranked list of match candidates
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        "200":
+          description: Match candidates
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/MatchCandidate"
+        "403":
+          description: Profile not ready (needs vouch)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  # ── Interests ────────────────────────────────────────────────────────────────
+  /interests:
+    post:
+      operationId: expressInterest
+      tags: [interests]
+      summary: Tap interested in a candidate (double-blind)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ExpressInterestRequest"
+      responses:
+        "200":
+          description: Interest recorded. matchCreated=true if mutual.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InterestResult"
+        "400":
+          description: Already expressed or invalid
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  # ── Matches ──────────────────────────────────────────────────────────────────
+  /matches:
+    get:
+      operationId: getMatches
+      tags: [matches]
+      summary: Get all active matches
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Matches list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Match"
+
+  /matches/{matchId}:
+    get:
+      operationId: getMatch
+      tags: [matches]
+      summary: Get a single match with milieu cards
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: matchId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Match detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MatchDetail"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /matches/{matchId}/exit:
+    post:
+      operationId: exitMatch
+      tags: [matches]
+      summary: Exit match (profiles archived, move to real life)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: matchId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Exited
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+
+  /matches/{matchId}/survey:
+    post:
+      operationId: submitExitSurvey
+      tags: [matches]
+      summary: Submit exit survey after free conversation
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: matchId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ExitSurveyRequest"
+      responses:
+        "200":
+          description: Survey submitted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+
+  # ── Messages ─────────────────────────────────────────────────────────────────
+  /matches/{matchId}/messages:
+    get:
+      operationId: getMessages
+      tags: [messages]
+      summary: Get messages for a match
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: matchId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+        - name: before
+          in: query
+          description: Cursor – get messages before this message ID
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Messages
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Message"
+    post:
+      operationId: sendMessage
+      tags: [messages]
+      summary: Send a message in a match
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: matchId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SendMessageRequest"
+      responses:
+        "201":
+          description: Message sent
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Message"
+        "403":
+          description: Not your turn or phase restriction
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /matches/{matchId}/phase-complete:
+    post:
+      operationId: markPhaseComplete
+      tags: [messages]
+      summary: Mark current phase complete for the current user
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: matchId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Phase completion recorded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Match"
+
+  # ── Reports ──────────────────────────────────────────────────────────────────
+  /reports:
+    post:
+      operationId: submitReport
+      tags: [reports]
+      summary: Report a user for misconduct
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReportRequest"
+      responses:
+        "201":
+          description: Report submitted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+
+  # ── Payments ─────────────────────────────────────────────────────────────────
+  /payments:
+    get:
+      operationId: getPayments
+      tags: [payments]
+      summary: Get payment history for the current user
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Payment list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Payment"
+
+  /payments/initiate:
+    post:
+      operationId: initiatePayment
+      tags: [payments]
+      summary: Initiate a payment (MoMo simulation for MVP)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/InitiatePaymentRequest"
+      responses:
+        "200":
+          description: Payment initiated (sandbox – auto-fulfilled)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Payment"
+        "400":
+          description: Invalid product
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+# ── Schemas ──────────────────────────────────────────────────────────────────
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    HealthStatus:
+      type: object
+      properties:
+        status:
+          type: string
+      required: [status]
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+        message:
+          type: string
+      required: [error]
+
+    MessageResponse:
+      type: object
+      properties:
+        message:
+          type: string
+      required: [message]
+
+    # Auth
+    SendOtpRequest:
+      type: object
+      properties:
+        phoneNumber:
+          type: string
+          description: Phone number in E.164 format (e.g. +250780000000)
+      required: [phoneNumber]
+
+    SendOtpResponse:
+      type: object
+      properties:
+        message:
+          type: string
+        expiresInSeconds:
+          type: integer
+      required: [message, expiresInSeconds]
+
+    VerifyOtpRequest:
+      type: object
+      properties:
+        phoneNumber:
+          type: string
+        otp:
+          type: string
+          minLength: 6
+          maxLength: 6
+      required: [phoneNumber, otp]
+
+    AuthSession:
+      type: object
+      properties:
+        token:
+          type: string
+        userId:
+          type: string
+        isNewUser:
+          type: boolean
+        onboardingComplete:
+          type: boolean
+      required: [token, userId, isNewUser, onboardingComplete]
+
+    # Profile
+    MyProfile:
+      type: object
+      properties:
+        id:
+          type: string
+        phoneNumber:
+          type: string
+        fullName:
+          type: string
+          nullable: true
+        gender:
+          type: string
+          enum: [Male, Female, Prefer not to say]
+          nullable: true
+        age:
+          type: integer
+          nullable: true
+        campusName:
+          type: string
+          nullable: true
+        faculty:
+          type: string
+          nullable: true
+        yearOfStudy:
+          type: integer
+          nullable: true
+        hostelName:
+          type: string
+          nullable: true
+        city:
+          type: string
+          nullable: true
+        district:
+          type: string
+          nullable: true
+        primaryIntent:
+          type: string
+          enum: [Marriage, Serious, Casual]
+          nullable: true
+        vouchCount:
+          type: integer
+        tokensRemaining:
+          type: integer
+        crossingFeePaid:
+          type: boolean
+        profileActive:
+          type: boolean
+        profilePaused:
+          type: boolean
+        onboardingComplete:
+          type: boolean
+        phoneVerified:
+          type: boolean
+        idVerified:
+          type: boolean
+        proximityConsent:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+        lastActive:
+          type: string
+          format: date-time
+      required:
+        - id
+        - phoneNumber
+        - vouchCount
+        - tokensRemaining
+        - crossingFeePaid
+        - profileActive
+        - profilePaused
+        - onboardingComplete
+        - phoneVerified
+        - idVerified
+        - proximityConsent
+        - createdAt
+        - lastActive
+
+    UpdateProfileRequest:
+      type: object
+      properties:
+        fullName:
+          type: string
+        gender:
+          type: string
+          enum: [Male, Female, Prefer not to say]
+        dateOfBirth:
+          type: string
+          format: date
+        campusName:
+          type: string
+        faculty:
+          type: string
+        yearOfStudy:
+          type: integer
+        hostelName:
+          type: string
+        city:
+          type: string
+        district:
+          type: string
+        proximityConsent:
+          type: boolean
+
+    OnboardingRequest:
+      type: object
+      properties:
+        occupation:
+          type: string
+          enum: [Student, Employed, Business, Searching]
+        locationType:
+          type: string
+          enum: [Campus, City]
+        primaryGoal:
+          type: string
+          enum: [Serious Marriage, Long-term Relationship, Casual Dating]
+        campusName:
+          type: string
+          nullable: true
+        fullName:
+          type: string
+        gender:
+          type: string
+          enum: [Male, Female, Prefer not to say]
+        dateOfBirth:
+          type: string
+          format: date
+      required: [occupation, locationType, primaryGoal, fullName, gender, dateOfBirth]
+
+    # Photos
+    Photo:
+      type: object
+      properties:
+        id:
+          type: string
+        storagePath:
+          type: string
+        isPrimary:
+          type: boolean
+        isBlurred:
+          type: boolean
+        sortOrder:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+      required: [id, storagePath, isPrimary, isBlurred, sortOrder, createdAt]
+
+    AddPhotoRequest:
+      type: object
+      properties:
+        base64Data:
+          type: string
+          description: Base64 encoded image data
+        isPrimary:
+          type: boolean
+          default: false
+      required: [base64Data]
+
+    # Prompts
+    PromptDefinition:
+      type: object
+      properties:
+        key:
+          type: string
+        promptText:
+          type: string
+        promptRw:
+          type: string
+          description: Kinyarwanda version
+        tier:
+          type: integer
+          nullable: true
+        intent:
+          type: string
+          nullable: true
+      required: [key, promptText, promptRw]
+
+    MicroPromptAnswer:
+      type: object
+      properties:
+        id:
+          type: string
+        promptKey:
+          type: string
+        promptText:
+          type: string
+        promptRw:
+          type: string
+        answer:
+          type: string
+        sortOrder:
+          type: integer
+      required: [id, promptKey, promptText, promptRw, answer, sortOrder]
+
+    MicroPromptInput:
+      type: object
+      properties:
+        promptKey:
+          type: string
+        answer:
+          type: string
+          maxLength: 160
+      required: [promptKey, answer]
+
+    # Vouches
+    VouchRequestBody:
+      type: object
+      properties:
+        voucherPhoneNumber:
+          type: string
+          description: Phone number of the person you want to vouch for you
+      required: [voucherPhoneNumber]
+
+    Vouch:
+      type: object
+      properties:
+        id:
+          type: string
+        vouchedUserId:
+          type: string
+        voucherUserId:
+          type: string
+        voucherName:
+          type: string
+          nullable: true
+        vouchedName:
+          type: string
+          nullable: true
+        status:
+          type: string
+          enum: [pending, confirmed, revoked]
+        createdAt:
+          type: string
+          format: date-time
+        confirmedAt:
+          type: string
+          format: date-time
+          nullable: true
+      required: [id, vouchedUserId, voucherUserId, status, createdAt]
+
+    # Match Queue
+    MatchCandidate:
+      type: object
+      properties:
+        id:
+          type: string
+        fullName:
+          type: string
+        gender:
+          type: string
+          nullable: true
+        age:
+          type: integer
+          nullable: true
+        campusName:
+          type: string
+          nullable: true
+        faculty:
+          type: string
+          nullable: true
+        yearOfStudy:
+          type: integer
+          nullable: true
+        hostelName:
+          type: string
+          nullable: true
+        city:
+          type: string
+          nullable: true
+        primaryIntent:
+          type: string
+          enum: [Marriage, Serious, Casual]
+          nullable: true
+        vouchCount:
+          type: integer
+        primaryPhotoPath:
+          type: string
+          nullable: true
+        milieuScore:
+          type: integer
+          description: Shared milieu score for ordering
+        vouchOverlap:
+          type: integer
+          description: Number of shared vouchers
+        microPrompts:
+          type: array
+          items:
+            $ref: "#/components/schemas/MicroPromptAnswer"
+        milieuCards:
+          type: array
+          items:
+            type: string
+          description: Human-readable shared milieu strings
+      required:
+        - id
+        - fullName
+        - vouchCount
+        - milieuScore
+        - vouchOverlap
+        - microPrompts
+        - milieuCards
+
+    # Interests
+    ExpressInterestRequest:
+      type: object
+      properties:
+        toUserId:
+          type: string
+      required: [toUserId]
+
+    InterestResult:
+      type: object
+      properties:
+        recorded:
+          type: boolean
+        matchCreated:
+          type: boolean
+        matchId:
+          type: string
+          nullable: true
+      required: [recorded, matchCreated]
+
+    # Matches
+    Match:
+      type: object
+      properties:
+        id:
+          type: string
+        otherUserId:
+          type: string
+        otherUserName:
+          type: string
+        otherUserAge:
+          type: integer
+          nullable: true
+        otherUserPrimaryPhoto:
+          type: string
+          nullable: true
+        status:
+          type: string
+          enum: [active, expired, closed, exited]
+        conversationPhase:
+          type: integer
+          description: 1=Values, 2=Vision, 3=Free
+        assignedFirstUserId:
+          type: string
+          nullable: true
+        firstMessageSent:
+          type: boolean
+        expiresAt:
+          type: string
+          format: date-time
+        lastMessageAt:
+          type: string
+          format: date-time
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        myPhaseComplete:
+          type: boolean
+          description: Whether I've marked current phase complete
+        unreadCount:
+          type: integer
+      required:
+        - id
+        - otherUserId
+        - otherUserName
+        - status
+        - conversationPhase
+        - firstMessageSent
+        - expiresAt
+        - createdAt
+        - myPhaseComplete
+        - unreadCount
+
+    MatchDetail:
+      allOf:
+        - $ref: "#/components/schemas/Match"
+        - type: object
+          properties:
+            otherUser:
+              $ref: "#/components/schemas/MatchCandidate"
+            introductionCard:
+              type: string
+              description: The system-generated introduction text
+            milieuCards:
+              type: array
+              items:
+                type: string
+          required: [otherUser, introductionCard, milieuCards]
+
+    # Messages
+    Message:
+      type: object
+      properties:
+        id:
+          type: string
+        matchId:
+          type: string
+        senderId:
+          type: string
+        content:
+          type: string
+        phase:
+          type: integer
+        promptKey:
+          type: string
+          nullable: true
+        promptText:
+          type: string
+          nullable: true
+        isSystem:
+          type: boolean
+          description: True for system-generated messages (assignment, smart close)
+        readAt:
+          type: string
+          format: date-time
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+      required: [id, matchId, senderId, content, phase, isSystem, createdAt]
+
+    SendMessageRequest:
+      type: object
+      properties:
+        content:
+          type: string
+          maxLength: 1000
+        promptKey:
+          type: string
+          nullable: true
+      required: [content]
+
+    # Exit survey
+    ExitSurveyRequest:
+      type: object
+      properties:
+        metInPerson:
+          type: boolean
+        wasRespectful:
+          type: boolean
+      required: [metInPerson, wasRespectful]
+
+    # Reports
+    ReportRequest:
+      type: object
+      properties:
+        reportedUserId:
+          type: string
+        reason:
+          type: string
+          enum: [exploitation, wrong_intent, harassment, fake_profile, underage, other]
+        details:
+          type: string
+          nullable: true
+      required: [reportedUserId, reason]
+
+    # Payments
+    Payment:
+      type: object
+      properties:
+        id:
+          type: string
+        productType:
+          type: string
+          enum: [tokens_3, crossing_fee, profile_boost, second_chance, professional_monthly]
+        amountRwf:
+          type: integer
+        status:
+          type: string
+          enum: [pending, completed, failed, refunded]
+        fulfilled:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+        completedAt:
+          type: string
+          format: date-time
+          nullable: true
+      required: [id, productType, amountRwf, status, fulfilled, createdAt]
+
+    InitiatePaymentRequest:
+      type: object
+      properties:
+        productType:
+          type: string
+          enum: [tokens_3, crossing_fee, profile_boost, second_chance, professional_monthly]
+        phoneNumber:
+          type: string
+          description: MoMo phone number for payment
+      required: [productType, phoneNumber]

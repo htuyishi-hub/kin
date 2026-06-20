@@ -1,0 +1,303 @@
+Getting Started
+Activity
+
+Applications
+
+Authentication
+Organizations
+
+User Management
+
+Branding
+
+Security
+
+Actions
+Event Streams
+
+Monitoring
+Marketplace
+Extensions
+Settings
+Get support
+
+Give feedback
+
+Thank you for signing up for Auth0! You have 22 days left in your trial to experiment with features that are not in the Free plan. Like what you're seeing? Please enter your billing information here.
+
+Back to Applications
+
+kin care
+Native
+
+Client ID
+
+db649uOv5t2KadroQvnkMgqH4Bz4VVHy
+Change Technology
+Android Quickstart Logo
+Android Quickstart
+Required Configuration
+Enter your Android application ID
+
+Application ID
+
+The package name of your Android application (e.g. com.example.app). The SDK uses this to securely redirect users back to your app after login.
+
+
+Enter your app's SHA256 certificate fingerprint
+Define your app's deep link origin
+Add the required Allowed URLs
+Integrate into your application
+Continue the integration with AI
+Copy this prompt into ChatGPT, Copilot, Claude Code, Gemini or your favorite
+AI-powered IDE to speed up development.
+1
+Add the Auth0 Android SDK
+Add the Auth0 Android SDK to app/build.gradle.kts and sync Gradle.
+
+The applicationId is part of the callback URL (https://dev-oxl34v4w6yzdwmi8.us.auth0.com/android/com.auth0.samples/callback), which Auth0 uses to match the authentication response to your app.
+
+
+app/build.gradle.kts
+plugins {
+    alias(libs.plugins.android.application)
+    alias(libs.plugins.kotlin.android)
+    alias(libs.plugins.kotlin.compose)
+}
+
+android {
+    namespace = "com.auth0.samples"
+    compileSdk = 35
+
+    defaultConfig {
+        // Used in the callback URL to match back to this app
+        applicationId = "com.auth0.samples"
+
+        // Configure the SDK
+        manifestPlaceholders["auth0Domain"] = "@string/com_auth0_domain"
+        manifestPlaceholders["auth0Scheme"] = "@string/com_auth0_scheme"
+
+        minSdk = 24
+        targetSdk = 35
+        versionCode = 1
+        versionName = "1.0"
+
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    buildTypes {
+        release {
+            isMinifyEnabled = false
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
+        }
+    }
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_11
+        targetCompatibility = JavaVersion.VERSION_11
+    }
+    kotlinOptions {
+        jvmTarget = "11"
+    }
+    buildFeatures {
+        compose = true
+    }
+}
+
+dependencies {
+    implementation("com.auth0.android:auth0:3.+")
+    implementation(libs.androidx.core.ktx)
+    implementation(libs.androidx.lifecycle.runtime.ktx)
+    implementation(libs.androidx.activity.compose)
+    implementation(platform(libs.androidx.compose.bom))
+    implementation(libs.androidx.compose.ui)
+    implementation(libs.androidx.compose.ui.graphics)
+    implementation(libs.androidx.compose.ui.tooling.preview)
+    implementation(libs.androidx.compose.material3)
+    testImplementation(libs.junit)
+    androidTestImplementation(libs.androidx.junit)
+    androidTestImplementation(libs.androidx.espresso.core)
+    androidTestImplementation(platform(libs.androidx.compose.bom))
+    androidTestImplementation(libs.androidx.compose.ui.test.junit4)
+    debugImplementation(libs.androidx.compose.ui.tooling)
+    debugImplementation(libs.androidx.compose.ui.test.manifest)
+}
+2
+Configure your Auth0 credentials
+Add your Auth0 domain, client ID, and scheme to app/src/main/res/values/strings.xml. The Auth0 SDK reads these values automatically.
+
+
+app/src/main/res/values/strings.xml
+<resources>
+    <string name="app_name">auth0-android-sample</string>
+    <string name="com_auth0_domain">dev-oxl34v4w6yzdwmi8.us.auth0.com</string>
+    <string name="com_auth0_client_id">db649uOv5t2KadroQvnkMgqH4Bz4VVHy</string>
+    <string name="com_auth0_scheme">https</string>
+</resources>
+3
+Configure the Android manifest
+Add the INTERNET permission to AndroidManifest.xml. The Auth0 SDK automatically registers its RedirectActivity via manifest merging — no manual activity declaration is required.
+
+
+app/src/main/AndroidManifest.xml
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <uses-permission android:name="android.permission.INTERNET" />
+
+    <application
+        android:allowBackup="true"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        android:fullBackupContent="@xml/backup_rules"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.Auth0androidsample">
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:label="@string/app_name"
+            android:theme="@style/Theme.Auth0androidsample">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+    </application>
+
+</manifest>
+4
+Add login and logout
+Use WebAuthProvider to open Auth0 Universal Login in a Chrome Custom Tab. After login, the user's profile is available from the ID token — no additional network call is needed. SecureCredentialsManager encrypts the user's credentials (access token, ID token, refresh token) using the Android Keystore and restores them automatically on app restart, so users stay logged in between sessions.
+
+
+app/src/main/java/com/auth0/samples/MainActivity.kt
+package com.auth0.samples
+
+import android.os.Bundle
+import android.util.Log
+import android.widget.Toast
+import androidx.activity.*
+import androidx.activity.compose.setContent
+import androidx.compose.foundation.layout.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.*
+import com.auth0.android.Auth0
+import com.auth0.android.authentication.*
+import com.auth0.android.authentication.storage.*
+import com.auth0.android.callback.Callback
+import com.auth0.android.provider.WebAuthProvider
+import com.auth0.android.result.Credentials
+
+class MainActivity : ComponentActivity() {
+    // Initialized lazily because getString() requires Activity context
+    private val account: Auth0 by lazy {
+        Auth0.getInstance(
+            getString(R.string.com_auth0_client_id),
+            getString(R.string.com_auth0_domain)
+        )
+    }
+    private val manager: SecureCredentialsManager by lazy {
+        SecureCredentialsManager(this, account, SharedPreferencesStorage(this))
+    }
+
+    // Compose re-renders the UI when these change
+    private var credentials by mutableStateOf<Credentials?>(null)
+    private var isLoading by mutableStateOf(true)
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        enableEdgeToEdge()
+
+        // Restore session from disk; refreshes the access token if expired
+        manager.getCredentials(object : Callback<Credentials, CredentialsManagerException> {
+            override fun onSuccess(result: Credentials) {
+                credentials = result
+                isLoading = false
+            }
+
+            override fun onFailure(error: CredentialsManagerException) {
+                Log.e(MainActivity::class.java.simpleName, "Failed to restore credentials", error)
+                isLoading = false
+            }
+        })
+
+        setContent {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .systemBarsPadding()
+                    .padding(horizontal = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                if (isLoading) {
+                    Text("Loading...")
+                } else if (credentials == null) {
+                    Button(onClick = { login("signup") }) { Text("Sign Up") }
+                    Button(onClick = { login() }) { Text("Log In") }
+                } else {
+                    Text("Logged in as ${credentials?.user?.email}", fontSize = 18.sp)
+                    Column {
+                        Text("sub: ${credentials?.user?.getId()}")
+                        Text("name: ${credentials?.user?.name}")
+                        Text("email: ${credentials?.user?.email}")
+                        Text("email_verified: ${credentials?.user?.isEmailVerified}")
+                        Text("nickname: ${credentials?.user?.nickname}")
+                        Text("picture: ${credentials?.user?.pictureURL}")
+                    }
+                    Button(onClick = { logout() }) { Text("Log Out") }
+                }
+            }
+        }
+    }
+
+    private fun login(screenHint: String? = null) {
+        WebAuthProvider.login(account)
+            .withScheme(getString(R.string.com_auth0_scheme))
+            // offline_access: requests a refresh token for session persistence
+            .withScope("openid profile email offline_access")
+            .withParameters(buildMap { screenHint?.let { put("screen_hint", it) } })
+            .start(this, object : Callback<Credentials, AuthenticationException> {
+                override fun onSuccess(result: Credentials) {
+                    credentials = result
+                    manager.saveCredentials(result)
+                }
+
+                override fun onFailure(error: AuthenticationException) {
+                    Log.e(MainActivity::class.java.simpleName, "Login failed", error)
+                    Toast.makeText(this@MainActivity, error.message, Toast.LENGTH_SHORT).show()
+                }
+            })
+    }
+
+    private fun logout() {
+        WebAuthProvider.logout(account)
+            .withScheme(getString(R.string.com_auth0_scheme))
+            .start(this, object : Callback<Void?, AuthenticationException> {
+                override fun onSuccess(result: Void?) {
+                    credentials = null
+                    manager.clearCredentials()
+                }
+
+                override fun onFailure(error: AuthenticationException) {
+                    Log.e(MainActivity::class.java.simpleName, "Logout failed", error)
+                    Toast.makeText(this@MainActivity, error.message, Toast.LENGTH_SHORT).show()
+                }
+            })
+    }
+}
+
+5
+Try it out
+Tap Sign Up to create a new account through the Auth0 Universal Login page.
+Verify your user profile is displayed, including your email and ID token claims.
+Tap Log Out to clear the session and return to the login screen.
+
+Did it work for you?

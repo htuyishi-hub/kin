@@ -1,0 +1,8 @@
+- [Skia web initialization](skia-web-init.md) — Lazy-load Skia components with React.lazy() after ensureSkiaReady(); never top-level import. Use CDN locateFile for WASM.
+- [Kin Orval query-options cast](kin-rq5-cast.md) — RQ v5 UseQueryOptions requires queryKey; use `as any` on inline query options in Expo screens.
+- [Kin onboarding route params](kin-onboarding-params.md) — dateOfBirth & gender not on MyProfile; pass as router params from personal→occupation screen.
+- [Kin API client setup](kin-api-client.md) — setBaseUrl at module level in _layout.tsx; setAuthTokenGetter in AuthContext on token change.
+- [Supabase lazy init](supabase-lazy-init.md) — @supabase/supabase-js throws on empty URL; use lazy factory pattern via getSupabaseClient(), never top-level createClient with possibly-empty env vars.
+- [Expo SDK package installs](expo-package-versioning.md) — Use `pnpm exec expo install <pkg>` (not pnpm add) for Expo packages; pnpm add picks latest which mismatches the SDK version.
+- [Kin dark design system](kin-design-system.md) — Dark navy is the only theme; Colors object exported from constants/colors.ts; Fraunces_700Bold + Fraunces_600SemiBold + Inter loaded in root _layout.tsx.
+- [Kin photo upload arch](photo-upload-arch.md) — Mobile → Supabase Storage (binary, not base64) → CDN URL → Express POST /me/photos with publicUrl+storagePath. DB has publicUrl column on profile_photos.
