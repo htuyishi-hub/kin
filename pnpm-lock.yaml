@@ -277,7 +277,7 @@ importers:
         specifier: ^1.0.2
         version: 1.0.2
       '@tanstack/react-query':
-        specifier: 'catalog:'
+        specifier: 5.100.9
         version: 5.100.9(react@19.1.0)
       '@types/react':
         specifier: ~19.1.10
@@ -349,10 +349,10 @@ importers:
         specifier: ~15.0.10
         version: 15.0.11(expo@54.0.35)(react-native@0.81.5(@babel/core@7.29.0)(@types/react@19.1.17)(react@19.1.0))
       react:
-        specifier: 'catalog:'
+        specifier: 19.1.0
         version: 19.1.0
       react-dom:
-        specifier: 'catalog:'
+        specifier: 19.1.0
         version: 19.1.0(react@19.1.0)
       react-native:
         specifier: 0.81.5
@@ -385,7 +385,7 @@ importers:
         specifier: ~5.9.2
         version: 5.9.3
       zod:
-        specifier: 'catalog:'
+        specifier: 3.25.76
         version: 3.25.76
       zod-validation-error:
         specifier: ^3.4.0
@@ -769,7 +769,7 @@ importers:
   lib/api-client-react:
     dependencies:
       '@tanstack/react-query':
-        specifier: 'catalog:'
+        specifier: 5.100.9
         version: 5.100.9(react@19.1.0)
 
   lib/api-spec:
