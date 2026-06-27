@@ -1,0 +1,15 @@
+# Ignore local files not needed for Vercel deployment
+node_modules
+.env
+.env.*
+.expo
+.expo-shared
+.DS_Store
+*.log
+*.lock
+.git
+.vercel
+.replit
+.replitignore
+.tsbuildinfo
+static-build
