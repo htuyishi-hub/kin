@@ -54,23 +54,27 @@ function stripProtocol(domain) {
   return new URL(urlString).host;
 }
 
-function getDeploymentDomain() {
-  if (process.env.REPLIT_INTERNAL_APP_DOMAIN) {
-    return stripProtocol(process.env.REPLIT_INTERNAL_APP_DOMAIN);
+function getDeploymentDomain(env = process.env) {
+  const candidates = [
+    env.REPLIT_INTERNAL_APP_DOMAIN,
+    env.REPLIT_DEV_DOMAIN,
+    env.EXPO_PUBLIC_DOMAIN,
+    env.RAILWAY_PUBLIC_DOMAIN,
+    env.RAILWAY_STATIC_URL,
+    env.PUBLIC_URL,
+    env.VERCEL_URL,
+  ];
+
+  for (const value of candidates) {
+    if (value) {
+      return stripProtocol(value);
+    }
   }
 
-  if (process.env.REPLIT_DEV_DOMAIN) {
-    return stripProtocol(process.env.REPLIT_DEV_DOMAIN);
-  }
-
-  if (process.env.EXPO_PUBLIC_DOMAIN) {
-    return stripProtocol(process.env.EXPO_PUBLIC_DOMAIN);
-  }
-
-  console.error(
-    "ERROR: No deployment domain found. Set REPLIT_INTERNAL_APP_DOMAIN, REPLIT_DEV_DOMAIN, or EXPO_PUBLIC_DOMAIN",
+  console.warn(
+    "No deployment domain found; falling back to localhost for build output.",
   );
-  process.exit(1);
+  return "localhost";
 }
 
 function prepareDirectories(timestamp) {
@@ -510,7 +514,7 @@ async function main() {
 
   setupSignalHandlers();
 
-  const domain = getDeploymentDomain();
+  const domain = getDeploymentDomain(process.env);
   const expoPublicReplId = getExpoPublicReplId();
   const baseUrl = `https://${domain}`;
   const timestamp = `${Date.now()}-${process.pid}`;
@@ -564,10 +568,16 @@ async function main() {
   process.exit(0);
 }
 
-main().catch((error) => {
-  console.error("Build failed:", error.message);
-  if (metroProcess) {
-    metroProcess.kill();
-  }
-  process.exit(1);
-});
+if (require.main === module) {
+  main().catch((error) => {
+    console.error("Build failed:", error.message);
+    if (metroProcess) {
+      metroProcess.kill();
+    }
+    process.exit(1);
+  });
+}
+
+module.exports = {
+  getDeploymentDomain,
+};
