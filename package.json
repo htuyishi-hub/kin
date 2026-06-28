@@ -10,10 +10,14 @@
     "serve:kin": "pnpm --filter @workspace/kin run serve",
     "build:kin-web": "pnpm --filter @workspace/kin-web run build",
     "serve:kin-web": "pnpm --filter @workspace/kin-web run serve",
+    "start:kin-web": "pnpm --filter @workspace/kin-web run serve",
     "typecheck:libs": "tsc --build",
     "typecheck": "pnpm run typecheck:libs && pnpm -r --filter \"./artifacts/**\" --filter \"./scripts\" --if-present run typecheck"
   },
   "private": true,
+  "engines": {
+    "node": "22.x"
+  },
   "devDependencies": {
     "prettier": "^3.8.3",
     "typescript": "~5.9.3"
