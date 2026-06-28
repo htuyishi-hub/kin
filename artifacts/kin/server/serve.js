@@ -111,6 +111,12 @@ const server = http.createServer((req, res) => {
   const url = new URL(req.url || "/", `http://${req.headers.host}`);
   let pathname = url.pathname;
 
+  if (pathname === "/health") {
+    res.writeHead(200, { "content-type": "application/json" });
+    res.end(JSON.stringify({ ok: true, app: appName }));
+    return;
+  }
+
   if (basePath && pathname.startsWith(basePath)) {
     pathname = pathname.slice(basePath.length) || "/";
   }
@@ -132,4 +138,5 @@ const server = http.createServer((req, res) => {
 const port = parseInt(process.env.PORT || "3000", 10);
 server.listen(port, "0.0.0.0", () => {
   console.log(`Serving static Expo build on port ${port}`);
+  console.log(`Health check available at http://0.0.0.0:${port}/health`);
 });
