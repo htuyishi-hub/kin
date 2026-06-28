@@ -5,3 +5,5 @@
 expo-env.d.ts
 # @end expo-cli
 .vercel
+index.html
+static-build/

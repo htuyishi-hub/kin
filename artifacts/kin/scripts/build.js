@@ -77,6 +77,17 @@ function getDeploymentDomain(env = process.env) {
   return "localhost";
 }
 
+function getAppName() {
+  try {
+    const appJson = JSON.parse(
+      fs.readFileSync(path.join(projectRoot, "app.json"), "utf-8"),
+    );
+    return appJson.expo?.name || "App Landing Page";
+  } catch {
+    return "App Landing Page";
+  }
+}
+
 function prepareDirectories(timestamp) {
   console.log("Preparing build directories...");
 
@@ -510,6 +521,23 @@ function updateManifests(manifests, timestamp, baseUrl, assetsByHash) {
   console.log("Manifests updated");
 }
 
+function createLandingPage(baseUrl) {
+  const templatePath = path.join(
+    projectRoot,
+    "server",
+    "templates",
+    "landing-page.html",
+  );
+  const html = fs
+    .readFileSync(templatePath, "utf-8")
+    .replace(/BASE_URL_PLACEHOLDER/g, baseUrl)
+    .replace(/EXPS_URL_PLACEHOLDER/g, baseUrl.replace(/^https?:\/\//, ""))
+    .replace(/APP_NAME_PLACEHOLDER/g, getAppName());
+
+  fs.writeFileSync(path.join(projectRoot, "index.html"), html);
+  console.log("Landing page created");
+}
+
 async function main() {
   console.log("Building static Expo Go deployment...");
 
@@ -560,6 +588,7 @@ async function main() {
 
   console.log("Updating manifests and creating landing page...");
   updateManifests(manifests, timestamp, baseUrl, assetsByHash);
+  createLandingPage(baseUrl);
 
   console.log("Build complete! Deploy to:", baseUrl);
 

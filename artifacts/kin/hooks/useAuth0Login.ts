@@ -7,7 +7,12 @@ WebBrowser.maybeCompleteAuthSession();
 
 const AUTH0_DOMAIN    = process.env.EXPO_PUBLIC_AUTH0_DOMAIN    ?? '';
 const AUTH0_CLIENT_ID = process.env.EXPO_PUBLIC_AUTH0_CLIENT_ID ?? '';
-const BASE_URL        = `https://${process.env.EXPO_PUBLIC_DOMAIN}`;
+const BASE_URL        =
+  process.env.EXPO_PUBLIC_API_URL ??
+  process.env.VITE_API_URL ??
+  (process.env.EXPO_PUBLIC_DOMAIN
+    ? `https://${process.env.EXPO_PUBLIC_DOMAIN}`
+    : 'https://kin-x81d.onrender.com');
 
 // On web (Replit preview) use the hosted domain.
 // On native builds use the custom scheme.

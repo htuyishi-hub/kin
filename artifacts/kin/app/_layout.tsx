@@ -24,7 +24,14 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 
-setBaseUrl(`https://${process.env.EXPO_PUBLIC_DOMAIN}`);
+const apiBaseUrl =
+  process.env.EXPO_PUBLIC_API_URL ??
+  process.env.VITE_API_URL ??
+  (process.env.EXPO_PUBLIC_DOMAIN
+    ? `https://${process.env.EXPO_PUBLIC_DOMAIN}`
+    : "https://kin-x81d.onrender.com");
+
+setBaseUrl(apiBaseUrl);
 
 SplashScreen.preventAutoHideAsync();
 
@@ -61,7 +68,7 @@ async function registerPushToken(token: string | null) {
     const projectId = process.env.EXPO_PUBLIC_REPL_ID ?? "";
     const pushToken = await Notifications.getExpoPushTokenAsync({ projectId });
 
-    await fetch(`https://${process.env.EXPO_PUBLIC_DOMAIN}/api/me/push-token`, {
+    await fetch(`${apiBaseUrl}/api/me/push-token`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
