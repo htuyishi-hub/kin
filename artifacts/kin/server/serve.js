@@ -13,6 +13,7 @@ const http = require("http");
 const fs = require("fs");
 const path = require("path");
 
+const PROJECT_ROOT = path.resolve(__dirname, "..");
 const STATIC_ROOT = path.resolve(__dirname, "..", "static-build");
 const TEMPLATE_PATH = path.resolve(__dirname, "templates", "landing-page.html");
 const basePath = (process.env.BASE_PATH || "/").replace(/\/+$/, "");
@@ -107,9 +108,13 @@ function serveStaticFile(urlPath, res) {
 const landingPageTemplate = fs.readFileSync(TEMPLATE_PATH, "utf-8");
 const appName = getAppName();
 
-const server = http.createServer((req, res) => {
+function requestHandler(req, res) {
   const url = new URL(req.url || "/", `http://${req.headers.host}`);
   let pathname = url.pathname;
+
+  res.on("finish", () => {
+    console.log(`${req.method} ${pathname} -> ${res.statusCode}`);
+  });
 
   if (pathname === "/health") {
     res.writeHead(200, { "content-type": "application/json" });
@@ -133,10 +138,34 @@ const server = http.createServer((req, res) => {
   }
 
   serveStaticFile(pathname, res);
-});
+}
+
+function listen(port, { required }) {
+  const server = http.createServer(requestHandler);
+  server.on("error", (error) => {
+    if (error.code === "EADDRINUSE" && !required) {
+      console.warn(`Optional static server port ${port} is already in use`);
+      return;
+    }
+
+    console.error(`Failed to listen on port ${port}:`, error);
+    process.exit(1);
+  });
+
+  server.listen(port, "0.0.0.0", () => {
+    console.log(`Serving static Expo build at http://0.0.0.0:${port}`);
+  });
+}
 
 const port = parseInt(process.env.PORT || "3000", 10);
-server.listen(port, "0.0.0.0", () => {
-  console.log(`Serving static Expo build on port ${port}`);
-  console.log(`Health check available at http://0.0.0.0:${port}/health`);
-});
+const fallbackPort = parseInt(process.env.PUBLIC_PORT || "3000", 10);
+
+listen(port, { required: true });
+
+if (fallbackPort !== port) {
+  listen(fallbackPort, { required: false });
+}
+
+console.log(`Static root: ${STATIC_ROOT}`);
+console.log(`Project root: ${PROJECT_ROOT}`);
+console.log(`Health check available at http://0.0.0.0:${port}/health`);

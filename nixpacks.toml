@@ -8,4 +8,4 @@ cmds = ['corepack enable', 'pnpm install --frozen-lockfile --prefer-offline']
 cmds = ['pnpm --filter @workspace/kin run build']
 
 [start]
-cmd = 'npx serve -s artifacts/kin -l tcp://0.0.0.0:$PORT'
+cmd = 'node artifacts/kin/server/serve.js'
