@@ -14,11 +14,13 @@ const BASE_URL        =
     ? `https://${process.env.EXPO_PUBLIC_DOMAIN}`
     : 'https://kin-x81d.onrender.com');
 
-// On web (Replit preview) use the hosted domain.
-// On native builds use the custom scheme.
-const redirectUri = Platform.OS === 'web'
-  ? `https://${process.env.EXPO_PUBLIC_DOMAIN ?? 'localhost'}/callback`
-  : AuthSession.makeRedirectUri({ scheme: 'kin', path: 'callback' });
+const redirectUri = Platform.select({
+  web: `${window.location.origin}/callback`,
+  default: AuthSession.makeRedirectUri({
+    scheme: 'kin',
+    path: 'callback',
+  }),
+});
 
 export type Auth0LoginResult =
   | { success: true;  token: string; userId: string; isNewUser: boolean; onboardingComplete: boolean }

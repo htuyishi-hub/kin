@@ -1,8 +1,13 @@
-- [ ] Inspect relevant files containing Expo Go / QR instructions
-- [ ] Plan edit: remove Expo-related instructional text and replace with alternative messaging
-- [x] Apply edits in the identified file(s)
+# TODO - Auth0 redirect URI fix
 
-- [x] Add Vercel SPA fallback rewrites for Expo Router (artifacts/kin/vercel.json)
-- [ ] Run a quick check/build/lint if available
-
+## Plan steps
+1. Locate all Auth0 redirectUri / callback / localhost hardcodes in the Expo app code.
+2. Update/introduce a single redirectUri helper using `Platform.select`:
+   - web: `${window.location.origin}/callback`
+   - native: `AuthSession.makeRedirectUri({ scheme:'kin', path:'callback' })`
+3. Ensure the same redirectUri value is used for:
+   - Auth request (useAuthRequest)
+   - Auth code exchange (exchangeCodeAsync)
+4. Remove any remaining `https://localhost/callback` references.
+5. Verify build/typecheck and runtime considerations.
 
