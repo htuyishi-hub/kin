@@ -59,39 +59,25 @@ export default function Callback() {
       }
 
 
-      // Wait until backend exchange stores token in AsyncStorage/localStorage.
-      // (We rely on your existing AuthContext/storage approach.)
+      // Wait until backend exchange stores token in AsyncStorage.
+      // AuthContext stores token under AsyncStorage key: "@kin:token".
       const start = Date.now();
       const maxMs = 10_000;
 
-      const tokenKeys = ["auth_token", "token"];
-      const authFlagKeys = ["isAuthenticated"]; // if you store it
+      const TOKEN_KEY = "@kin:token";
 
       while (!cancelled && Date.now() - start < maxMs) {
         if (Platform.OS === "web") {
           try {
-            const storageGet = (k: string) => window.localStorage.getItem(k);
-            const token = tokenKeys.map(storageGet).find(Boolean);
-            const isAuthenticated =
-              authFlagKeys.map(storageGet).find((v) => v === "true") === "true";
-
+            const token = window.localStorage.getItem(TOKEN_KEY);
             if (token) {
-              console.log("[auth] callback: token found in localStorage");
-              if (cancelled) return;
+              console.log("[auth] callback: AsyncStorage token found", {
+                tokenPresent: !!token,
+              });
               setStatus("Login complete. Redirecting…");
               router.replace({ pathname: "/(tabs)" });
               return;
             }
-
-            if (isAuthenticated) {
-              console.log("[auth] callback: isAuthenticated flag true");
-              if (cancelled) return;
-              setStatus("Login complete. Redirecting…");
-              router.replace({ pathname: "/(tabs)" });
-              return;
-            }
-
-
           } catch (e) {
             console.warn("[auth] callback: localStorage check failed", e);
           }
@@ -106,6 +92,7 @@ export default function Callback() {
         pathname: "/(onboarding)/welcome",
         params: { error: "timeout" },
       });
+
 
     };
 
