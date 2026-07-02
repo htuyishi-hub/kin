@@ -58,38 +58,57 @@ router.post("/auth/auth0", async (req, res) => {
     ? or(eq(profilesTable.googleId, userInfo.sub), eq(profilesTable.email, userInfo.email))
     : eq(profilesTable.googleId, userInfo.sub);
 
+  // Keep the initial lookup minimal to avoid runtime column-mapping issues
+  // (your DB error is happening during this query).
   const existing = await db
-    .select()
+    .select({ id: profilesTable.id })
     .from(profilesTable)
     .where(conditions)
     .limit(1);
 
   let isNewUser = false;
-  let profile   = existing[0];
+  let profileId = existing[0]?.id;
 
-  if (!profile) {
+  if (!profileId) {
     const [created] = await db
       .insert(profilesTable)
       .values({
         phoneNumber: `auth0:${userInfo.sub}`,
-        googleId:    userInfo.sub,
-        email:       userInfo.email   ?? null,
-        fullName:    userInfo.name    ?? null,
+        googleId: userInfo.sub,
+        email: userInfo.email ?? null,
+        fullName: userInfo.name ?? null,
         phoneVerified: false,
+        // Ensure any NOT NULL columns have values via schema defaults
+        // (Drizzle will omit fields that have defaults).
       })
-      .returning();
-    profile   = created!;
+      .returning({ id: profilesTable.id });
+
+    profileId = created!.id;
     isNewUser = true;
   } else {
+    // Update lastActive/email/googleId opportunistically.
     await db
       .update(profilesTable)
       .set({
-        googleId:   profile.googleId ?? userInfo.sub,
-        email:      profile.email    ?? userInfo.email ?? null,
+        googleId: userInfo.sub,
+        email: userInfo.email ?? null,
         lastActive: new Date(),
       })
-      .where(eq(profilesTable.id, profile.id));
+      .where(eq(profilesTable.id, profileId));
   }
+
+  // Fetch only the fields we actually return to the app.
+  const profile = await db
+    .select({
+      onboardingComplete: profilesTable.onboardingComplete,
+      id: profilesTable.id,
+    })
+    .from(profilesTable)
+    .where(eq(profilesTable.id, profileId))
+    .limit(1);
+
+  const onboardingComplete = profile[0]?.onboardingComplete ?? false;
+
 
   const token = signToken({ userId: profile.id });
 
