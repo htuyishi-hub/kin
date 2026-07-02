@@ -58,16 +58,15 @@ router.post("/auth/auth0", async (req, res) => {
     ? or(eq(profilesTable.googleId, userInfo.sub), eq(profilesTable.email, userInfo.email))
     : eq(profilesTable.googleId, userInfo.sub);
 
-  // Keep the initial lookup minimal to avoid runtime column-mapping issues
-  // (your DB error is happening during this query).
   const existing = await db
-    .select({ id: profilesTable.id })
+    .select()
     .from(profilesTable)
     .where(conditions)
     .limit(1);
 
   let isNewUser = false;
   let profileId = existing[0]?.id;
+
 
   if (!profileId) {
     const [created] = await db
@@ -106,6 +105,7 @@ router.post("/auth/auth0", async (req, res) => {
     .from(profilesTable)
     .where(eq(profilesTable.id, profileId))
     .limit(1);
+
 
   const onboardingComplete = profile[0]?.onboardingComplete ?? false;
 
