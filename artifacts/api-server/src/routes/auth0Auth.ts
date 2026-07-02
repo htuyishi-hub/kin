@@ -65,10 +65,9 @@ router.post("/auth/auth0", async (req, res) => {
     .limit(1);
 
   let isNewUser = false;
-  let profileId = existing[0]?.id;
+  let profile = existing[0];
 
-
-  if (!profileId) {
+  if (!profile) {
     const [created] = await db
       .insert(profilesTable)
       .values({
@@ -77,15 +76,19 @@ router.post("/auth/auth0", async (req, res) => {
         email: userInfo.email ?? null,
         fullName: userInfo.name ?? null,
         phoneVerified: false,
-        // Ensure any NOT NULL columns have values via schema defaults
-        // (Drizzle will omit fields that have defaults).
+        idVerified: false,
+        vouchCount: 0,
+        trustScore: 0,
+        tokensRemaining: 0,
+        profileActive: true,
+        profilePaused: false,
+        onboardingComplete: false,
       })
-      .returning({ id: profilesTable.id });
+      .returning();
 
-    profileId = created!.id;
+    profile = created;
     isNewUser = true;
   } else {
-    // Update lastActive/email/googleId opportunistically.
     await db
       .update(profilesTable)
       .set({
@@ -93,28 +96,22 @@ router.post("/auth/auth0", async (req, res) => {
         email: userInfo.email ?? null,
         lastActive: new Date(),
       })
-      .where(eq(profilesTable.id, profileId));
+      .where(eq(profilesTable.id, profile.id));
+
+    const [updated] = await db
+      .select()
+      .from(profilesTable)
+      .where(eq(profilesTable.id, profile.id))
+      .limit(1);
+
+    profile = updated || profile;
   }
-
-  // Fetch only the fields we actually return to the app.
-  const profile = await db
-    .select({
-      onboardingComplete: profilesTable.onboardingComplete,
-      id: profilesTable.id,
-    })
-    .from(profilesTable)
-    .where(eq(profilesTable.id, profileId))
-    .limit(1);
-
-
-  const onboardingComplete = profile[0]?.onboardingComplete ?? false;
-
 
   const token = signToken({ userId: profile.id });
 
   res.json({
     token,
-    userId:             profile.id,
+    userId: profile.id,
     isNewUser,
     onboardingComplete: profile.onboardingComplete ?? false,
   });
