@@ -38,83 +38,146 @@ async function getUserInfo(accessToken: string): Promise<Auth0UserInfo> {
 // POST /auth/auth0
 // Body: { accessToken: string }
 router.post("/auth/auth0", async (req, res) => {
-  const { accessToken } = req.body as { accessToken?: string };
-  if (!accessToken || typeof accessToken !== "string") {
-    res.status(400).json({ error: "bad_request", message: "accessToken is required" });
-    return;
-  }
+  const t0 = Date.now();
+  const requestId = req.id;
 
-  let userInfo: Auth0UserInfo;
   try {
-    userInfo = await getUserInfo(accessToken);
-  } catch (err: any) {
-    req.log.warn({ err: err?.message }, "Auth0 token verification failed");
-    res.status(401).json({ error: "invalid_token", message: "Auth0 verification failed" });
-    return;
-  }
+    // Step 1: Validate request
+    const stepT = Date.now();
+    const { accessToken } = req.body as { accessToken?: string };
+    if (!accessToken || typeof accessToken !== "string") {
+      req.log.info({ requestId, durationMs: Date.now() - stepT, step: "validate_request", ok: false }, "Invalid accessToken");
+      res.status(400).json({ error: "bad_request", message: "accessToken is required" });
+      return;
+    }
+    req.log.info({ requestId, durationMs: Date.now() - stepT, step: "validate_request", ok: true }, "Validated request");
 
-  // Look up by auth0 sub (stored in googleId) or email
-  const conditions = userInfo.email
-    ? or(eq(profilesTable.googleId, userInfo.sub), eq(profilesTable.email, userInfo.email))
-    : eq(profilesTable.googleId, userInfo.sub);
+    // Step 2: Auth0 userinfo
+    const authT = Date.now();
+    let userInfo: Auth0UserInfo;
+    try {
+      userInfo = await getUserInfo(accessToken);
+    } catch (err: any) {
+      req.log.error(
+        { requestId, durationMs: Date.now() - authT, step: "auth0_userinfo", err },
+        "Auth0 userinfo failed"
+      );
+      res.status(401).json({ error: "invalid_token", message: "Auth0 verification failed" });
+      return;
+    }
+    req.log.info(
+      {
+        requestId,
+        durationMs: Date.now() - authT,
+        step: "auth0_userinfo",
+        provider: userInfo.sub?.split("|")?.[0],
+        hasEmail: Boolean(userInfo.email),
+        sub: userInfo.sub,
+      },
+      "Auth0 userinfo ok"
+    );
 
-  const existing = await db
-    .select()
-    .from(profilesTable)
-    .where(conditions)
-    .limit(1);
+    // Step 3: Build query conditions
+    const condT = Date.now();
+    const conditions = userInfo.email
+      ? or(eq(profilesTable.googleId, userInfo.sub), eq(profilesTable.email, userInfo.email))
+      : eq(profilesTable.googleId, userInfo.sub);
+    req.log.info({ requestId, durationMs: Date.now() - condT, step: "build_conditions" }, "Built conditions");
 
-  let isNewUser = false;
-  let profile = existing[0];
-
-  if (!profile) {
-    const [created] = await db
-      .insert(profilesTable)
-      .values({
-        phoneNumber: `auth0:${userInfo.sub}`,
-        googleId: userInfo.sub,
-        email: userInfo.email ?? null,
-        fullName: userInfo.name ?? null,
-        phoneVerified: false,
-        idVerified: false,
-        vouchCount: 0,
-        trustScore: 0,
-        tokensRemaining: 0,
-        profileActive: true,
-        profilePaused: false,
-        onboardingComplete: false,
-      })
-      .returning();
-
-    profile = created;
-    isNewUser = true;
-  } else {
-    await db
-      .update(profilesTable)
-      .set({
-        googleId: userInfo.sub,
-        email: userInfo.email ?? null,
-        lastActive: new Date(),
-      })
-      .where(eq(profilesTable.id, profile.id));
-
-    const [updated] = await db
+    // Step 4: SELECT profile
+    const selectT = Date.now();
+    const existing = await db
       .select()
       .from(profilesTable)
-      .where(eq(profilesTable.id, profile.id))
+      .where(conditions)
       .limit(1);
+    req.log.info(
+      { requestId, durationMs: Date.now() - selectT, step: "select_profile", found: existing.length > 0 },
+      "SELECT profile"
+    );
 
-    profile = updated || profile;
+    // Step 5: Process results (INSERT or UPDATE)
+    let isNewUser = false;
+    let profile = existing[0];
+
+    if (!profile) {
+      const insertT = Date.now();
+      const [created] = await db
+        .insert(profilesTable)
+        .values({
+          phoneNumber: `auth0:${userInfo.sub}`,
+          googleId: userInfo.sub,
+          email: userInfo.email ?? null,
+          fullName: userInfo.name ?? null,
+          phoneVerified: false,
+          idVerified: false,
+          vouchCount: 0,
+          trustScore: 0,
+          tokensRemaining: 0,
+          profileActive: true,
+          profilePaused: false,
+          onboardingComplete: false,
+        })
+        .returning();
+
+      profile = created;
+      isNewUser = true;
+      req.log.info(
+        { requestId, durationMs: Date.now() - insertT, step: "insert_profile", isNewUser: true },
+        "INSERT new profile"
+      );
+    } else {
+      const updateT = Date.now();
+      await db
+        .update(profilesTable)
+        .set({
+          googleId: userInfo.sub,
+          email: userInfo.email ?? null,
+          lastActive: new Date(),
+        })
+        .where(eq(profilesTable.id, profile.id));
+
+      req.log.info(
+        { requestId, durationMs: Date.now() - updateT, step: "update_profile", isNewUser: false },
+        "UPDATE profile"
+      );
+
+      const fetchT = Date.now();
+      const [updated] = await db
+        .select()
+        .from(profilesTable)
+        .where(eq(profilesTable.id, profile.id))
+        .limit(1);
+
+      profile = updated || profile;
+      req.log.info(
+        { requestId, durationMs: Date.now() - fetchT, step: "select_updated_profile" },
+        "SELECT updated profile"
+      );
+    }
+
+    // Step 6: Generate JWT
+    const jwtT = Date.now();
+    const token = signToken({ userId: profile.id });
+    req.log.info({ requestId, durationMs: Date.now() - jwtT, step: "generate_jwt" }, "JWT generated");
+
+    // Step 7: Send response
+    res.json({
+      token,
+      userId: profile.id,
+      isNewUser,
+      onboardingComplete: profile.onboardingComplete ?? false,
+    });
+
+    req.log.info(
+      { requestId, durationMs: Date.now() - t0, step: "send_response", ok: true, isNewUser },
+      "Auth0 login completed"
+    );
+  } catch (err) {
+    req.log.error({ requestId, durationMs: Date.now() - t0, err }, "Unhandled /auth/auth0 error");
+    res.status(500).json({ error: "authentication_failed" });
   }
-
-  const token = signToken({ userId: profile.id });
-
-  res.json({
-    token,
-    userId: profile.id,
-    isNewUser,
-    onboardingComplete: profile.onboardingComplete ?? false,
-  });
 });
+
 
 export default router;
