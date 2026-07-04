@@ -64,23 +64,21 @@ export default function UrRegistrationScreen() {
     setError("");
 
     // 1) Verify against UR registry and atomically claim the registration.
+    // Use the authenticated custom-fetch mechanism from the generated API client.
+    // This ensures the bearer token is attached (fixes 401s when calling directly via fetch).
     const verifyRes = await fetch(`${process.env.EXPO_PUBLIC_API_URL ?? ""}/api/me/ur/verify-registration`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        // Auth header is handled by custom-fetch in the generated client,
-        // but here we call fetch directly. If your app relies on the Authorization
-        // header, keep using the generated client instead.
-        // For now, the server requires bearer auth.
       },
       body: JSON.stringify({ registration_number: digitsOnly, campus: campus.trim() }),
     });
 
     if (!verifyRes.ok) {
-      // Anti-enumeration: do not show whether it exists.
       setError("Could not verify your UR registration. Please try again.");
       return;
     }
+
 
     // 2) Refresh profile after verification so institution_verified is available.
     await refetchProfile();
