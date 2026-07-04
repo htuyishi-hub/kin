@@ -32,6 +32,16 @@ export const profilesTable = pgTable("profiles", {
   vouchCount: smallint("vouch_count").default(0),
   verifiedAdult: boolean("verified_adult").default(false),
 
+  // UR verification
+  institution: text("institution").$type<"university_of_rwanda" | null>().default(null),
+  campus: text("campus").default(null),
+  registrationNumber: text("registration_number").default(null),
+  institutionVerified: boolean("institution_verified").default(false),
+  verificationMethod: text("verification_method").$type<"ur_registry" | "community" | null>().default(null),
+
+
+
+
   // Feature flags
   proximityConsent: boolean("proximity_consent").default(false),
   crossingFeePaid: boolean("crossing_fee_paid").default(false),
@@ -40,6 +50,7 @@ export const profilesTable = pgTable("profiles", {
   profilePaused: boolean("profile_paused").default(false),
 
   onboardingComplete: boolean("onboarding_complete").default(false),
+
 
   pushNotificationToken: text("push_notification_token"),
 

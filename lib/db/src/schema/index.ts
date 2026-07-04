@@ -6,3 +6,10 @@ export * from "./matching";
 export * from "./messages";
 export * from "./payments";
 export * from "./misc";
+export * from "./studentRegistry";
+export * from "./urVerification";
+export * from "./urVerificationUtil";
+
+
+
+

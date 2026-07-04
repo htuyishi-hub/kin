@@ -172,6 +172,61 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
+  # ── UR verification (Phase 2) ─────────────────────────────────────────────
+  /me/ur/verify-registration:
+    post:
+      operationId: verifyURRegistration
+      tags: [me]
+      summary: Verify University of Rwanda registration number
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [registration_number, campus]
+              properties:
+                registration_number:
+                  type: string
+                  description: Student registration number (9 digits)
+                  example: "225028190"
+                campus:
+                  type: string
+                  description: UR campus (e.g. Huye)
+                  example: "Huye"
+      responses:
+        "200":
+          description: Verification result
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum: [verified, invalid_format, not_found, already_claimed]
+                  institution:
+                    type: string
+                    enum: [university_of_rwanda]
+                    nullable: true
+                  campus:
+                    type: string
+                    nullable: true
+                  message:
+                    type: string
+                    nullable: true
+                required: [status]
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+
+
   /me/pause:
     post:
       operationId: pauseProfile

@@ -29,9 +29,9 @@ const OCCUPATIONS: { value: OnboardingRequestOccupation; label: string }[] = [
 ];
 
 const INTENTS: { value: OnboardingRequestPrimaryGoal; label: string }[] = [
-  { value: "Serious Marriage", label: "Gukundana kugeza mu bushyingirwa" },
-  { value: "Long-term Relationship", label: "Gukundana guturika" },
-  { value: "Casual Dating", label: "Gusabana no guganira" },
+  { value: "Serious Marriage", label: "Gukundana kugeza mu gushyingiranwa" },
+  { value: "Long-term Relationship", label: "Gukundana byigihe kirekire" },
+  { value: "Casual Dating", label: "Gusabana no kuganira" },
 ];
 
 export default function OccupationScreen() {
@@ -61,7 +61,24 @@ export default function OccupationScreen() {
   function handleNext() {
     if (!occupation) { setError("Select your occupation"); return; }
     if (!intent) { setError("Select your primary intent"); return; }
-    if (occupation === "Student" && !campusName.trim()) { setError("Enter your campus name"); return; }
+    if (occupation === "Student" && !campusName.trim()) { setError("Choose where you study"); return; }
+
+    // Phase 1: UR branch navigation (no verification logic yet)
+    if (occupation === "Student" && campusName === "University of Rwanda") {
+      setError("");
+      router.push({
+        pathname: "/(onboarding)/ur-campus",
+        params: {
+          dateOfBirth,
+          gender,
+          fullName,
+          occupation,
+          intent,
+        },
+      });
+      return;
+    }
+
     setError("");
 
     const locationType: OnboardingRequestLocationType =
@@ -124,14 +141,65 @@ export default function OccupationScreen() {
 
       {occupation === "Student" && (
         <View style={styles.section}>
-          <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>CAMPUS</Text>
-          <TextInput
-            style={[styles.input, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.card }]}
-            placeholder="e.g. University of Rwanda"
-            placeholderTextColor={colors.mutedForeground}
-            value={campusName}
-            onChangeText={(t) => { setCampusName(t); setError(""); }}
-          />
+          <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>WHERE DO YOU STUDY?</Text>
+
+          <View style={styles.optionGrid}>
+            <TouchableOpacity
+              style={[
+                styles.optionChip,
+                {
+                  borderColor: campusName === "University of Rwanda" ? colors.primary : colors.border,
+                  backgroundColor: campusName === "University of Rwanda" ? colors.primary : colors.card,
+                },
+              ]}
+              onPress={() => {
+                setCampusName("University of Rwanda");
+                setError("");
+              }}
+              activeOpacity={0.8}
+            >
+              <Text
+                style={[
+                  styles.chipText,
+                  {
+                    color:
+                      campusName === "University of Rwanda"
+                        ? colors.primaryForeground
+                        : colors.foreground,
+                  },
+                ]}
+              >
+                University of Rwanda
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[
+                styles.optionChip,
+                {
+                  borderColor: campusName === "Other university" ? colors.primary : colors.border,
+                  backgroundColor: campusName === "Other university" ? colors.primary : colors.card,
+                },
+              ]}
+              onPress={() => {
+                setCampusName("Other university");
+                setError("");
+              }}
+              activeOpacity={0.8}
+            >
+              <Text
+                style={[
+                  styles.chipText,
+                  {
+                    color:
+                      campusName === "Other university" ? colors.primaryForeground : colors.foreground,
+                  },
+                ]}
+              >
+                Other university
+              </Text>
+            </TouchableOpacity>
+          </View>
         </View>
       )}
 
