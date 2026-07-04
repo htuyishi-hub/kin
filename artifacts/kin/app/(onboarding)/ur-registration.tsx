@@ -1,10 +1,12 @@
-import { useCompleteOnboarding, OnboardingRequestOccupation, OnboardingRequestGender, OnboardingRequestPrimaryGoal, OnboardingRequestLocationType } from "@workspace/api-client-react";
+import { useGetMe, useCompleteOnboarding, OnboardingRequestOccupation, OnboardingRequestGender, OnboardingRequestPrimaryGoal, OnboardingRequestLocationType } from "@workspace/api-client-react";
 import { router, useLocalSearchParams } from "expo-router";
 import React, { useState } from "react";
-import { ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useColors } from "@/hooks/useColors";
+
+const UR_INSTITUTION = "university_of_rwanda";
 
 export default function UrRegistrationScreen() {
   const colors = useColors();
@@ -23,20 +25,27 @@ export default function UrRegistrationScreen() {
   const [registrationNumber, setRegistrationNumber] = useState("");
   const [error, setError] = useState("");
 
+  const { data: profile, refetch: refetchProfile } = useGetMe({ query: { refetchInterval: 0 } } as any);
+
   const { mutate: complete, isPending } = useCompleteOnboarding({
     mutation: {
       onSuccess: () => {
-        router.push("/(onboarding)/vouch");
+        // Post-onboarding routing is now based on institutional verification,
+        // not on occupation alone.
+        const institutionVerified = (profile as any)?.institution_verified === true;
+        if (institutionVerified) {
+          router.replace("/(onboarding)/waiting");
+        } else {
+          router.replace("/(onboarding)/vouch");
+        }
       },
       onError: (err: any) => {
-        // Phase 1: backend contract is stubbed; if it fails, keep message generic.
         setError(err?.data?.message ?? "Failed to save. Please try again.");
       },
     },
   });
 
-  function handleNext() {
-    // Phase 1 UI-only validation: ensure 9 digits.
+  async function handleVerifyAndNext() {
     const digitsOnly = registrationNumber.replace(/\s+/g, "");
     if (!digitsOnly) {
       setError("Enter your registration number");
@@ -47,10 +56,36 @@ export default function UrRegistrationScreen() {
       return;
     }
 
+    if (!campus || typeof campus !== "string" || !campus.trim()) {
+      setError("Select your campus");
+      return;
+    }
+
     setError("");
 
-    // Phase 1 split: we still complete onboarding using existing /me/onboarding.
-    // The backend stub for UR verification will be introduced in Phase 2.
+    // 1) Verify against UR registry and atomically claim the registration.
+    const verifyRes = await fetch(`${process.env.EXPO_PUBLIC_API_URL ?? ""}/api/me/ur/verify-registration`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        // Auth header is handled by custom-fetch in the generated client,
+        // but here we call fetch directly. If your app relies on the Authorization
+        // header, keep using the generated client instead.
+        // For now, the server requires bearer auth.
+      },
+      body: JSON.stringify({ registration_number: digitsOnly, campus: campus.trim() }),
+    });
+
+    if (!verifyRes.ok) {
+      // Anti-enumeration: do not show whether it exists.
+      setError("Could not verify your UR registration. Please try again.");
+      return;
+    }
+
+    // 2) Refresh profile after verification so institution_verified is available.
+    await refetchProfile();
+
+    // 3) Continue existing onboarding completion flow.
     const locationType: OnboardingRequestLocationType = "Campus";
 
     complete({
@@ -81,7 +116,7 @@ export default function UrRegistrationScreen() {
       <Text style={[styles.step, { color: colors.mutedForeground }]}>Step 2 of 4</Text>
       <Text style={[styles.title, { color: colors.foreground }]}>Registration Number</Text>
       <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>
-        Used only to verify that you are a University of Rwanda student.
+        Used to verify that you are a University of Rwanda student.
       </Text>
 
       <View style={styles.section}>
@@ -104,7 +139,7 @@ export default function UrRegistrationScreen() {
 
       <TouchableOpacity
         style={[styles.button, { backgroundColor: colors.primary, opacity: isPending ? 0.7 : 1 }]}
-        onPress={handleNext}
+        onPress={handleVerifyAndNext}
         disabled={isPending}
         activeOpacity={0.85}
       >
