@@ -33,11 +33,12 @@ export const profilesTable = pgTable("profiles", {
   verifiedAdult: boolean("verified_adult").default(false),
 
   // UR verification
-  institution: text("institution").$type<"university_of_rwanda" | null>().default(null),
-  campus: text("campus").default(null),
-  registrationNumber: text("registration_number").default(null),
+  institution: text("institution").$type<"university_of_rwanda" | null>(),
+  campus: text("campus"),
+  registrationNumber: text("registration_number"),
   institutionVerified: boolean("institution_verified").default(false),
-  verificationMethod: text("verification_method").$type<"ur_registry" | "community" | null>().default(null),
+  verificationMethod: text("verification_method").$type<"ur_registry" | "community" | null>(),
+
 
 
 
