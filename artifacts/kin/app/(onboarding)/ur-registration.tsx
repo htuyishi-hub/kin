@@ -37,8 +37,9 @@ export default function UrRegistrationScreen() {
           (profile as any)?.institution_verified === true ||
           (profile as any)?.institutionVerified === true;
 
+        // Phase 2 rule: UR-verified students skip Step 3 (vouches) and continue to Step 4 (prompts).
         if (institutionVerified) {
-          router.replace("/(onboarding)/waiting");
+          router.replace("/(onboarding)/prompts");
         } else {
           router.replace("/(onboarding)/vouch");
         }
