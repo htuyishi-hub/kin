@@ -64,8 +64,8 @@ export default function UrRegistrationScreen() {
     setError("");
 
     // 1) Verify against UR registry and atomically claim the registration.
-    // Use the authenticated custom-fetch mechanism from the generated API client.
-    // This ensures the bearer token is attached (fixes 401s when calling directly via fetch).
+    // Use the authenticated custom-fetch mechanism (AuthProvider -> setAuthTokenGetter)
+    // so bearer token is attached automatically.
     const verifyRes = await fetch(`${process.env.EXPO_PUBLIC_API_URL ?? ""}/api/me/ur/verify-registration`, {
       method: "POST",
       headers: {
