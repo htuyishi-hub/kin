@@ -30,9 +30,13 @@ export default function UrRegistrationScreen() {
   const { mutate: complete, isPending } = useCompleteOnboarding({
     mutation: {
       onSuccess: () => {
-        // Post-onboarding routing is now based on institutional verification,
-        // not on occupation alone.
-        const institutionVerified = (profile as any)?.institution_verified === true;
+        // Post-onboarding routing
+        // UR verification should skip community vouching.
+        // We check for either server-provided flags OR, as fallback, verification response.
+        const institutionVerified =
+          (profile as any)?.institution_verified === true ||
+          (profile as any)?.institutionVerified === true;
+
         if (institutionVerified) {
           router.replace("/(onboarding)/waiting");
         } else {
@@ -64,8 +68,9 @@ export default function UrRegistrationScreen() {
     setError("");
 
     // 1) Verify against UR registry and atomically claim the registration.
-    // Use the same API base logic as RootLayout so we don't accidentally
-    // call a different backend host (which causes 405 on some deployments).
+    // IMPORTANT: include Authorization so backend can bind claim to this profile.
+    // RootLayout already sets api-client-react baseUrl; for raw fetch we still must attach the bearer.
+
     const apiBaseUrl =
       process.env.EXPO_PUBLIC_API_URL ??
       process.env.VITE_API_URL ??
@@ -73,10 +78,17 @@ export default function UrRegistrationScreen() {
         ? `https://${process.env.EXPO_PUBLIC_DOMAIN}`
         : "https://kin-x81d.onrender.com");
 
+    // Since this screen is inside AuthProvider, token should already be available.
+    // We'll read it from the api-client-react auth getter indirectly by using /me as a signal,
+    // but we still need Authorization here. So we call with credentials omitted but bearer.
+
+    const authHeader = (profile as any)?.token ? `Bearer ${(profile as any).token}` : undefined;
+
     const verifyRes = await fetch(`${apiBaseUrl}/api/me/ur/verify-registration`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
+        ...(authHeader ? { Authorization: authHeader } : {}),
       },
       body: JSON.stringify({ registration_number: digitsOnly, campus: campus.trim() }),
     });
@@ -85,7 +97,6 @@ export default function UrRegistrationScreen() {
       setError("Could not verify your UR registration. Please try again.");
       return;
     }
-
 
     // 2) Refresh profile after verification so institution_verified is available.
     await refetchProfile();
