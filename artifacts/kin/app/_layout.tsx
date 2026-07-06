@@ -90,16 +90,17 @@ async function registerPushToken(token: string | null) {
 }
 
 function PushRegistrar() {
-  const { token } = useAuth();
+  const { token, isLoading } = useAuth();
 
   useEffect(() => {
-    if (token) {
+    if (!isLoading && token) {
       registerPushToken(token);
     }
-  }, [token]);
+  }, [token, isLoading]);
 
   return null;
 }
+
 
 function RootLayoutNav() {
   return (
@@ -121,11 +122,13 @@ function RootLayoutNav() {
 function WaitForAuthToken({ children }: { children: React.ReactNode }) {
   const { token, isLoading } = useAuth();
 
-  if (isLoading) return null;
-  if (!token) return null;
+  // Never render a blank screen. While auth is restoring, keep the app mounted.
+  if (isLoading) return <>{children}</>;
 
+  // If token restore failed, still render the app shell.
   return <>{children}</>;
 }
+
 
 export default function RootLayout() {
   const [fontsLoaded, fontError] = useFonts({
