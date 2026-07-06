@@ -64,9 +64,16 @@ export default function UrRegistrationScreen() {
     setError("");
 
     // 1) Verify against UR registry and atomically claim the registration.
-    // Use the authenticated custom-fetch mechanism (AuthProvider -> setAuthTokenGetter)
-    // so bearer token is attached automatically.
-    const verifyRes = await fetch(`${process.env.EXPO_PUBLIC_API_URL ?? ""}/api/me/ur/verify-registration`, {
+    // Use the same API base logic as RootLayout so we don't accidentally
+    // call a different backend host (which causes 405 on some deployments).
+    const apiBaseUrl =
+      process.env.EXPO_PUBLIC_API_URL ??
+      process.env.VITE_API_URL ??
+      (process.env.EXPO_PUBLIC_DOMAIN
+        ? `https://${process.env.EXPO_PUBLIC_DOMAIN}`
+        : "https://kin-x81d.onrender.com");
+
+    const verifyRes = await fetch(`${apiBaseUrl}/api/me/ur/verify-registration`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

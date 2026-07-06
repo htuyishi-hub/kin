@@ -118,6 +118,15 @@ function RootLayoutNav() {
   );
 }
 
+function WaitForAuthToken({ children }: { children: React.ReactNode }) {
+  const { token, isLoading } = useAuth();
+
+  if (isLoading) return null;
+  if (!token) return null;
+
+  return <>{children}</>;
+}
+
 export default function RootLayout() {
   const [fontsLoaded, fontError] = useFonts({
     Inter_400Regular,
@@ -141,11 +150,13 @@ export default function RootLayout() {
       <ErrorBoundary>
         <QueryClientProvider client={queryClient}>
           <AuthProvider>
-            <GestureHandlerRootView style={{ flex: 1 }}>
-              <KeyboardProvider>
-                <RootLayoutNav />
-              </KeyboardProvider>
-            </GestureHandlerRootView>
+            <WaitForAuthToken>
+              <GestureHandlerRootView style={{ flex: 1 }}>
+                <KeyboardProvider>
+                  <RootLayoutNav />
+                </KeyboardProvider>
+              </GestureHandlerRootView>
+            </WaitForAuthToken>
           </AuthProvider>
         </QueryClientProvider>
       </ErrorBoundary>
