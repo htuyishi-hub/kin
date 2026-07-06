@@ -77,13 +77,29 @@ router.patch("/me", requireAuth, async (req, res) => {
     return;
   }
 
-  const [updated] = await db
-    .update(profilesTable)
-    .set(updates as any)
-    .where(eq(profilesTable.id, userId))
-    .returning();
+  try {
+    // Debugging: helps identify why PATCH /me is failing with 500
+    console.error("[PATCH /me] userId", { userId });
+    console.error("[PATCH /me] req.body", { body });
+    console.error("[PATCH /me] updates", { updates });
 
-  res.json(mapProfile(updated!));
+    const [updated] = await db
+      .update(profilesTable)
+      .set(updates as any)
+      .where(eq(profilesTable.id, userId))
+      .returning();
+
+    if (!updated) {
+      return res.status(404).json({ error: "not_found", message: "Profile not found" });
+    }
+
+    res.json(mapProfile(updated!));
+  } catch (err) {
+    console.error("[PATCH /me] update failed", err);
+    return res.status(500).json({ error: "server_error", message: "Failed to update profile" });
+  }
+  // Ensure TS7030: all code paths return
+  return;
 });
 
 // POST /me/onboarding — invisible tier classification
