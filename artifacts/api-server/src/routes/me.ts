@@ -58,20 +58,18 @@ router.get("/me", requireAuth, async (req, res) => {
   }
   const totalUsers = Number(countResult[0]?.count ?? 0);
   const earlyAccess = totalUsers < VOUCH_THRESHOLD;
-  // Include UR verification flags if present (used by onboarding gating)
-  const p = rows[0] as any;
+  const p = rows[0];
   res.json({
     ...mapProfile(rows[0]),
-    institution_verified: p.institutionVerified ?? p.institution_verified ?? false,
-    institutionVerified: p.institutionVerified ?? undefined,
-    institution: p.institution ?? null,
-    verification_method: p.verificationMethod ?? p.verification_method ?? null,
-    verificationMethod: p.verificationMethod ?? undefined,
-    registration_number: p.registrationNumber ?? p.registration_number ?? null,
-    campus: p.campusName ?? p.campus ?? null,
+    institution_verified: (p as any).institutionVerified ?? false,
+    institution: (p as any).institution ?? null,
+    verification_method: (p as any).verificationMethod ?? null,
+    registration_number: (p as any).registrationNumber ?? null,
+    campus: (p as any).campus ?? null,
     earlyAccess,
   });
 });
+
 
 // PATCH /me
 router.patch("/me", requireAuth, async (req, res) => {
