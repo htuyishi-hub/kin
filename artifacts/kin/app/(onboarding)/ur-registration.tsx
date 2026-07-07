@@ -27,27 +27,15 @@ export default function UrRegistrationScreen() {
 
   const { data: profile, refetch: refetchProfile } = useGetMe({ query: { refetchInterval: 0 } } as any);
 
+  const [urVerifiedNow, setUrVerifiedNow] = React.useState(false);
+
   const { mutate: complete, isPending } = useCompleteOnboarding({
     mutation: {
       onSuccess: () => {
-        // Post-onboarding routing
-        // UR verification should skip community vouching.
-        // We check for either server-provided flags OR, as fallback, verification response.
-        const institutionVerified =
-          (profile as any)?.institution_verified === true ||
-          (profile as any)?.institutionVerified === true;
-
-        // Phase 2 rule: UR-verified students skip Step 3 (vouches) and continue to Step 4 (prompts).
-        // Use the latest server state (institution_verified) rather than a stale closure.
-        const refreshed = (profile as any);
-        const institutionVerifiedRefreshed =
-          refreshed?.institution_verified === true || refreshed?.institutionVerified === true;
-
-        if (institutionVerifiedRefreshed) {
-          router.replace("/(onboarding)/prompts");
-        } else {
-          router.replace("/(onboarding)/vouch");
-        }
+        // IMPORTANT: route purely from the UR verification result captured just now,
+        // not from `profile` which may be stale during the same request cycle.
+        if (urVerifiedNow) router.replace("/(onboarding)/prompts");
+        else router.replace("/(onboarding)/vouch");
       },
       onError: (err: any) => {
         setError(err?.data?.message ?? "Failed to save. Please try again.");
@@ -108,6 +96,8 @@ export default function UrRegistrationScreen() {
       verifyJson?.status === "verified";
 
     if (verifiedFromApi) {
+      setUrVerifiedNow(true);
+
       // Still complete onboarding fields (occupation/location/intent/etc.)
       const locationType: OnboardingRequestLocationType = "Campus";
       complete({
@@ -121,15 +111,14 @@ export default function UrRegistrationScreen() {
           dateOfBirth: dateOfBirth ?? "2000-01-01",
         },
       });
-
-      // onSuccess will route, but we also keep navigation safe by ensuring the
-      // refreshed check is correct. (The stale closure bug is fixed already.)
-      await refetchProfile();
       return;
     }
 
-    // 3) Non-verified branch: refresh profile + continue (onSuccess will route to vouch).
+    setUrVerifiedNow(false);
+
+    // 3) Non-verified branch: continue onboarding (onSuccess will route to vouch).
     await refetchProfile();
+
 
     const locationType: OnboardingRequestLocationType = "Campus";
     complete({
