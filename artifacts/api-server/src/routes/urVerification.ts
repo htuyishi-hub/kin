@@ -125,13 +125,11 @@ export async function verifyURRegistration(req: Request, res: Response) {
     await db
       .update(profilesTable)
       .set({
-        ...( {
-          institution: "university_of_rwanda",
-          campusName: selectedCampus,
-          registrationNumber: reg,
-          institutionVerified: true,
-          verificationMethod: "ur_registry",
-        } as any),
+        institution: "university_of_rwanda",
+        campus: selectedCampus,
+        registrationNumber: reg,
+        institutionVerified: true,
+        verificationMethod: "ur_registry",
       } as any)
       .where(eq(profilesTable.id, profileId));
   } catch {

@@ -27,14 +27,13 @@ export default function UrRegistrationScreen() {
 
   const { data: profile, refetch: refetchProfile } = useGetMe({ query: { refetchInterval: 0 } } as any);
 
-  const [urVerifiedNow, setUrVerifiedNow] = React.useState(false);
+  const urVerifiedRef = React.useRef(false);
 
   const { mutate: complete, isPending } = useCompleteOnboarding({
     mutation: {
       onSuccess: () => {
-        // IMPORTANT: route purely from the UR verification result captured just now,
-        // not from `profile` which may be stale during the same request cycle.
-        if (urVerifiedNow) router.replace("/(onboarding)/prompts");
+        // Deterministic routing: use the sync ref set immediately after verification.
+        if (urVerifiedRef.current) router.replace("/(onboarding)/prompts");
         else router.replace("/(onboarding)/vouch");
       },
       onError: (err: any) => {
@@ -96,7 +95,7 @@ export default function UrRegistrationScreen() {
       verifyJson?.status === "verified";
 
     if (verifiedFromApi) {
-      setUrVerifiedNow(true);
+      urVerifiedRef.current = true;
 
       // Still complete onboarding fields (occupation/location/intent/etc.)
       const locationType: OnboardingRequestLocationType = "Campus";
@@ -114,7 +113,7 @@ export default function UrRegistrationScreen() {
       return;
     }
 
-    setUrVerifiedNow(false);
+    urVerifiedRef.current = false;
 
     // 3) Non-verified branch: continue onboarding (onSuccess will route to vouch).
     await refetchProfile();
