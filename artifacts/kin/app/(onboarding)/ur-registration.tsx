@@ -74,9 +74,6 @@ export default function UrRegistrationScreen() {
     setError("");
 
     // 1) Verify against UR registry and atomically claim the registration.
-    // IMPORTANT: include Authorization so backend can bind claim to this profile.
-    // RootLayout already sets api-client-react baseUrl; for raw fetch we still must attach the bearer.
-
     const apiBaseUrl =
       process.env.EXPO_PUBLIC_API_URL ??
       process.env.VITE_API_URL ??
@@ -84,10 +81,8 @@ export default function UrRegistrationScreen() {
         ? `https://${process.env.EXPO_PUBLIC_DOMAIN}`
         : "https://kin-x81d.onrender.com");
 
-    // Since this screen is inside AuthProvider, token should already be available.
-    // We'll read it from the api-client-react auth getter indirectly by using /me as a signal,
-    // but we still need Authorization here. So we call with credentials omitted but bearer.
-
+    // IMPORTANT: include Authorization so backend can bind claim to this profile.
+    // NOTE: token sourcing in this screen is legacy; we keep the existing behavior.
     const authHeader = (profile as any)?.token ? `Bearer ${(profile as any).token}` : undefined;
 
     const verifyRes = await fetch(`${apiBaseUrl}/api/me/ur/verify-registration`, {
@@ -104,12 +99,34 @@ export default function UrRegistrationScreen() {
       return;
     }
 
-    // 2) Refresh profile after verification so institution_verified is available.
+    const verifyJson = (await verifyRes.json()) as any;
+
+    // 2) Proactively route using the verification response to avoid cached /api/me.
+    if (verifyJson?.verified === true) {
+      // Still complete onboarding fields (occupation/location/intent/etc.)
+      const locationType: OnboardingRequestLocationType = "Campus";
+      complete({
+        data: {
+          occupation: occupation ?? "Student",
+          locationType,
+          primaryGoal: (intent ?? "Serious Marriage") as OnboardingRequestPrimaryGoal,
+          campusName: campus ?? "University of Rwanda",
+          fullName: fullName ?? "",
+          gender: (gender ?? "Male") as OnboardingRequestGender,
+          dateOfBirth: dateOfBirth ?? "2000-01-01",
+        },
+      });
+
+      // onSuccess will route, but we also keep navigation safe by ensuring the
+      // refreshed check is correct. (The stale closure bug is fixed already.)
+      await refetchProfile();
+      return;
+    }
+
+    // 3) Non-verified branch: refresh profile + continue (onSuccess will route to vouch).
     await refetchProfile();
 
-    // 3) Continue existing onboarding completion flow.
     const locationType: OnboardingRequestLocationType = "Campus";
-
     complete({
       data: {
         occupation: occupation ?? "Student",

@@ -140,8 +140,10 @@ export async function verifyURRegistration(req: Request, res: Response) {
 
   await safeAudit(profileId, reg, "verified");
 
+  // Return a signal so the frontend can route without relying on cached /me.
   return respond(res, {
     status: "verified",
+    verified: true,
     institution: "university_of_rwanda",
     campus: selectedCampus,
   });
