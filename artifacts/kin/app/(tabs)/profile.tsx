@@ -78,8 +78,12 @@ export default function ProfileScreen() {
     }
   };
 
+  const isURVerified = Boolean((profile as any)?.institutionVerified);
   const vouchScore = Math.min(100, (profile?.vouchCount ?? 0) * 30);
-  const isPaused   = profile?.profilePaused ?? false;
+  const isPaused = profile?.profilePaused ?? false;
+
+
+
 
   const initials = profile?.fullName
     ? profile.fullName.split(' ').map((w: string) => w[0]).join('').toUpperCase().slice(0, 2)
@@ -121,12 +125,25 @@ export default function ProfileScreen() {
               {profile?.fullName ?? "—"}{profile?.age ? `, ${profile.age}` : ""}
             </Text>
             <View style={styles.vouchRow}>
-              <View style={styles.goldDot} />
-              <Text style={styles.vouchText}>Vouched by {profile?.vouchCount ?? 0}</Text>
-              {profile?.campusName && (
-                <Text style={styles.vouchDim}> · {profile.campusName}</Text>
+              {isURVerified ? (
+                <>
+                  <View style={[styles.goldDot, { backgroundColor: Colors.trust }]} />
+                  <Text style={styles.vouchText}>UR verified</Text>
+                  {profile?.campusName && (
+                    <Text style={styles.vouchDim}> · {profile.campusName}</Text>
+                  )}
+                </>
+              ) : (
+                <>
+                  <View style={styles.goldDot} />
+                  <Text style={styles.vouchText}>Vouched by {profile?.vouchCount ?? 0}</Text>
+                  {profile?.campusName && (
+                    <Text style={styles.vouchDim}> · {profile.campusName}</Text>
+                  )}
+                </>
               )}
             </View>
+
           </View>
         </View>
 

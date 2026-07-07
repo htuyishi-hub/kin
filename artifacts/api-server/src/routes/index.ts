@@ -13,6 +13,7 @@ import messagesRouter from "./messages.js";
 import reportsRouter from "./reports.js";
 import paymentsRouter from "./payments.js";
 import { verifyURRegistration } from "./urVerification.js";
+import { requireAuth } from "../middlewares/auth.js";
 
 const router: IRouter = Router();
 
@@ -32,7 +33,7 @@ router.use(reportsRouter);
 router.use(paymentsRouter);
 
 // Phase 1B: UR registration verification stub
-router.post("/me/ur/verify-registration", verifyURRegistration);
+router.post("/me/ur/verify-registration", requireAuth, verifyURRegistration);
 
 export default router;
 

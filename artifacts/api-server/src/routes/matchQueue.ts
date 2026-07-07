@@ -40,10 +40,15 @@ router.get("/match-queue", requireAuth, async (req, res) => {
     return;
   }
 
-  if ((myProfile.vouchCount ?? 0) < 2) {
+  // UR privilege: institution_verified students can join match pool with fewer vouches.
+  // Verified by UR registry means they get a privilege similar to having vouches.
+  const hasURPrivilege = Boolean(myProfile.institutionVerified);
+
+  if (!hasURPrivilege && (myProfile.vouchCount ?? 0) < 2) {
     res.status(403).json({ error: "not_ready", message: "You need at least 2 confirmed vouches to join the match pool" });
     return;
   }
+
 
   // Build eligible candidate pool
   const candidates = await db
