@@ -100,9 +100,14 @@ export default function UrRegistrationScreen() {
     }
 
     const verifyJson = (await verifyRes.json()) as any;
+    console.log("UR verify response", verifyJson);
 
     // 2) Proactively route using the verification response to avoid cached /api/me.
-    if (verifyJson?.verified === true) {
+    const verifiedFromApi =
+      verifyJson?.verified === true ||
+      verifyJson?.status === "verified";
+
+    if (verifiedFromApi) {
       // Still complete onboarding fields (occupation/location/intent/etc.)
       const locationType: OnboardingRequestLocationType = "Campus";
       complete({
