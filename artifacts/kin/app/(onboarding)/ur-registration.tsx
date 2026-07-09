@@ -1,4 +1,5 @@
 import { useGetMe, useCompleteOnboarding, OnboardingRequestOccupation, OnboardingRequestGender, OnboardingRequestPrimaryGoal, OnboardingRequestLocationType } from "@workspace/api-client-react";
+import { useAuth } from "@/contexts/AuthContext";
 import { router, useLocalSearchParams } from "expo-router";
 import React, { useState } from "react";
 import { ActivityIndicator, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
@@ -26,8 +27,10 @@ export default function UrRegistrationScreen() {
   const [error, setError] = useState("");
 
   const { data: profile, refetch: refetchProfile } = useGetMe({ query: { refetchInterval: 0 } } as any);
+  const { token } = useAuth();
 
   const urVerifiedRef = React.useRef(false);
+
 
   const { mutate: complete, isPending } = useCompleteOnboarding({
     mutation: {
@@ -70,7 +73,7 @@ export default function UrRegistrationScreen() {
 
     // IMPORTANT: include Authorization so backend can bind claim to this profile.
     // NOTE: token sourcing in this screen is legacy; we keep the existing behavior.
-    const authHeader = (profile as any)?.token ? `Bearer ${(profile as any).token}` : undefined;
+    const authHeader = token ? `Bearer ${token}` : undefined;
 
     const verifyRes = await fetch(`${apiBaseUrl}/api/me/ur/verify-registration`, {
       method: "POST",
@@ -78,6 +81,7 @@ export default function UrRegistrationScreen() {
         "Content-Type": "application/json",
         ...(authHeader ? { Authorization: authHeader } : {}),
       },
+
       body: JSON.stringify({ registration_number: digitsOnly, campus: campus.trim() }),
     });
 
