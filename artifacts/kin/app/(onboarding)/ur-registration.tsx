@@ -64,18 +64,11 @@ export default function UrRegistrationScreen() {
     setError("");
 
     // 1) Verify against UR registry and atomically claim the registration.
-    const apiBaseUrl =
-      process.env.EXPO_PUBLIC_API_URL ??
-      process.env.VITE_API_URL ??
-      (process.env.EXPO_PUBLIC_DOMAIN
-        ? `https://${process.env.EXPO_PUBLIC_DOMAIN}`
-        : "https://kin-x81d.onrender.com");
-
     // IMPORTANT: include Authorization so backend can bind claim to this profile.
-    // NOTE: token sourcing in this screen is legacy; we keep the existing behavior.
     const authHeader = token ? `Bearer ${token}` : undefined;
 
-    const verifyRes = await fetch(`${apiBaseUrl}/api/me/ur/verify-registration`, {
+    const verifyRes = await fetch(`/api/me/ur/verify-registration`, {
+
       method: "POST",
       headers: {
         "Content-Type": "application/json",
