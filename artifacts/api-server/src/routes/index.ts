@@ -12,11 +12,10 @@ import matchesRouter from "./matches.js";
 import messagesRouter from "./messages.js";
 import reportsRouter from "./reports.js";
 import paymentsRouter from "./payments.js";
-import { verifyURRegistration } from "./urVerification.js";
 import { requireAuth } from "../middlewares/auth.js";
+import { verifyURRegistration } from "./urVerification.js";
 
 const router: IRouter = Router();
-
 
 router.use(healthRouter);
 router.use(authRouter);
@@ -32,7 +31,7 @@ router.use(messagesRouter);
 router.use(reportsRouter);
 router.use(paymentsRouter);
 
-// Phase 1B: UR registration verification stub
+// Phase 2: UR registration verification
 router.post("/me/ur/verify-registration", requireAuth, verifyURRegistration);
 
 export default router;
