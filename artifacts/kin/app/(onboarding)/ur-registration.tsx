@@ -1,4 +1,11 @@
-import { useGetMe, useCompleteOnboarding, OnboardingRequestOccupation, OnboardingRequestGender, OnboardingRequestPrimaryGoal, OnboardingRequestLocationType } from "@workspace/api-client-react";
+import {
+  useGetMe,
+  useCompleteOnboarding,
+  OnboardingRequestOccupation,
+  OnboardingRequestGender,
+  OnboardingRequestPrimaryGoal,
+  OnboardingRequestLocationType,
+} from "@workspace/api-client-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { router, useLocalSearchParams } from "expo-router";
 import React, { useState } from "react";
