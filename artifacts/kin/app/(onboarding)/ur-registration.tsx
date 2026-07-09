@@ -74,7 +74,8 @@ export default function UrRegistrationScreen() {
     // IMPORTANT: include Authorization so backend can bind claim to this profile.
     const authHeader = token ? `Bearer ${token}` : undefined;
 
-    const verifyRes = await fetch(`/api/me/ur/verify-registration`, {
+    const verifyRes = await fetch(`${process.env.EXPO_PUBLIC_API_BASE_URL ?? ""}/api/me/ur/verify-registration`, {
+
 
       method: "POST",
       headers: {
