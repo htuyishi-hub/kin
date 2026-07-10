@@ -74,7 +74,14 @@ export default function UrRegistrationScreen() {
     // IMPORTANT: include Authorization so backend can bind claim to this profile.
     const authHeader = token ? `Bearer ${token}` : undefined;
 
-    const verifyRes = await fetch(`${process.env.EXPO_PUBLIC_API_BASE_URL ?? ""}/api/me/ur/verify-registration`, {
+    const apiBaseUrl = process.env.EXPO_PUBLIC_API_BASE_URL;
+    if (!apiBaseUrl || typeof apiBaseUrl !== "string" || !apiBaseUrl.trim()) {
+      setError("Server is not configured. Please try again later.");
+      return;
+    }
+
+    const verifyRes = await fetch(`${apiBaseUrl}/api/me/ur/verify-registration`, {
+
 
 
       method: "POST",
