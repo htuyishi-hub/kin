@@ -33,11 +33,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           AsyncStorage.getItem(TOKEN_KEY),
           AsyncStorage.getItem(USER_ID_KEY),
         ]);
-        if (t && u) {
+        // On web, AsyncStorage restore timing can mean userId is missing
+        // temporarily even when token is available. Authenticated calls only
+        // require the bearer token, so register the token getter as soon as
+        // we have the token.
+        if (t) {
           setToken(t);
-          setUserId(u);
           setAuthTokenGetter(() => t);
         }
+        if (t && u) {
+          setUserId(u);
+        }
+
       } catch {
         // ignore
       } finally {

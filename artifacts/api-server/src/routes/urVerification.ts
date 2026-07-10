@@ -102,41 +102,61 @@ export async function verifyURRegistration(req: Request, res: Response) {
     return respond(res, { status: "not_found" }, 200);
   }
 
-  // Step 6 — atomic uniqueness enforcement (one reg = one profile forever)
-  const updated = await db
-    .update(studentRegistryTable)
-    .set({
-      claimed: true,
-      claimedByProfile: profileId,
-      updatedAt: new Date(),
-    })
-    .where(
-      sql`${studentRegistryTable.registrationNumber} = ${reg} AND ${studentRegistryTable.claimed} = false`,
-    )
-    .returning();
-
-  if (!updated || updated.length === 0) {
-    await safeAudit(profileId, reg, "already_claimed");
-    return respond(res, { status: "already_claimed" }, 200);
-  }
-
-  // Step 7 — profile update (best-effort; ignores if schema not yet aligned)
+  // Step 6/7 — atomic uniqueness enforcement + profile update in a single transaction
+  // Rationale: prevent partial failures that could otherwise mark a student_registry row as claimed
+  // without the corresponding profile trust fields being applied.
   try {
-    await db
-      .update(profilesTable)
-      .set({
-        institution: "university_of_rwanda",
-        campus: selectedCampus,
+    await db.transaction(async (tx) => {
+      // Atomic claim: only succeed if claimed=false
+      const updated = await tx
+        .update(studentRegistryTable)
+        .set({
+          claimed: true,
+          claimedByProfile: profileId,
+          updatedAt: new Date(),
+        })
+        .where(
+          sql`${studentRegistryTable.registrationNumber} = ${reg} AND ${studentRegistryTable.claimed} = false`,
+        )
+        .returning();
+
+      if (!updated || updated.length === 0) {
+        // Throw to ensure rollback.
+        const err = new Error("already_claimed");
+        (err as any).code = "already_claimed";
+        throw err;
+      }
+
+      // Profile trust binding
+      await tx
+        .update(profilesTable)
+        .set({
+          institution: "university_of_rwanda",
+          campus: selectedCampus,
+          registrationNumber: reg,
+          institutionVerified: true,
+          verificationMethod: "ur_registry",
+        } as any)
+        .where(eq(profilesTable.id, profileId));
+
+      // Audit write (inside transaction to keep audit consistent with final state)
+      await tx.insert(urVerificationAttemptsTable).values({
+        profileId,
         registrationNumber: reg,
-        institutionVerified: true,
-        verificationMethod: "ur_registry",
-      } as any)
-      .where(eq(profilesTable.id, profileId));
-  } catch {
-    // ignore to avoid breaking onboarding
+        result: "verified",
+      });
+    });
+  } catch (err: any) {
+    if (err?.code === "already_claimed") {
+      return respond(res, { status: "already_claimed" }, 200);
+    }
+
+    // For any other unexpected errors, do not leak details.
+    // Best-effort audit (outside transaction).
+    await safeAudit(profileId, reg, "verified_failed");
+    return respond(res, { status: "not_found" }, 200);
   }
 
-  await safeAudit(profileId, reg, "verified");
 
   // Return a signal so the frontend can route without relying on cached /me.
   return respond(res, {

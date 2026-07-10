@@ -48,27 +48,58 @@ function calculateAge(dateOfBirth: string): number {
 // GET /me
 router.get("/me", requireAuth, async (req, res) => {
   const userId = (req as AuthedRequest).userId;
+
+  try {
+    (req as any).log?.info?.({ userId }, "GET /me");
+  } catch {
+    // ignore logging failures
+  }
+
   const [rows, countResult] = await Promise.all([
     db.select().from(profilesTable).where(eq(profilesTable.id, userId)).limit(1),
     db.select({ count: sql<number>`count(*)` }).from(profilesTable),
   ]);
+
   if (!rows[0]) {
+    try {
+      (req as any).log?.warn?.({ userId }, "GET /me: profile not found");
+    } catch {
+      // ignore logging failures
+    }
+
     res.status(404).json({ error: "not_found", message: "Profile not found" });
     return;
   }
+
+  const p = rows[0] as any;
+
+  try {
+    (req as any).log?.info?.(
+      {
+        profileFound: true,
+        institutionVerified: p?.institutionVerified,
+        registrationNumber: p?.registrationNumber,
+      },
+      "GET /me: Loaded profile",
+    );
+  } catch {
+    // ignore logging failures
+  }
+
   const totalUsers = Number(countResult[0]?.count ?? 0);
   const earlyAccess = totalUsers < VOUCH_THRESHOLD;
-  const p = rows[0];
+
   res.json({
     ...mapProfile(rows[0]),
-    institution_verified: (p as any).institutionVerified ?? false,
-    institution: (p as any).institution ?? null,
-    verification_method: (p as any).verificationMethod ?? null,
-    registration_number: (p as any).registrationNumber ?? null,
-    campus: (p as any).campus ?? null,
+    institution_verified: p?.institutionVerified ?? false,
+    institution: p?.institution ?? null,
+    verification_method: p?.verificationMethod ?? null,
+    registration_number: p?.registrationNumber ?? null,
+    campus: p?.campus ?? null,
     earlyAccess,
   });
 });
+
 
 
 // PATCH /me

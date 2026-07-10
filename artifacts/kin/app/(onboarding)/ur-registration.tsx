@@ -54,6 +54,7 @@ export default function UrRegistrationScreen() {
 
   async function handleVerifyAndNext() {
     const digitsOnly = registrationNumber.replace(/\s+/g, "");
+
     if (!digitsOnly) {
       setError("Enter your registration number");
       return;
