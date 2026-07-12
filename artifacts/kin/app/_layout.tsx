@@ -48,11 +48,19 @@ Notifications.setNotificationHandler({
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      retry: 1,
+      retry: (failureCount, error: any) => {
+        const status = error?.status ?? error?.response?.status;
+        // Don’t spam the API (and don’t crash UI) on auth failures.
+        if (status === 401) return false;
+        return failureCount < 1;
+      },
       staleTime: 30_000,
+      retryOnMount: true,
     },
   },
 });
+
+
 
 async function registerPushToken(token: string | null) {
   if (!token) return;

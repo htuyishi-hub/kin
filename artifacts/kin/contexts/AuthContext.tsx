@@ -39,11 +39,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // we have the token.
         if (t) {
           setToken(t);
+          // Register auth token getter immediately so any API calls after
+          // restore window receive a bearer token.
           setAuthTokenGetter(() => t);
+        } else {
+          // Ensure we don't keep an old getter around.
+          setAuthTokenGetter(null);
         }
+
         if (t && u) {
           setUserId(u);
         }
+
 
       } catch {
         // ignore
