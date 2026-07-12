@@ -41,7 +41,13 @@ export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
   const { signOut } = useAuth();
 
-  const { data: profile, isLoading, refetch } = useGetMe();
+  // IMPORTANT: don’t call /api/me until the auth token is restored.
+  // Without this, web reloads can fire an unauthenticated request and crash the UI.
+  const { token, isLoading: authLoading } = useAuth();
+  const { data: profile, isLoading, refetch } = useGetMe({
+    query: { enabled: !authLoading && !!token },
+  } as any);
+
   const { data: prompts = [] } = useGetMyPrompts();
   const { mutate: addPhoto } = useAddPhoto();
   const { mutate: pauseProfile, isPending: isPausing } = usePauseProfile({
