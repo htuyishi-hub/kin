@@ -11,9 +11,16 @@ import { KLogo } from "@/components/KLogo";
 import { Colors } from "@/constants/colors";
 import { useGetMe } from "@workspace/api-client-react";
 
+import { useAuth } from "@/contexts/AuthContext";
+
 export default function SeriousScreen() {
   const insets   = useSafeAreaInsets();
-  const { data: profile } = useGetMe();
+  const { token, isLoading: authLoading } = useAuth();
+
+  const { data: profile } = useGetMe({
+    query: { enabled: !authLoading && !!token },
+  } as any);
+
   const tokens   = profile?.tokensRemaining ?? 0;
   const tabBarH  = Platform.OS === "ios" ? 80 : 64;
   const paddingT = insets.top + 16;
