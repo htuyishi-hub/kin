@@ -47,7 +47,14 @@ function calculateAge(dateOfBirth: string): number {
 
 // GET /me
 router.get("/me", requireAuth, async (req, res) => {
+  // Prevent browser/proxy caching of auth/profile data.
+  // React Query relies on fresh profile state during onboarding.
+  res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
+  res.setHeader("Pragma", "no-cache");
+  res.setHeader("Expires", "0");
+
   const userId = (req as AuthedRequest).userId;
+
 
   try {
     (req as any).log?.info?.({ userId }, "GET /me");
