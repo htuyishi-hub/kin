@@ -111,7 +111,7 @@ export default function UrRegistrationScreen() {
     if (verifiedFromApi) {
       urVerifiedRef.current = true;
 
-      // Still complete onboarding fields (occupation/location/intent/etc.)
+      // Only complete onboarding after the backend confirms the atomic claim.
       const locationType: OnboardingRequestLocationType = "Campus";
       complete({
         data: {
@@ -127,24 +127,29 @@ export default function UrRegistrationScreen() {
       return;
     }
 
+    // Block onboarding progression for any non-verified state.
     urVerifiedRef.current = false;
 
-    // 3) Non-verified branch: continue onboarding (onSuccess will route to vouch).
-    await refetchProfile();
+    const status = verifyJson?.status as
+      | "already_claimed"
+      | "invalid_format"
+      | "not_found"
+      | string
+      | undefined;
 
+    if (status === "already_claimed") {
+      setError("This registration number is already linked to another Kin account.");
+      return;
+    }
 
-    const locationType: OnboardingRequestLocationType = "Campus";
-    complete({
-      data: {
-        occupation: occupation ?? "Student",
-        locationType,
-        primaryGoal: (intent ?? "Serious Marriage") as OnboardingRequestPrimaryGoal,
-        campusName: campus ?? "University of Rwanda",
-        fullName: fullName ?? "",
-        gender: (gender ?? "Male") as OnboardingRequestGender,
-        dateOfBirth: dateOfBirth ?? "2000-01-01",
-      },
-    });
+    if (status === "not_found") {
+      setError("Registration number not found. Please double-check or use community verification.");
+      return;
+    }
+
+    // invalid_format or any unexpected status
+    setError("Verification failed. Please check your format or try again.");
+    return;
   }
 
   return (
