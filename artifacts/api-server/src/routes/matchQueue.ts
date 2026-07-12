@@ -35,10 +35,19 @@ router.get("/match-queue", requireAuth, async (req, res) => {
 
   const myProfile = me[0];
 
+  // Onboarding guard:
+  // During onboarding (especially Step 2 of 4), the app may render background
+  // requests to /match-queue. Instead of hard-failing with 403 (which causes
+  // the UI to fall back to the generic error boundary), return an empty
+  // match list until onboarding is completed.
   if (!myProfile.onboardingComplete) {
-    res.status(403).json({ error: "forbidden", message: "Complete onboarding first" });
+    res.json({
+      status: "onboarding_incomplete",
+      matches: [],
+    });
     return;
   }
+
 
   // UR privilege: institution_verified students can join match pool with fewer vouches.
   // Verified by UR registry means they get a privilege similar to having vouches.
