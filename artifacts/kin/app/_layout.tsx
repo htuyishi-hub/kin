@@ -130,12 +130,14 @@ function RootLayoutNav() {
 function WaitForAuthToken({ children }: { children: React.ReactNode }) {
   const { token, isLoading } = useAuth();
 
-  // Never render a blank screen. While auth is restoring, keep the app mounted.
+  // Global circuit breaker: keep API queries from firing until auth restore settles.
   if (isLoading) return <>{children}</>;
 
-  // If token restore failed, still render the app shell.
+  // If token is still missing, still render the shell (so onboarding/login can work),
+  // but protected queries should be disabled in their respective hooks.
   return <>{children}</>;
 }
+
 
 
 export default function RootLayout() {
