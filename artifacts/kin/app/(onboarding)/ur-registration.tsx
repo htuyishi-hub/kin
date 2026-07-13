@@ -75,11 +75,18 @@ export default function UrRegistrationScreen() {
     // IMPORTANT: include Authorization so backend can bind claim to this profile.
     const authHeader = token ? `Bearer ${token}` : undefined;
 
-    const apiBaseUrl = process.env.VITE_API_URL;
+    const apiBaseUrl =
+      process.env.EXPO_PUBLIC_API_URL ??
+      process.env.VITE_API_URL ??
+      (process.env.EXPO_PUBLIC_DOMAIN
+        ? `https://${process.env.EXPO_PUBLIC_DOMAIN}`
+        : "https://kin-x81d.onrender.com");
+
     if (!apiBaseUrl || typeof apiBaseUrl !== "string" || !apiBaseUrl.trim()) {
       setError("Server is not configured. Please try again later.");
       return;
     }
+
 
     const verifyRes = await fetch(`${apiBaseUrl}/api/me/ur/verify-registration`, {
 
