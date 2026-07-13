@@ -1,106 +1,20 @@
 import React, { useEffect, useState } from "react";
 import { Platform, StyleSheet, Text, View } from "react-native";
 import * as WebBrowser from "expo-web-browser";
-import { useRouter } from "expo-router";
 
 export default function Callback() {
-  const router = useRouter();
-  const [status, setStatus] = useState("Processing login…");
+  const [status] = useState("Signing you in…");
 
   useEffect(() => {
-    let cancelled = false;
-
-    const run = async () => {
-      console.log("[auth] callback: started");
-
-      // expo-auth-session uses this to mark the browser redirect as completed.
-      if (Platform.OS === "web") {
-        try {
-          WebBrowser.maybeCompleteAuthSession();
-        } catch (e) {
-          console.warn("[auth] callback: maybeCompleteAuthSession failed", e);
-        }
+    // Keep callback passive: only finalize the auth redirect for Expo/AuthSession.
+    if (Platform.OS === "web") {
+      try {
+        WebBrowser.maybeCompleteAuthSession();
+      } catch {
+        // ignore
       }
-
-      // On web, we can read ?code=.../?error=... directly.
-      let code: string | null = null;
-      let error: string | null = null;
-
-      if (Platform.OS === "web") {
-        try {
-          const params = new URLSearchParams(window.location.search);
-          code = params.get("code");
-          error = params.get("error");
-
-          console.log("[auth] callback: query params", { codePresent: !!code, error });
-        } catch (e) {
-          console.warn("[auth] callback: unable to parse query params", e);
-        }
-      }
-
-      // If Auth0 returned an error, don’t wait for token storage.
-      if (error) {
-        if (cancelled) return;
-        setStatus(`Auth error: ${error}`);
-        router.replace({
-          pathname: "/(onboarding)/welcome",
-          params: { error },
-        });
-        return;
-      }
-
-
-      // If there’s no code (unexpected), send to welcome.
-      if (Platform.OS === "web" && !code) {
-        if (cancelled) return;
-        setStatus("No auth code found. Returning to welcome…");
-        router.replace({ pathname: "/(onboarding)/welcome" });
-        return;
-      }
-
-
-      // Wait until backend exchange stores token in AsyncStorage.
-      // AuthContext stores token under AsyncStorage key: "@kin:token".
-      const start = Date.now();
-      const maxMs = 10_000;
-
-      const TOKEN_KEY = "@kin:token";
-
-      while (!cancelled && Date.now() - start < maxMs) {
-        if (Platform.OS === "web") {
-          try {
-            const token = window.localStorage.getItem(TOKEN_KEY);
-            if (token) {
-              console.log("[auth] callback: AsyncStorage token found", {
-                tokenPresent: !!token,
-              });
-              setStatus("Login complete. Redirecting…");
-              router.replace({ pathname: "/(tabs)" });
-              return;
-            }
-          } catch (e) {
-            console.warn("[auth] callback: localStorage check failed", e);
-          }
-        }
-
-        await new Promise((r) => setTimeout(r, 250));
-      }
-
-      if (cancelled) return;
-      setStatus("Login timeout. Returning to welcome…");
-      router.replace({
-        pathname: "/(onboarding)/welcome",
-        params: { error: "timeout" },
-      });
-
-
-    };
-
-    run();
-    return () => {
-      cancelled = true;
-    };
-  }, [router]);
+    }
+  }, []);
 
   return (
     <View style={styles.container}>
@@ -127,6 +41,8 @@ const styles = StyleSheet.create({
     opacity: 0.7,
   },
 });
+
+
 
 
 
