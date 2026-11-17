@@ -70,11 +70,9 @@ jobs:
         working-directory: artifacts/kin/android
         run: |
           chmod +x gradlew
-          if [ "${{ github.event.inputs.build_type }}" = "release" ]; then
-            ./gradlew assembleRelease || ./gradlew assembleDebug
-          else
-            ./gradlew assembleDebug
-          fi
+          # Prioritize release APK (with debug keystore signing) for optimized ~35MB package size
+          ./gradlew assembleRelease -PreactNativeArchitectures=arm64-v8a,armeabi-v7a || ./gradlew assembleDebug -PreactNativeArchitectures=arm64-v8a,armeabi-v7a || ./gradlew assembleDebug
+
 
       - name: Locate APK
         id: apk-path
