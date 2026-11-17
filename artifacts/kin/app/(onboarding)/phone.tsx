@@ -14,6 +14,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useColors } from "@/hooks/useColors";
+import { sendPhoneOtp } from "@/services/authService";
 
 export default function PhoneScreen() {
   const colors = useColors();
@@ -22,11 +23,12 @@ export default function PhoneScreen() {
 
   const [phone, setPhone] = useState("");
   const [error, setError] = useState("");
+  const [isSending, setIsSending] = useState(false);
 
-  const { mutate: sendOtp, isPending } = useSendOtp({
+  const { mutate: sendOtpFallback, isPending: isFallbackPending } = useSendOtp({
     mutation: {
       onSuccess: () => {
-        router.push({ pathname: "/(onboarding)/otp", params: { phone: `+250${phone}` } });
+        router.push({ pathname: "/(onboarding)/otp", params: { phone: `+250${phone}`, type: "phone" } });
       },
       onError: (err: any) => {
         setError(err?.data?.message ?? "Failed to send OTP. Please try again.");
@@ -34,15 +36,33 @@ export default function PhoneScreen() {
     },
   });
 
-  function handleSubmit() {
+  async function handleSubmit() {
     const digits = phone.replace(/\D/g, "");
     if (digits.length < 9) {
-      setError("Enter a valid Rwandan phone number");
+      setError("Enter a valid Rwandan phone number (+250 7X XXX XXXX)");
       return;
     }
     setError("");
-    sendOtp({ data: { phoneNumber: `+250${digits}` } });
+    const formattedPhone = `+250${digits}`;
+
+    setIsSending(true);
+    try {
+      const supaRes = await sendPhoneOtp(formattedPhone);
+      if (supaRes.success) {
+        router.push({ pathname: "/(onboarding)/otp", params: { phone: formattedPhone, type: "phone" } });
+        return;
+      }
+
+      // Fallback for dev / unconfigured SMS providers
+      sendOtpFallback({ data: { phoneNumber: formattedPhone } });
+    } catch {
+      sendOtpFallback({ data: { phoneNumber: formattedPhone } });
+    } finally {
+      setIsSending(false);
+    }
   }
+
+  const isPending = isSending || isFallbackPending;
 
   return (
     <KeyboardAvoidingView

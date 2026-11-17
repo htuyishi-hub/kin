@@ -1,14 +1,23 @@
 import { Router } from "express";
-import { eq, sql } from "drizzle-orm";
-import { db, profilesTable } from "@workspace/db";
+import { eq, and, sql } from "drizzle-orm";
+import { db, profilesTable, vouchesTable } from "@workspace/db";
 import { requireAuth, type AuthedRequest } from "../middlewares/auth.js";
 import type { Request } from "express";
+
+import { generateInviteCode } from "../lib/inviteCode.js";
 
 const VOUCH_THRESHOLD = 1000;
 
 const router = Router();
 
 function mapProfile(p: typeof profilesTable.$inferSelect) {
+  const isVerified = Boolean(
+    p.isVerified ||
+    p.institutionVerified ||
+    p.invitedByProfile ||
+    (p.vouchCount ?? 0) >= 1
+  );
+
   return {
     id: p.id,
     phoneNumber: p.phoneNumber,
@@ -23,6 +32,10 @@ function mapProfile(p: typeof profilesTable.$inferSelect) {
     district: p.district ?? null,
     primaryIntent: p.primaryIntent ?? null,
     vouchCount: p.vouchCount ?? 0,
+    inviteCode: p.inviteCode ?? null,
+    inviteCount: p.inviteCount ?? 0,
+    invitedByProfile: p.invitedByProfile ?? null,
+    isVerified,
     tokensRemaining: p.tokensRemaining ?? 0,
     crossingFeePaid: p.crossingFeePaid ?? false,
     profileActive: p.profileActive ?? true,
@@ -78,7 +91,14 @@ router.get("/me", requireAuth, async (req, res) => {
     return;
   }
 
-  const p = rows[0] as any;
+  let p = rows[0] as any;
+
+  // Lazily ensure user has an invite code
+  if (!p.inviteCode) {
+    const code = generateInviteCode();
+    await db.update(profilesTable).set({ inviteCode: code }).where(eq(profilesTable.id, userId));
+    p.inviteCode = code;
+  }
 
   try {
     (req as any).log?.info?.(
@@ -86,6 +106,7 @@ router.get("/me", requireAuth, async (req, res) => {
         profileFound: true,
         institutionVerified: p?.institutionVerified,
         registrationNumber: p?.registrationNumber,
+        inviteCode: p?.inviteCode,
       },
       "GET /me: Loaded profile",
     );
@@ -95,15 +116,54 @@ router.get("/me", requireAuth, async (req, res) => {
 
   const totalUsers = Number(countResult[0]?.count ?? 0);
   const earlyAccess = totalUsers < VOUCH_THRESHOLD;
+  const baseUrl = process.env["APP_URL"] ?? "https://kin.rw";
+  const isVerified = Boolean(
+    p.isVerified ||
+    p.institutionVerified ||
+    p.invitedByProfile ||
+    (p.vouchCount ?? 0) >= 1
+  );
+
+  // Fetch confirmed voucher details for Trust Chain badge
+  const vouchRows = await db
+    .select({
+      voucherId: vouchesTable.voucher,
+      voucherFullName: profilesTable.fullName,
+      voucherIsVerified: profilesTable.isVerified,
+      voucherInstitutionVerified: profilesTable.institutionVerified,
+    })
+    .from(vouchesTable)
+    .innerJoin(profilesTable, eq(vouchesTable.voucher, profilesTable.id))
+    .where(and(eq(vouchesTable.vouchedUser, userId), eq(vouchesTable.status, "confirmed")))
+    .limit(1);
+
+  const vouchedBy = vouchRows[0]
+    ? {
+        id: vouchRows[0].voucherId,
+        fullName: vouchRows[0].voucherFullName ?? "Community Member",
+        firstName: vouchRows[0].voucherFullName ? vouchRows[0].voucherFullName.trim().split(" ")[0] : "Member",
+        isVerified: Boolean(vouchRows[0].voucherIsVerified || vouchRows[0].voucherInstitutionVerified),
+      }
+    : null;
+
+  const accountStatus = p.accountStatus ?? (isVerified || earlyAccess ? "active" : "waitlisted");
 
   res.json({
-    ...mapProfile(rows[0]),
+    ...mapProfile(p),
+    account_status: accountStatus,
+    accountStatus: accountStatus,
+    invite_code: p.inviteCode,
+    invite_link: `${baseUrl}/invite/${p.inviteCode}`,
+    invite_count: p.inviteCount ?? 0,
+    is_verified: isVerified,
     institution_verified: p?.institutionVerified ?? false,
     institution: p?.institution ?? null,
     verification_method: p?.verificationMethod ?? null,
     registration_number: p?.registrationNumber ?? null,
     campus: p?.campus ?? null,
     earlyAccess,
+    vouched_by: vouchedBy,
+    vouchedBy,
   });
 });
 

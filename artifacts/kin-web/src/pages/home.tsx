@@ -93,7 +93,7 @@ export default function Home() {
         <div className="container mx-auto px-4">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 text-center divide-y md:divide-y-0 md:divide-x divide-divider">
             <div className="p-4">
-              <h3 className="font-serif text-2xl text-gold mb-2">Vouch-only</h3>
+              <h3 className="font-serif text-2xl text-gold mb-2">Invite-only</h3>
               <p className="text-bone-dim">You must be invited by a trusted member to join.</p>
             </div>
             <div className="p-4">

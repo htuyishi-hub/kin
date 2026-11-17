@@ -1,9 +1,10 @@
 import { Router } from "express";
 import { eq, and, gt, isNull, lt } from "drizzle-orm";
 import { randomInt } from "crypto";
-import { db, otpSessionsTable, profilesTable } from "@workspace/db";
+import { db, otpSessionsTable, profilesTable, invitesTable, trustEventsTable } from "@workspace/db";
 import { signToken } from "../lib/jwt.js";
 import { logger } from "../lib/logger.js";
+import { generateInviteCode } from "../lib/inviteCode.js";
 
 const router = Router();
 
@@ -72,7 +73,11 @@ router.post("/auth/send-otp", async (req, res) => {
 
 // POST /auth/verify-otp
 router.post("/auth/verify-otp", async (req, res) => {
-  const { phoneNumber, otp } = req.body as { phoneNumber?: string; otp?: string };
+  const { phoneNumber, otp, inviteCode } = req.body as {
+    phoneNumber?: string;
+    otp?: string;
+    inviteCode?: string;
+  };
   if (!phoneNumber || !otp) {
     res.status(400).json({ error: "bad_request", message: "phoneNumber and otp are required" });
     return;
@@ -124,16 +129,85 @@ router.post("/auth/verify-otp", async (req, res) => {
   let isNewUser = false;
 
   if (profile.length === 0) {
+    const myInviteCode = generateInviteCode();
+    let invitedByProfile: string | null = null;
+    let isVerified = false;
+    let verificationMethod: "invite" | null = null;
+    let inviterUser: typeof profilesTable.$inferSelect | null = null;
+
+    if (inviteCode && typeof inviteCode === "string" && inviteCode.trim()) {
+      const inviter = await db
+        .select()
+        .from(profilesTable)
+        .where(eq(profilesTable.inviteCode, inviteCode.trim().toUpperCase()))
+        .limit(1);
+      if (inviter[0]) {
+        inviterUser = inviter[0];
+        invitedByProfile = inviter[0].id;
+        isVerified = true;
+        verificationMethod = "invite";
+      }
+    }
+
     const [created] = await db
       .insert(profilesTable)
-      .values({ phoneNumber, phoneVerified: true })
+      .values({
+        phoneNumber,
+        phoneVerified: true,
+        inviteCode: myInviteCode,
+        invitedByProfile,
+        isVerified,
+        verificationMethod,
+        trustScore: isVerified ? 65 : 50,
+      } as any)
       .returning();
+
     profile = [created!];
     isNewUser = true;
+
+    if (inviterUser && invitedByProfile) {
+      await db
+        .update(profilesTable)
+        .set({
+          inviteCount: (inviterUser.inviteCount ?? 0) + 1,
+          trustScore: Math.min(100, (inviterUser.trustScore ?? 50) + 10),
+        } as any)
+        .where(eq(profilesTable.id, invitedByProfile));
+
+      await db.insert(invitesTable).values({
+        inviterId: invitedByProfile,
+        invitedUserId: created!.id,
+        inviteCode: inviteCode!.trim().toUpperCase(),
+        status: "accepted",
+        acceptedAt: new Date(),
+      });
+
+      await db.insert(trustEventsTable).values([
+        {
+          userId: created!.id,
+          eventType: "invited_by_member",
+          delta: 15 as any,
+          sourceId: invitedByProfile,
+        },
+        {
+          userId: invitedByProfile,
+          eventType: "successful_invite",
+          delta: 10 as any,
+          sourceId: created!.id,
+        },
+      ]);
+    }
   } else {
+    const updateValues: Record<string, unknown> = {
+      phoneVerified: true,
+      lastActive: new Date(),
+    };
+    if (!profile[0]!.inviteCode) {
+      updateValues["inviteCode"] = generateInviteCode();
+    }
     await db
       .update(profilesTable)
-      .set({ phoneVerified: true, lastActive: new Date() })
+      .set(updateValues as any)
       .where(eq(profilesTable.id, profile[0]!.id));
   }
 
@@ -144,6 +218,7 @@ router.post("/auth/verify-otp", async (req, res) => {
     userId: profile[0]!.id,
     isNewUser,
     onboardingComplete: profile[0]!.onboardingComplete ?? false,
+    isVerified: profile[0]!.isVerified ?? false,
   });
 });
 

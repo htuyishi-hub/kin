@@ -9,6 +9,7 @@ export * from "./misc";
 export * from "./studentRegistry";
 export * from "./urVerification";
 export * from "./urVerificationUtil";
+export * from "./invites";
 
 
 

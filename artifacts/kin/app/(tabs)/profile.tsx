@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
   Platform,
   ScrollView,
+  Share,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -87,9 +88,7 @@ export default function ProfileScreen() {
   const isURVerified = Boolean((profile as any)?.institutionVerified);
   const vouchScore = Math.min(100, (profile?.vouchCount ?? 0) * 30);
   const isPaused = profile?.profilePaused ?? false;
-
-
-
+  const vouchedBy = (profile as any)?.vouchedBy ?? (profile as any)?.vouched_by ?? null;
 
   const initials = profile?.fullName
     ? profile.fullName.split(' ').map((w: string) => w[0]).join('').toUpperCase().slice(0, 2)
@@ -134,7 +133,7 @@ export default function ProfileScreen() {
               {isURVerified ? (
                 <>
                   <View style={[styles.goldDot, { backgroundColor: Colors.trust }]} />
-                  <Text style={styles.vouchText}>UR verified</Text>
+                  <Text style={styles.vouchText}>UR Student Verified</Text>
                   {profile?.campusName && (
                     <Text style={styles.vouchDim}> · {profile.campusName}</Text>
                   )}
@@ -142,7 +141,7 @@ export default function ProfileScreen() {
               ) : (
                 <>
                   <View style={styles.goldDot} />
-                  <Text style={styles.vouchText}>Vouched by {profile?.vouchCount ?? 0}</Text>
+                  <Text style={styles.vouchText}>Verified Member</Text>
                   {profile?.campusName && (
                     <Text style={styles.vouchDim}> · {profile.campusName}</Text>
                   )}
@@ -150,6 +149,18 @@ export default function ProfileScreen() {
               )}
             </View>
 
+            {/* Trust Chain badge */}
+            {vouchedBy ? (
+              <View style={styles.trustChainBadge}>
+                <Feather name="shield" size={12} color={Colors.trust} />
+                <Text style={styles.trustChainText}>
+                  Approved by {vouchedBy.firstName}
+                </Text>
+                {vouchedBy.isVerified && (
+                  <Feather name="check" size={12} color={Colors.trust} />
+                )}
+              </View>
+            ) : null}
           </View>
         </View>
 
@@ -159,20 +170,49 @@ export default function ProfileScreen() {
           <PhotoGrid slots={photoSlots} onChange={handlePhotoGridChange} />
         </View>
 
-        {/* Trust level */}
-        <View style={[styles.trustCard]}>
+        {/* Invite link card */}
+        <View style={styles.trustCard}>
           <View style={styles.trustHeaderRow}>
-            <Text style={styles.trustLabel}>Trust level</Text>
-            <Text style={styles.trustBadge}>{trustLabel(vouchScore)}</Text>
+            <Text style={styles.trustLabel}>Invite Link</Text>
+            <Text style={styles.trustBadge}>
+              {String((profile as any)?.invite_count ?? profile?.vouchCount ?? 0)} invited
+            </Text>
           </View>
-          <View style={styles.trustBarBg}>
-            <View style={[styles.trustBarFill, { width: `${vouchScore}%` }]} />
+          <Text style={{ fontFamily: "Inter_400Regular", fontSize: 13, color: Colors.boneDim, marginVertical: 6, lineHeight: 18 }}>
+            Share your personal link to invite trusted people. They get verified immediately upon joining.
+          </Text>
+          <View style={{ flexDirection: "row", gap: 8, marginTop: 4 }}>
+            <TouchableOpacity
+              style={{
+                flex: 1,
+                flexDirection: "row",
+                gap: 6,
+                backgroundColor: Colors.trust,
+                paddingVertical: 12,
+                borderRadius: 12,
+                justifyContent: "center",
+                alignItems: "center",
+              }}
+              onPress={async () => {
+                const link = (profile as any)?.invite_link ?? `https://kin.rw/invite/${(profile as any)?.invite_code ?? "KIN"}`;
+                try {
+                  await Share.share({
+                    message: `Join me on Kin — Rwanda's trusted introduction network: ${link}`,
+                    url: link,
+                  });
+                } catch {}
+              }}
+              activeOpacity={0.85}
+            >
+              <Feather name="share-2" size={15} color={Colors.bone} />
+              <Text style={{ fontFamily: "Inter_600SemiBold", fontSize: 13, color: Colors.bone }}>Share Invite Link</Text>
+            </TouchableOpacity>
           </View>
         </View>
 
         {/* Stats */}
         <View style={styles.statsRow}>
-          <StatBox label="Vouches" value={String(profile?.vouchCount ?? 0)} />
+          <StatBox label="Invites" value={String((profile as any)?.invite_count ?? profile?.vouchCount ?? 0)} />
           <View style={styles.statDivider} />
           <StatBox label="Tokens" value={String(profile?.tokensRemaining ?? 0)} gold />
           <View style={styles.statDivider} />
@@ -217,8 +257,8 @@ export default function ProfileScreen() {
             onPress={() => router.push("/(onboarding)/vouch")}
             activeOpacity={0.8}
           >
-            <Feather name="users" size={18} color={Colors.bone} />
-            <Text style={styles.actionText}>Manage vouches</Text>
+            <Feather name="user-plus" size={18} color={Colors.bone} />
+            <Text style={styles.actionText}>Invite friends & verify</Text>
             <Feather name="chevron-right" size={16} color={Colors.boneGhost} />
           </TouchableOpacity>
 
@@ -300,6 +340,24 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_400Regular",
     fontSize:   13,
     color:      Colors.boneDim,
+  },
+  trustChainBadge: {
+    flexDirection:   "row",
+    alignItems:      "center",
+    gap:             5,
+    backgroundColor: Colors.inkRaised,
+    borderColor:     Colors.trustDim,
+    borderWidth:     1,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius:    8,
+    alignSelf:       "flex-start",
+    marginTop:       4,
+  },
+  trustChainText: {
+    fontFamily: "Inter_600SemiBold",
+    fontSize:   12,
+    color:      Colors.bone,
   },
   section: { gap: 10 },
   sectionLabel: {

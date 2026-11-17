@@ -31,8 +31,15 @@ export default function IndexScreen() {
   }
 
   const earlyAccess = (profile as any).earlyAccess === true;
-  if (!earlyAccess && (profile.vouchCount ?? 0) < 2) {
-    return <Redirect href="/(onboarding)/waiting" />;
+  const isVerified = Boolean(
+    (profile as any)?.is_verified ||
+    (profile as any)?.institution_verified ||
+    (profile as any)?.invited_by_profile ||
+    ((profile as any)?.vouchCount ?? 0) >= 1
+  );
+
+  if (!earlyAccess && !isVerified) {
+    return <Redirect href="/(onboarding)/vouch" />;
   }
 
   return <Redirect href="/(tabs)" />;

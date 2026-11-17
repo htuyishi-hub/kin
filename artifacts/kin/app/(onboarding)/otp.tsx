@@ -14,19 +14,30 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useAuth } from "@/contexts/AuthContext";
 import { useColors } from "@/hooks/useColors";
+import { verifyStudentEmailOtp, verifyPhoneOtp } from "@/services/authService";
 
 export default function OtpScreen() {
-  const { phone } = useLocalSearchParams<{ phone: string }>();
+  const { phone, email, type } = useLocalSearchParams<{
+    phone?: string;
+    email?: string;
+    type?: string;
+  }>();
+
+  const isEmail = type === "email" || !!email;
+  const targetRecipient = isEmail ? email : phone;
+
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const isWeb = Platform.OS === "web";
-  const { signIn } = useAuth();
+  const { signIn, setSession } = useAuth();
 
   const [otp, setOtp] = useState(["", "", "", "", "", ""]);
   const [error, setError] = useState("");
+  const [verifying, setVerifying] = useState(false);
   const inputs = useRef<(TextInput | null)[]>([]);
 
-  const { mutate: verifyOtp, isPending } = useVerifyOtp({
+  // Fallback API mutation for dev environments
+  const { mutate: verifyOtpFallback } = useVerifyOtp({
     mutation: {
       onSuccess: async (data) => {
         await signIn(data.token, data.userId);
@@ -44,6 +55,50 @@ export default function OtpScreen() {
     },
   });
 
+  async function handleVerify(code: string) {
+    if (code.length !== 6) return;
+
+    setError("");
+    setVerifying(true);
+
+    try {
+      if (isEmail && email) {
+        // Path A: Supabase Student Email OTP verification
+        const res = await verifyStudentEmailOtp(email, code);
+        if (!res.success || !res.session || !res.user) {
+          setError(res.error || "Kode ntabwo ari yo cyangwa yarangiye.");
+          setOtp(["", "", "", "", "", ""]);
+          inputs.current[0]?.focus();
+          return;
+        }
+
+        await setSession(res.session);
+        await signIn(res.session.access_token, res.user.id);
+        router.replace("/(onboarding)/personal");
+        return;
+      }
+
+      if (phone) {
+        // Path B: Supabase Phone SMS OTP verification
+        const res = await verifyPhoneOtp(phone, code);
+        if (res.success && res.session && res.user) {
+          await setSession(res.session);
+          await signIn(res.session.access_token, res.user.id);
+          router.replace("/(onboarding)/personal");
+          return;
+        }
+
+        // Graceful fallback to local dev OTP handler if Supabase SMS unconfigured
+        verifyOtpFallback({ data: { phoneNumber: phone, otp: code } });
+        return;
+      }
+    } catch (err: any) {
+      setError(err?.message || "Ikibazo cyabaye mu kwemeza kode.");
+    } finally {
+      setVerifying(false);
+    }
+  }
+
   function handleChange(text: string, index: number) {
     const digit = text.slice(-1);
     const newOtp = [...otp];
@@ -58,7 +113,7 @@ export default function OtpScreen() {
     if (index === 5 && digit) {
       const code = [...newOtp.slice(0, 5), digit].join("");
       if (code.length === 6) {
-        verifyOtp({ data: { phoneNumber: phone ?? "", otp: code } });
+        handleVerify(code);
       }
     }
   }
@@ -73,6 +128,7 @@ export default function OtpScreen() {
   }
 
   const code = otp.join("");
+  const isPending = verifying;
 
   return (
     <View
@@ -88,7 +144,7 @@ export default function OtpScreen() {
       <View style={styles.header}>
         <Text style={[styles.title, { color: colors.foreground }]}>Enter the code</Text>
         <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>
-          Sent to {phone}
+          Sent to {targetRecipient}
         </Text>
       </View>
 
@@ -123,7 +179,7 @@ export default function OtpScreen() {
           styles.button,
           { backgroundColor: colors.primary, opacity: isPending || code.length < 6 ? 0.5 : 1 },
         ]}
-        onPress={() => verifyOtp({ data: { phoneNumber: phone ?? "", otp: code } })}
+        onPress={() => handleVerify(code)}
         disabled={isPending || code.length < 6}
         activeOpacity={0.85}
       >

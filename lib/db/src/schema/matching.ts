@@ -5,9 +5,22 @@ export const interestsTable = pgTable("interests", {
   id: uuid("id").primaryKey().defaultRandom(),
   fromUser: uuid("from_user").notNull().references(() => profilesTable.id, { onDelete: "cascade" }),
   toUser: uuid("to_user").notNull().references(() => profilesTable.id, { onDelete: "cascade" }),
+  reactionType: text("reaction_type").$type<"campus" | "coffee" | "serious" | null>(),
+  isGoldenBid: boolean("is_golden_bid").default(false),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
 }, (table) => [
   unique("unique_interest_pair").on(table.fromUser, table.toUser),
+]);
+
+export const passesTable = pgTable("passes", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: uuid("user_id").notNull().references(() => profilesTable.id, { onDelete: "cascade" }),
+  targetUserId: uuid("target_user_id").notNull().references(() => profilesTable.id, { onDelete: "cascade" }),
+  type: text("type").notNull().default("soft_pass"), // soft_pass | hard_reject
+  expiresAt: timestamp("expires_at", { withTimezone: true }), // null for hard reject, 14 days for soft pass
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+}, (table) => [
+  unique("unique_pass_pair").on(table.userId, table.targetUserId),
 ]);
 
 export const matchesTable = pgTable("matches", {
@@ -39,5 +52,7 @@ export const matchesTable = pgTable("matches", {
 
 export type Interest = typeof interestsTable.$inferSelect;
 export type InsertInterest = typeof interestsTable.$inferInsert;
+export type Pass = typeof passesTable.$inferSelect;
+export type InsertPass = typeof passesTable.$inferInsert;
 export type Match = typeof matchesTable.$inferSelect;
 export type InsertMatch = typeof matchesTable.$inferInsert;

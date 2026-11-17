@@ -1,88 +1,135 @@
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import { setAuthTokenGetter } from "@workspace/api-client-react";
-import React, { createContext, useCallback, useContext, useEffect, useState } from "react";
-
-const TOKEN_KEY = "@kin:token";
-const USER_ID_KEY = "@kin:userId";
+import { setAuthTokenGetter } from '@workspace/api-client-react';
+import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
+import { supabase } from '@/lib/supabase';
+import type { Session, User } from '@supabase/supabase-js';
 
 interface AuthContextValue {
   token: string | null;
   userId: string | null;
+  user: User | null;
+  session: Session | null;
   isLoading: boolean;
   signIn: (token: string, userId: string) => Promise<void>;
+  setSession: (session: Session | null) => Promise<void>;
   signOut: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue>({
   token: null,
   userId: null,
+  user: null,
+  session: null,
   isLoading: true,
   signIn: async () => {},
+  setSession: async () => {},
   signOut: async () => {},
 });
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [token, setToken] = useState<string | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
+  const [user, setUser] = useState<User | null>(null);
+  const [session, setSessionState] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
+  // Restore initial Supabase session
   useEffect(() => {
-    async function restore() {
+    let mounted = true;
+
+    async function restoreSession() {
       try {
-        const [t, u] = await Promise.all([
-          AsyncStorage.getItem(TOKEN_KEY),
-          AsyncStorage.getItem(USER_ID_KEY),
-        ]);
-        // On web, AsyncStorage restore timing can mean userId is missing
-        // temporarily even when token is available. Authenticated calls only
-        // require the bearer token, so register the token getter as soon as
-        // we have the token.
-        if (t) {
-          setToken(t);
-          // Register auth token getter immediately so any API calls after
-          // restore window receive a bearer token.
-          setAuthTokenGetter(() => t);
-        } else {
-          // Ensure we don't keep an old getter around.
+        const { data: { session: initialSession }, error } = await supabase.auth.getSession();
+        if (error) {
+          console.warn('[SupabaseAuth] getSession error:', error.message);
+        }
+
+        if (mounted && initialSession) {
+          const accessToken = initialSession.access_token;
+          const uid = initialSession.user.id;
+          setSessionState(initialSession);
+          setUser(initialSession.user);
+          setToken(accessToken);
+          setUserId(uid);
+          setAuthTokenGetter(() => accessToken);
+        } else if (mounted) {
           setAuthTokenGetter(null);
         }
-
-        if (t && u) {
-          setUserId(u);
-        }
-
-
-      } catch {
-        // ignore
+      } catch (err) {
+        console.warn('[SupabaseAuth] restoreSession exception:', err);
       } finally {
-        setIsLoading(false);
+        if (mounted) {
+          setIsLoading(false);
+        }
       }
     }
-    restore();
+
+    restoreSession();
+
+    // Listen to Supabase auth state changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, currentSession) => {
+      if (!mounted) return;
+
+      if (currentSession) {
+        const accessToken = currentSession.access_token;
+        const uid = currentSession.user.id;
+        setSessionState(currentSession);
+        setUser(currentSession.user);
+        setToken(accessToken);
+        setUserId(uid);
+        setAuthTokenGetter(() => accessToken);
+      } else {
+        setSessionState(null);
+        setUser(null);
+        setToken(null);
+        setUserId(null);
+        setAuthTokenGetter(null);
+      }
+      setIsLoading(false);
+    });
+
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
+  }, []);
+
+  const setSession = useCallback(async (newSession: Session | null) => {
+    if (newSession) {
+      setSessionState(newSession);
+      setUser(newSession.user);
+      setToken(newSession.access_token);
+      setUserId(newSession.user.id);
+      setAuthTokenGetter(() => newSession.access_token);
+    } else {
+      setSessionState(null);
+      setUser(null);
+      setToken(null);
+      setUserId(null);
+      setAuthTokenGetter(null);
+    }
   }, []);
 
   const signIn = useCallback(async (newToken: string, newUserId: string) => {
-    await Promise.all([
-      AsyncStorage.setItem(TOKEN_KEY, newToken),
-      AsyncStorage.setItem(USER_ID_KEY, newUserId),
-    ]);
     setToken(newToken);
     setUserId(newUserId);
     setAuthTokenGetter(() => newToken);
   }, []);
 
   const signOut = useCallback(async () => {
-    await Promise.all([
-      AsyncStorage.removeItem(TOKEN_KEY),
-      AsyncStorage.removeItem(USER_ID_KEY),
-    ]);
+    try {
+      await supabase.auth.signOut();
+    } catch {
+      // ignore
+    }
+    setSessionState(null);
+    setUser(null);
     setToken(null);
     setUserId(null);
     setAuthTokenGetter(null);
   }, []);
 
   return (
-    <AuthContext.Provider value={{ token, userId, isLoading, signIn, signOut }}>
+    <AuthContext.Provider value={{ token, userId, user, session, isLoading, signIn, setSession, signOut }}>
       {children}
     </AuthContext.Provider>
   );

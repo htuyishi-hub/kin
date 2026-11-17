@@ -7,3 +7,5 @@ expo-env.d.ts
 .vercel
 index.html
 static-build/
+android/
+ios/

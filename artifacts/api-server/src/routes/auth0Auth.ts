@@ -2,6 +2,7 @@ import { Router } from "express";
 import { eq, or } from "drizzle-orm";
 import { db, profilesTable } from "@workspace/db";
 import { signToken } from "../lib/jwt.js";
+import { generateInviteCode } from "../lib/inviteCode.js";
 
 const router = Router();
 
@@ -102,6 +103,7 @@ router.post("/auth/auth0", async (req, res) => {
 
     if (!profile) {
       const insertT = Date.now();
+      const myInviteCode = generateInviteCode();
       const [created] = await db
         .insert(profilesTable)
         .values({
@@ -109,6 +111,9 @@ router.post("/auth/auth0", async (req, res) => {
           googleId: userInfo.sub,
           email: userInfo.email ?? null,
           fullName: userInfo.name ?? null,
+          inviteCode: myInviteCode,
+          inviteCount: 0,
+          isVerified: false,
           phoneVerified: false,
           idVerified: false,
           vouchCount: 0,
@@ -117,7 +122,7 @@ router.post("/auth/auth0", async (req, res) => {
           profileActive: true,
           profilePaused: false,
           onboardingComplete: false,
-        })
+        } as any)
         .returning();
 
       profile = created;
@@ -128,13 +133,17 @@ router.post("/auth/auth0", async (req, res) => {
       );
     } else {
       const updateT = Date.now();
+      const updates: Record<string, unknown> = {
+        googleId: userInfo.sub,
+        email: userInfo.email ?? null,
+        lastActive: new Date(),
+      };
+      if (!profile.inviteCode) {
+        updates["inviteCode"] = generateInviteCode();
+      }
       await db
         .update(profilesTable)
-        .set({
-          googleId: userInfo.sub,
-          email: userInfo.email ?? null,
-          lastActive: new Date(),
-        })
+        .set(updates as any)
         .where(eq(profilesTable.id, profile.id));
 
       req.log.info(

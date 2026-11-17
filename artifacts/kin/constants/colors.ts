@@ -13,6 +13,10 @@ export const Colors = {
   danger:      '#E5534B',
   success:     '#3FB950',
   divider:     '#21262D',
+  obsidianNavy: '#0A0E17',
+  coral:       '#FF6B6B',
+  coralDim:    '#E0564C',
+  coralGlow:   'rgba(255, 107, 107, 0.35)',
 } as const;
 
 export type ColorKey = keyof typeof Colors;

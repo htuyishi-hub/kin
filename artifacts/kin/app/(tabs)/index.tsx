@@ -1,461 +1,308 @@
-import { useExpressInterest, useGetMatchQueue } from "@workspace/api-client-react";
+import { Feather } from "@expo/vector-icons";
+import { useGetMatchQueue, useGetMe } from "@workspace/api-client-react";
 import * as Haptics from "expo-haptics";
+import { router } from "expo-router";
 import React, { useState } from "react";
 import {
   ActivityIndicator,
   Platform,
-  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
-import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withSpring,
-  interpolate,
-} from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Feather } from "@expo/vector-icons";
 
 import { KLogo } from "@/components/KLogo";
-import { ProfilePhoto } from "@/components/ProfilePhoto";
+import { TeaserCandidate, TeaserSwipeDeck } from "@/components/TeaserSwipeDeck";
 import { Colors } from "@/constants/colors";
+import { useAuth } from "@/contexts/AuthContext";
 
-type QueueItem = {
-  id: string;
-  fullName: string;
-  gender: string | null;
-  age: number | null;
-  campusName: string | null;
-  faculty: string | null;
-  yearOfStudy: number | null;
-  hostelName: string | null;
-  city: string | null;
-  primaryIntent: string | null;
-  vouchCount: number;
-  primaryPhotoPath: string | null;
-  milieuScore: number;
-  vouchOverlap: number;
-  microPrompts: { id: string; promptText: string; answer: string }[];
-  milieuCards: string[];
-};
-
-function IdentityCard({ person }: { person: QueueItem }) {
-  const photoHeight   = useSharedValue(0);
-  const chevronRotate = useSharedValue(0);
-  const [photoOpen, setPhotoOpen] = useState(false);
-
-  const togglePhoto = () => {
-    const opening = !photoOpen;
-    setPhotoOpen(opening);
-    photoHeight.value   = withSpring(opening ? 300 : 0, { damping: 18, stiffness: 180 });
-    chevronRotate.value = withSpring(opening ? 180 : 0, { damping: 14, stiffness: 200 });
-  };
-
-  const photoStyle = useAnimatedStyle(() => ({
-    height:   photoHeight.value,
-    opacity:  interpolate(photoHeight.value, [0, 80, 300], [0, 0.4, 1]),
-    overflow: 'hidden',
-  }));
-
-  const chevronStyle = useAnimatedStyle(() => ({
-    transform: [{ rotate: `${chevronRotate.value}deg` }],
-  }));
-
-  const genderLabel = person.gender === 'male' ? 'M' : person.gender === 'female' ? 'F' : '';
-
-  return (
-    <View style={styles.card}>
-      {/* Identity row — NAME first, photo below the fold */}
-      <View style={styles.cardHeader}>
-        <View style={styles.nameRow}>
-          <Text style={styles.name} numberOfLines={1}>{person.fullName}</Text>
-          <View style={styles.agePill}>
-            <Text style={styles.ageText}>{person.age ?? '—'}</Text>
-          </View>
-          {genderLabel ? (
-            <Text style={styles.genderText}>{genderLabel}</Text>
-          ) : null}
-        </View>
-
-        {/* Vouch row */}
-        <View style={styles.vouchRow}>
-          <View style={styles.goldDot} />
-          <Text style={styles.vouchText}>
-            Vouched by {person.vouchCount}
-          </Text>
-          {person.campusName && (
-            <Text style={styles.vouchDim}> · {person.campusName}</Text>
-          )}
-          {person.yearOfStudy && (
-            <Text style={styles.vouchDim}> · Year {person.yearOfStudy}</Text>
-          )}
-        </View>
-      </View>
-
-      {/* Shared milieu — most important trust signal */}
-      {person.milieuCards.length > 0 && (
-        <>
-          <View style={styles.divider} />
-          <View style={styles.milieuBlock}>
-            {person.milieuCards.slice(0, 1).map((card, i) => (
-              <Text key={i} style={styles.milieuText}>{card}</Text>
-            ))}
-          </View>
-        </>
-      )}
-
-      {/* Micro-prompts */}
-      {person.microPrompts.length > 0 && (
-        <>
-          <View style={styles.divider} />
-          <View style={styles.promptsBlock}>
-            {person.microPrompts.slice(0, 2).map((p) => (
-              <View key={p.id} style={styles.promptItem}>
-                <Text style={styles.promptQ} numberOfLines={1}>{p.promptText}</Text>
-                <Text style={styles.promptA}>{p.answer}</Text>
-              </View>
-            ))}
-          </View>
-        </>
-      )}
-
-      {/* Photo reveal — photo comes LAST */}
-      <View style={styles.divider} />
-      <TouchableOpacity onPress={togglePhoto} activeOpacity={0.8} style={styles.photoRevealRow}>
-        <Animated.View style={chevronStyle}>
-          <Feather name="chevron-down" size={14} color={Colors.boneDim} />
-        </Animated.View>
-        <Text style={styles.seePhotoText}>
-          {photoOpen ? 'Hide photo' : 'See photo'}
-        </Text>
-      </TouchableOpacity>
-
-      <Animated.View style={photoStyle}>
-        <ProfilePhoto
-          url={person.primaryPhotoPath}
-          size={300}
-          borderRadius={0}
-        />
-      </Animated.View>
-    </View>
-  );
-}
+type ReactionType = "campus" | "coffee" | "serious";
 
 export default function DiscoverScreen() {
   const insets = useSafeAreaInsets();
-  const [index, setIndex] = useState(0);
+  const { token } = useAuth();
 
-  const { data: queue = [], isLoading, refetch } = useGetMatchQueue(
+  const apiBaseUrl =
+    process.env.EXPO_PUBLIC_API_URL ??
+    process.env.VITE_API_URL ??
+    (process.env.EXPO_PUBLIC_DOMAIN
+      ? `https://${process.env.EXPO_PUBLIC_DOMAIN}`
+      : "https://kin-x81d.onrender.com");
+
+  const { data: myProfile } = useGetMe();
+  const {
+    data: queue = [],
+    isLoading,
+    refetch,
+  } = useGetMatchQueue(
     {},
-    { query: { staleTime: 60_000 } as any },
+    {
+      query: {
+        staleTime: 30_000,
+        refetchOnMount: true,
+      } as any,
+    }
   );
 
-  const { mutate: expressInterest, isPending: isInteresting } = useExpressInterest({
-    mutation: {
-      onSuccess: () => {
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        setIndex((i) => i + 1);
-      },
-    },
-  });
+  const [matchNotification, setMatchNotification] = useState<string | null>(null);
 
-  function handlePass() {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    setIndex((i) => i + 1);
+  const candidates: TeaserCandidate[] = (queue as any[]).map((item) => ({
+    id: item.id,
+    firstName: item.firstName ?? item.fullName?.split(" ")[0] ?? "Member",
+    fullName: item.fullName,
+    photos: item.photos?.length > 0 ? item.photos : item.primaryPhotoPath ? [item.primaryPhotoPath] : [],
+    primaryPhotoPath: item.primaryPhotoPath ?? item.photos?.[0] ?? null,
+    is_golden_bid: Boolean(item.is_golden_bid),
+    incoming_reaction: item.incoming_reaction ?? null,
+    intent_class: item.intent_class ?? item.primaryIntent,
+    trustScore: item.trustScore ?? 1,
+    approvedBy: item.approvedBy ?? item.vouchedBy ?? null,
+  }));
+
+  const goldenBidsRemaining = (myProfile as any)?.goldenBidsRemaining ?? (myProfile as any)?.golden_bids_remaining ?? 3;
+  const myIntentClass = (myProfile as any)?.intentClass ?? (myProfile as any)?.primaryIntent ?? "Serious";
+  const isApproverActive = Boolean(
+    myProfile?.idVerified ||
+    (myProfile as any)?.is_verified ||
+    (myProfile as any)?.isVerified ||
+    (myProfile as any)?.accountStatus === "active"
+  );
+
+  // Swipe Right = Categorized Like & Golden Bid
+  async function handleSwipeRight(
+    candidate: TeaserCandidate,
+    reaction: ReactionType,
+    isGoldenBid: boolean
+  ) {
+    try {
+      const res = await fetch(`${apiBaseUrl}/api/interests`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          toUserId: candidate.id,
+          reactionType: reaction,
+          isGoldenBid,
+        }),
+      });
+
+      const data = await res.json();
+      if (data.matchCreated && data.matchId) {
+        Haptics.notificationAsync?.(Haptics.NotificationFeedbackType.Success);
+        setMatchNotification(`It's a Match with ${candidate.firstName}!`);
+        setTimeout(() => {
+          setMatchNotification(null);
+          router.push(`/match/${data.matchId}`);
+        }, 1800);
+      }
+    } catch {
+      // non-fatal
+    }
   }
 
-  function handleInterest(toUserId: string) {
-    expressInterest({ data: { toUserId } });
+  // Swipe Left = Hard Reject (Permanent)
+  async function handleSwipeLeft(candidate: TeaserCandidate) {
+    try {
+      await fetch(`${apiBaseUrl}/api/passes`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          targetUserId: candidate.id,
+          action: "hard_reject",
+        }),
+      });
+    } catch {
+      // non-fatal
+    }
   }
 
-  const current   = queue[index] as QueueItem | undefined;
-  const remaining = queue.length - index;
-
-  const tabBarH  = Platform.OS === "ios" ? 80 : 64;
-  const paddingT = insets.top + 16;
-  const paddingB = tabBarH + insets.bottom + 16;
-
-  if (isLoading) {
-    return (
-      <View style={[styles.center, { backgroundColor: Colors.night }]}>
-        <ActivityIndicator color={Colors.trust} size="large" />
-      </View>
-    );
+  // Swipe Down = Soft Pass (14-day temporary hide)
+  async function handleSwipeDown(candidate: TeaserCandidate) {
+    try {
+      await fetch(`${apiBaseUrl}/api/passes`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          targetUserId: candidate.id,
+          action: "soft_pass",
+        }),
+      });
+    } catch {
+      // non-fatal
+    }
   }
 
-  if (!current || remaining <= 0) {
-    return (
-      <View style={[styles.center, { backgroundColor: Colors.night, paddingTop: paddingT, paddingBottom: paddingB }]}>
-        <KLogo size={40} color={Colors.boneGhost} />
-        <Text style={styles.emptyTitle}>You're all caught up</Text>
-        <Text style={styles.emptyBody}>New profiles appear as the community grows.</Text>
-        <TouchableOpacity
-          style={styles.refreshBtn}
-          onPress={() => { setIndex(0); refetch(); }}
-          activeOpacity={0.8}
-        >
-          <Feather name="refresh-cw" size={14} color={Colors.trust} />
-          <Text style={styles.refreshText}>Refresh</Text>
-        </TouchableOpacity>
-      </View>
-    );
-  }
+  const paddingT = insets.top + 12;
 
   return (
-    <View style={[styles.container, { backgroundColor: Colors.night }]}>
-      <View style={[styles.header, { paddingTop: paddingT }]}>
-        <KLogo size={24} color={Colors.trust} />
-        <Text style={styles.headerTitle}>Discover</Text>
-        <View style={styles.countBadge}>
-          <Text style={styles.countText}>{remaining}</Text>
+    <View style={[styles.container, { backgroundColor: Colors.night, paddingTop: paddingT }]}>
+      {/* Top Header with Intent Gating Indicator and Moderation Deck Shortcut */}
+      <View style={styles.header}>
+        <View style={styles.headerLeft}>
+          <KLogo size={24} color={Colors.trust} />
+          <View style={styles.intentPill}>
+            <Text style={styles.intentPillLabel}>Intent:</Text>
+            <Text style={styles.intentPillValue}>{myIntentClass}</Text>
+          </View>
+        </View>
+
+        <View style={styles.headerRight}>
+          {/* Community Review Deck Shortcut for active users */}
+          {isApproverActive && (
+            <TouchableOpacity
+              style={styles.moderationBtn}
+              onPress={() => router.push("/moderation/review")}
+              activeOpacity={0.8}
+            >
+              <Feather name="shield" size={14} color={Colors.gold} />
+              <Text style={styles.moderationBtnText}>Review Queue</Text>
+            </TouchableOpacity>
+          )}
+
+          <TouchableOpacity style={styles.refreshBtn} onPress={() => refetch()} activeOpacity={0.8}>
+            <Feather name="rotate-cw" size={16} color={Colors.boneDim} />
+          </TouchableOpacity>
         </View>
       </View>
 
-      <ScrollView
-        style={styles.scroll}
-        contentContainerStyle={[styles.scrollContent, { paddingBottom: paddingB }]}
-        showsVerticalScrollIndicator={false}
-      >
-        <IdentityCard person={current} />
-
-        <View style={styles.actions}>
-          {/* Pass */}
-          <TouchableOpacity
-            style={styles.passBtn}
-            onPress={handlePass}
-            activeOpacity={0.8}
-          >
-            <Feather name="x" size={22} color={Colors.danger} />
-          </TouchableOpacity>
-
-          {/* Not Now (defer) */}
-          <TouchableOpacity
-            style={styles.notNowBtn}
-            onPress={handlePass}
-            activeOpacity={0.8}
-          >
-            <Text style={styles.notNowText}>Not Now</Text>
-          </TouchableOpacity>
-
-          {/* Interested */}
-          <TouchableOpacity
-            style={[styles.interestBtn, { opacity: isInteresting ? 0.7 : 1 }]}
-            onPress={() => handleInterest(current.id)}
-            disabled={isInteresting}
-            activeOpacity={0.85}
-          >
-            {isInteresting ? (
-              <ActivityIndicator color={Colors.bone} size="small" />
-            ) : (
-              <Feather name="check" size={22} color={Colors.bone} />
-            )}
-          </TouchableOpacity>
+      {/* MATCH NOTIFICATION OVERLAY */}
+      {matchNotification && (
+        <View style={styles.matchToast}>
+          <Feather name="heart" size={18} color={Colors.coral} />
+          <Text style={styles.matchToastText}>{matchNotification}</Text>
         </View>
-      </ScrollView>
+      )}
+
+      {/* Main Swipe Deck */}
+      {isLoading ? (
+        <View style={styles.center}>
+          <ActivityIndicator color={Colors.trust} size="large" />
+          <Text style={styles.loadingText}>Curating intent-gated matches...</Text>
+        </View>
+      ) : (
+        <TeaserSwipeDeck
+          candidates={candidates}
+          onSwipeRight={handleSwipeRight}
+          onSwipeLeft={handleSwipeLeft}
+          onSwipeDown={handleSwipeDown}
+          goldenBidsRemaining={goldenBidsRemaining}
+          onRefresh={refetch}
+        />
+      )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container:    { flex: 1 },
-  center: {
-    flex: 1, justifyContent: "center", alignItems: "center",
-    gap: 12, paddingHorizontal: 32,
+  container: {
+    flex: 1,
   },
   header: {
-    flexDirection:  "row",
-    alignItems:     "center",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     paddingHorizontal: 20,
-    paddingBottom:  12,
+    paddingBottom: 10,
+  },
+  headerLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  headerRight: {
+    flexDirection: "row",
+    alignItems: "center",
     gap: 10,
   },
-  headerTitle: {
-    fontFamily: "Inter_600SemiBold",
-    fontSize:   18,
-    color:      Colors.bone,
-    flex:       1,
-  },
-  countBadge: {
-    backgroundColor: Colors.inkRaised,
-    borderRadius:    10,
-    paddingHorizontal: 8,
-    paddingVertical:   3,
-  },
-  countText: {
-    fontFamily: "Inter_600SemiBold",
-    fontSize:   11,
-    color:      Colors.boneDim,
-  },
-  scroll:        { flex: 1 },
-  scrollContent: { paddingHorizontal: 16, gap: 14 },
-
-  card: {
-    backgroundColor: Colors.ink,
-    borderRadius:    28,
-    overflow:        "hidden",
-  },
-  cardHeader: {
-    padding: 20,
-    gap:     10,
-  },
-  nameRow: {
+  intentPill: {
     flexDirection: "row",
-    alignItems:    "center",
-    gap:           8,
-    flexWrap:      "wrap",
-  },
-  name: {
-    fontFamily: "Fraunces_700Bold",
-    fontSize:   22,
-    color:      Colors.bone,
-    flex:       1,
-  },
-  agePill: {
+    alignItems: "center",
+    gap: 4,
     backgroundColor: Colors.inkRaised,
-    borderRadius:    8,
-    paddingHorizontal: 8,
-    paddingVertical:   3,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: Colors.divider,
   },
-  ageText: {
-    fontFamily: "Inter_600SemiBold",
-    fontSize:   14,
-    color:      Colors.boneDim,
-  },
-  genderText: {
+  intentPillLabel: {
     fontFamily: "Inter_400Regular",
-    fontSize:   14,
-    color:      Colors.boneDim,
+    fontSize: 11,
+    color: Colors.boneDim,
   },
-  vouchRow: {
+  intentPillValue: {
+    fontFamily: "Inter_700Bold",
+    fontSize: 12,
+    color: Colors.bone,
+  },
+  moderationBtn: {
     flexDirection: "row",
-    alignItems:    "center",
-    flexWrap:      "wrap",
-  },
-  goldDot: {
-    width:        8,
-    height:       8,
-    borderRadius: 4,
-    backgroundColor: Colors.gold,
-    marginRight:  6,
-  },
-  vouchText: {
-    fontFamily: "Inter_600SemiBold",
-    fontSize:   13,
-    color:      Colors.gold,
-  },
-  vouchDim: {
-    fontFamily: "Inter_400Regular",
-    fontSize:   13,
-    color:      Colors.boneDim,
-  },
-  divider: {
-    height:          1,
-    backgroundColor: Colors.divider,
-    marginHorizontal: 20,
-  },
-  milieuBlock: {
-    paddingHorizontal: 20,
-    paddingVertical:   14,
-  },
-  milieuText: {
-    fontFamily: "Inter_400Regular",
-    fontSize:   14,
-    color:      Colors.trust,
-    lineHeight: 20,
-  },
-  promptsBlock: {
-    padding: 20,
-    gap:     14,
-  },
-  promptItem: { gap: 4 },
-  promptQ: {
-    fontFamily: "Inter_600SemiBold",
-    fontSize:   12,
-    color:      Colors.boneDim,
-  },
-  promptA: {
-    fontFamily: "Inter_400Regular",
-    fontSize:   15,
-    color:      Colors.bone,
-    lineHeight: 22,
-  },
-  photoRevealRow: {
-    flexDirection:  "row",
-    alignItems:     "center",
-    justifyContent: "center",
-    gap:            6,
-    paddingVertical: 12,
-  },
-  seePhotoText: {
-    fontFamily: "Inter_400Regular",
-    fontSize:   13,
-    color:      Colors.boneDim,
-  },
-
-  actions: {
-    flexDirection: "row",
-    alignItems:    "center",
-    gap:           10,
-  },
-  passBtn: {
-    width:          56,
-    height:         56,
-    borderRadius:   28,
+    alignItems: "center",
+    gap: 6,
     backgroundColor: Colors.inkRaised,
-    justifyContent: "center",
-    alignItems:     "center",
+    borderColor: Colors.goldDim,
+    borderWidth: 1,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 12,
   },
-  notNowBtn: {
-    flex:            1,
-    height:          56,
-    borderRadius:    28,
-    backgroundColor: Colors.inkRaised,
-    justifyContent:  "center",
-    alignItems:      "center",
-  },
-  notNowText: {
+  moderationBtnText: {
     fontFamily: "Inter_600SemiBold",
-    fontSize:   15,
-    color:      Colors.bone,
-  },
-  interestBtn: {
-    width:          56,
-    height:         56,
-    borderRadius:   28,
-    backgroundColor: Colors.trust,
-    justifyContent: "center",
-    alignItems:     "center",
-  },
-  emptyTitle: {
-    fontFamily: "Fraunces_700Bold",
-    fontSize:   22,
-    color:      Colors.bone,
-    textAlign:  "center",
-  },
-  emptyBody: {
-    fontFamily: "Inter_400Regular",
-    fontSize:   15,
-    color:      Colors.boneDim,
-    textAlign:  "center",
-    lineHeight: 22,
+    fontSize: 11,
+    color: Colors.gold,
   },
   refreshBtn: {
-    flexDirection:   "row",
-    alignItems:      "center",
-    gap:             8,
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderRadius:    100,
-    borderWidth:     1.5,
-    borderColor:     Colors.divider,
-    marginTop:       8,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: Colors.inkRaised,
+    justifyContent: "center",
+    alignItems: "center",
   },
-  refreshText: {
-    fontFamily: "Inter_600SemiBold",
-    fontSize:   14,
-    color:      Colors.trust,
+  matchToast: {
+    position: "absolute",
+    top: 70,
+    alignSelf: "center",
+    zIndex: 100,
+    backgroundColor: Colors.obsidianNavy,
+    borderColor: Colors.coral,
+    borderWidth: 1.5,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 20,
+    shadowColor: Colors.coral,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.5,
+    shadowRadius: 12,
+    elevation: 10,
+  },
+  matchToastText: {
+    fontFamily: "Fraunces_700Bold",
+    fontSize: 15,
+    color: Colors.bone,
+  },
+  center: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    gap: 12,
+  },
+  loadingText: {
+    fontFamily: "Inter_400Regular",
+    fontSize: 14,
+    color: Colors.boneDim,
   },
 });

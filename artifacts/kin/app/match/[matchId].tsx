@@ -54,8 +54,14 @@ function useMatchWebSocket(matchId: string, token: string | null) {
   const connect = useCallback(() => {
     if (!token || !mountedRef.current) return;
 
-    const domain = process.env.EXPO_PUBLIC_DOMAIN ?? "";
-    const wsUrl = `wss://${domain}/ws`;
+    const apiBaseUrl =
+      process.env.EXPO_PUBLIC_API_URL ??
+      process.env.VITE_API_URL ??
+      (process.env.EXPO_PUBLIC_DOMAIN
+        ? `https://${process.env.EXPO_PUBLIC_DOMAIN}`
+        : "https://kin-x81d.onrender.com");
+
+    const wsUrl = apiBaseUrl.replace(/^http/, "ws") + "/ws";
 
     try {
       const ws = new WebSocket(wsUrl);

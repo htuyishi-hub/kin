@@ -59,7 +59,7 @@ export async function uploadToStorage(
   );
 
   const { error } = await client.storage
-    .from('profile_photos')
+    .from('profile-photos')
     .upload(storagePath, binary, {
       contentType:  'image/jpeg',
       cacheControl: '3600',
@@ -69,7 +69,7 @@ export async function uploadToStorage(
   if (error) throw new Error(`Storage upload failed: ${error.message}`);
 
   const { data: urlData } = client.storage
-    .from('profile_photos')
+    .from('profile-photos')
     .getPublicUrl(storagePath);
 
   return { publicUrl: urlData.publicUrl, storagePath };

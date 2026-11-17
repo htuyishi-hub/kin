@@ -1,4 +1,4 @@
-import { pgTable, text, smallint, boolean, uuid, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, text, smallint, boolean, uuid, timestamp, index } from "drizzle-orm/pg-core";
 import { profilesTable } from "./profiles";
 import { matchesTable } from "./matching";
 import { promptDefinitionsTable } from "./prompts";
@@ -13,7 +13,10 @@ export const messagesTable = pgTable("messages", {
   isSystem: boolean("is_system").default(false).notNull(),
   readAt: timestamp("read_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
-});
+}, (table) => [
+  index("messages_match_id_idx").on(table.matchId),
+  index("messages_match_created_idx").on(table.matchId, table.createdAt),
+]);
 
 export const exitSurveysTable = pgTable("exit_surveys", {
   id: uuid("id").primaryKey().defaultRandom(),

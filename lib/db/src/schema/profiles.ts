@@ -5,7 +5,7 @@ import { sql } from "drizzle-orm";
 
 export const profilesTable = pgTable("profiles", {
   id: uuid("id").primaryKey().defaultRandom(),
-  phoneNumber: text("phone_number").unique().notNull(),
+  phoneNumber: text("phone_number").unique(),
   fullName: text("full_name"),
   gender: text("gender"),
   dateOfBirth: date("date_of_birth"),
@@ -13,7 +13,10 @@ export const profilesTable = pgTable("profiles", {
   // Invisible segmentation — never expose to client
   hiddenTier: smallint("hidden_tier").default(1),
   primaryIntent: text("primary_intent"),
-  trustScore: smallint("trust_score").default(50),
+  intentClass: text("intent_class"),
+  trustScore: integer("trust_score").default(1),
+  approvalScore: integer("approval_score").default(0),
+  goldenBidsRemaining: integer("golden_bids_remaining").default(3),
 
   // Campus / location
   campusName: text("campus_name"),
@@ -32,16 +35,19 @@ export const profilesTable = pgTable("profiles", {
   vouchCount: smallint("vouch_count").default(0),
   verifiedAdult: boolean("verified_adult").default(false),
 
+  // Invite system
+  inviteCode: text("invite_code").unique(),
+  invitedByProfile: uuid("invited_by_profile"),
+  inviteCount: smallint("invite_count").default(0),
+  isVerified: boolean("is_verified").default(false),
+
   // UR verification
   institution: text("institution").$type<"university_of_rwanda" | null>(),
   campus: text("campus"),
   registrationNumber: text("registration_number"),
   institutionVerified: boolean("institution_verified").default(false),
-  verificationMethod: text("verification_method").$type<"ur_registry" | "community" | null>(),
-
-
-
-
+  verificationMethod: text("verification_method").$type<"ur_registry" | "community" | "invite" | null>(),
+  accountStatus: text("account_status").$type<"waitlisted" | "active" | "banned" | "suspended">().default("waitlisted"),
 
   // Feature flags
   proximityConsent: boolean("proximity_consent").default(false),

@@ -4,10 +4,35 @@ import { verifyToken } from "./jwt.js";
 
 const rooms = new Map<string, Set<WebSocket>>();
 
+interface ExtWebSocket extends WebSocket {
+  isAlive?: boolean;
+}
+
 export function createWsServer(httpServer: Server) {
   const wss = new WebSocketServer({ server: httpServer, path: "/ws" });
 
-  wss.on("connection", (ws: WebSocket, _req: IncomingMessage) => {
+  const interval = setInterval(() => {
+    for (const client of wss.clients as Set<ExtWebSocket>) {
+      if (client.isAlive === false) {
+        client.terminate();
+        continue;
+      }
+      client.isAlive = false;
+      client.ping();
+    }
+  }, 30000);
+
+  wss.on("close", () => {
+    clearInterval(interval);
+  });
+
+  wss.on("connection", (rawWs: WebSocket, _req: IncomingMessage) => {
+    const ws = rawWs as ExtWebSocket;
+    ws.isAlive = true;
+    ws.on("pong", () => {
+      ws.isAlive = true;
+    });
+
     let subscribedMatchId: string | null = null;
     let authedUserId: string | null = null;
 

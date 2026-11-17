@@ -1,22 +1,34 @@
 import { Router } from "express";
-import { eq, and, or } from "drizzle-orm";
-import { db, interestsTable, matchesTable, profilesTable, trustEventsTable } from "@workspace/db";
+import { eq, and, or, sql } from "drizzle-orm";
+import { db, interestsTable, matchesTable, profilesTable } from "@workspace/db";
 import { requireAuth, type AuthedRequest } from "../middlewares/auth.js";
 
 const router = Router();
 
-async function applyTrustEvent(userId: string, eventType: string, delta: number, sourceId?: string) {
-  await db.insert(trustEventsTable).values({ userId, eventType, delta: delta as any, sourceId });
-  await db
-    .update(profilesTable)
-    .set({ trustScore: Math.max(0, Math.min(100, delta)) as any })
-    .where(eq(profilesTable.id, userId));
-}
+const VALID_REACTIONS = ["campus", "coffee", "serious"] as const;
+type ReactionType = typeof VALID_REACTIONS[number];
 
-// POST /interests
+// POST /interests — Categorized 'Silent' Like & Golden Bid
 router.post("/interests", requireAuth, async (req, res) => {
   const userId = (req as AuthedRequest).userId;
-  const { toUserId } = req.body as { toUserId?: string };
+  const { toUserId, reactionType, isGoldenBid } = req.body as {
+    toUserId?: string;
+    reactionType?: string;
+    isGoldenBid?: boolean;
+    // Strictly forbid user-generated text comments
+    comment?: unknown;
+    text?: unknown;
+    message?: unknown;
+  };
+
+  // Anti-Harassment Rule: strictly reject text comments on teaser profiles
+  if (req.body.comment || req.body.text || req.body.message) {
+    res.status(400).json({
+      error: "forbidden_comment",
+      message: "Text comments on teaser profiles are strictly forbidden. Use vibe reactions only.",
+    });
+    return;
+  }
 
   if (!toUserId) {
     res.status(400).json({ error: "bad_request", message: "toUserId is required" });
@@ -28,7 +40,37 @@ router.post("/interests", requireAuth, async (req, res) => {
     return;
   }
 
-  // Check duplicate
+  const selectedReaction: ReactionType = VALID_REACTIONS.includes(reactionType as any)
+    ? (reactionType as ReactionType)
+    : "campus";
+
+  const goldenBidActive = Boolean(isGoldenBid);
+
+  // If Golden Bid is requested, verify consumable balance
+  if (goldenBidActive) {
+    const [userProfile] = await db
+      .select({ goldenBidsRemaining: profilesTable.goldenBidsRemaining })
+      .from(profilesTable)
+      .where(eq(profilesTable.id, userId))
+      .limit(1);
+
+    const bids = userProfile?.goldenBidsRemaining ?? 0;
+    if (bids <= 0) {
+      res.status(402).json({
+        error: "insufficient_golden_bids",
+        message: "You have no Golden Bids remaining. Refill your balance to boost your profile to the top.",
+      });
+      return;
+    }
+
+    // Deduct one Golden Bid
+    await db
+      .update(profilesTable)
+      .set({ goldenBidsRemaining: sql`GREATEST(0, COALESCE(${profilesTable.goldenBidsRemaining}, 0) - 1)` })
+      .where(eq(profilesTable.id, userId));
+  }
+
+  // Check duplicate interest
   const existing = await db
     .select()
     .from(interestsTable)
@@ -36,11 +78,16 @@ router.post("/interests", requireAuth, async (req, res) => {
     .limit(1);
 
   if (existing.length > 0) {
-    res.status(400).json({ error: "duplicate", message: "Already expressed interest" });
+    res.status(400).json({ error: "duplicate", message: "Already expressed interest in this person" });
     return;
   }
 
-  await db.insert(interestsTable).values({ fromUser: userId, toUser: toUserId });
+  await db.insert(interestsTable).values({
+    fromUser: userId,
+    toUser: toUserId,
+    reactionType: selectedReaction,
+    isGoldenBid: goldenBidActive,
+  });
 
   // Check for mutual interest
   const mutual = await db
@@ -50,11 +97,17 @@ router.post("/interests", requireAuth, async (req, res) => {
     .limit(1);
 
   if (mutual.length === 0) {
-    res.json({ recorded: true, matchCreated: false, matchId: null });
+    res.json({
+      recorded: true,
+      matchCreated: false,
+      matchId: null,
+      reactionType: selectedReaction,
+      isGoldenBid: goldenBidActive,
+    });
     return;
   }
 
-  // Create match
+  // Mutual match exists: check if match row already exists
   const existingMatch = await db
     .select()
     .from(matchesTable)
@@ -67,7 +120,13 @@ router.post("/interests", requireAuth, async (req, res) => {
     .limit(1);
 
   if (existingMatch.length > 0) {
-    res.json({ recorded: true, matchCreated: false, matchId: existingMatch[0]!.id });
+    res.json({
+      recorded: true,
+      matchCreated: false,
+      matchId: existingMatch[0]!.id,
+      reactionType: selectedReaction,
+      isGoldenBid: goldenBidActive,
+    });
     return;
   }
 
@@ -84,7 +143,13 @@ router.post("/interests", requireAuth, async (req, res) => {
     })
     .returning();
 
-  res.json({ recorded: true, matchCreated: true, matchId: match!.id });
+  res.json({
+    recorded: true,
+    matchCreated: true,
+    matchId: match!.id,
+    reactionType: selectedReaction,
+    isGoldenBid: goldenBidActive,
+  });
 });
 
 export default router;

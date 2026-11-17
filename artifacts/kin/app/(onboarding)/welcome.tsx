@@ -1,8 +1,6 @@
 import { router } from 'expo-router';
-import React, { lazy, Suspense, useEffect, useState } from 'react';
+import React, { lazy, Suspense, useEffect } from 'react';
 import {
-  ActivityIndicator,
-  Alert,
   Pressable,
   StyleSheet,
   Text,
@@ -20,8 +18,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors }         from '@/constants/colors';
 import { Space, Radius }  from '@/constants/spacing';
 import { ensureSkiaReady } from '@/utils/loadSkia';
-import { useAuth }        from '@/contexts/AuthContext';
-import { useAuth0Login }  from '@/hooks/useAuth0Login';
 
 const ShadowCanvas = lazy(async () => {
   await ensureSkiaReady();
@@ -31,8 +27,6 @@ const ShadowCanvas = lazy(async () => {
 export default function WelcomeScreen() {
   const insets            = useSafeAreaInsets();
   const { width, height } = useWindowDimensions();
-  const { signIn }        = useAuth();
-  const [loading, setLoading] = useState(false);
 
   const textOpacity   = useSharedValue(0);
   const buttonOpacity = useSharedValue(0);
@@ -45,30 +39,6 @@ export default function WelcomeScreen() {
 
   const taglineStyle = useAnimatedStyle(() => ({ opacity: textOpacity.value }));
   const buttonStyle  = useAnimatedStyle(() => ({ opacity: buttonOpacity.value }));
-
-  const { login } = useAuth0Login(async (result) => {
-    setLoading(false);
-    if (!result.success) {
-      if (result.code === 'cancelled') return;
-      if (result.code === 'not_configured') {
-        Alert.alert('Not Available', 'Social sign-in is not configured yet.');
-        return;
-      }
-      Alert.alert('Sign-in Failed', result.error ?? 'Please try again.');
-      return;
-    }
-    await signIn(result.token, result.userId);
-    if (result.isNewUser || !result.onboardingComplete) {
-      router.replace('/(onboarding)/personal');
-    } else {
-      router.replace('/');
-    }
-  });
-
-  async function handleSocialLogin() {
-    setLoading(true);
-    await login();
-  }
 
   return (
     <View style={styles.root}>
@@ -91,26 +61,18 @@ export default function WelcomeScreen() {
       <Animated.View
         style={[styles.buttonContainer, { paddingBottom: insets.bottom + 40 }, buttonStyle]}
       >
-        {/* Social sign-in via Auth0 — primary */}
+        {/* Button 1: University Students (Normal Google Email -> Verified via UR Reg Number) */}
         <Pressable
           style={({ pressed }) => [
             styles.socialButton,
             pressed && { opacity: 0.88, transform: [{ scale: 0.97 }] },
-            loading && { opacity: 0.7 },
           ]}
-          onPress={handleSocialLogin}
-          disabled={loading}
-          accessibilityLabel="Continue with Google"
+          onPress={() => router.push({ pathname: '/(onboarding)/email', params: { role: 'student' } })}
+          accessibilityLabel="Continue as Student"
           accessibilityRole="button"
         >
-          {loading ? (
-            <ActivityIndicator color={Colors.night} size="small" />
-          ) : (
-            <>
-              <GoogleG />
-              <Text style={styles.socialButtonText}>Injira na Google · Continue with Google</Text>
-            </>
-          )}
+          <UrBadge />
+          <Text style={styles.socialButtonText}>Injira nk'Umunyeshuri · Student Sign In</Text>
         </Pressable>
 
         {/* Divider */}
@@ -120,21 +82,22 @@ export default function WelcomeScreen() {
           <View style={styles.dividerLine} />
         </View>
 
-        {/* Phone OTP — fallback */}
+        {/* Button 2: Personal Account (Normal Google Email -> Verified via Member Invite) */}
         <Pressable
           style={({ pressed }) => [
-            styles.phoneButton,
+            styles.personalButton,
             pressed && { opacity: 0.88, transform: [{ scale: 0.97 }] },
           ]}
-          onPress={() => router.push('/(onboarding)/phone')}
-          accessibilityLabel="Continue with phone number"
+          onPress={() => router.push({ pathname: '/(onboarding)/email', params: { role: 'personal' } })}
+          accessibilityLabel="Continue with Personal Account"
           accessibilityRole="button"
         >
-          <Text style={styles.phoneButtonText}>Tangira · Get Started with Phone</Text>
+          <InviteBadge />
+          <Text style={styles.personalButtonText}>Konti Isanzwe · Personal Account (Invited)</Text>
         </Pressable>
 
         <Pressable
-          onPress={() => router.push('/(onboarding)/phone')}
+          onPress={() => router.push('/(onboarding)/email')}
           style={styles.signInLink}
         >
           <Text style={styles.signInLabel}>Ufite konti?</Text>
@@ -145,10 +108,18 @@ export default function WelcomeScreen() {
   );
 }
 
-function GoogleG() {
+function UrBadge() {
   return (
-    <View style={styles.googleBadge}>
-      <Text style={styles.googleG}>G</Text>
+    <View style={styles.urBadge}>
+      <Text style={styles.urText}>UR</Text>
+    </View>
+  );
+}
+
+function InviteBadge() {
+  return (
+    <View style={styles.inviteBadge}>
+      <Text style={styles.inviteText}>INVITE</Text>
     </View>
   );
 }
@@ -196,19 +167,19 @@ const styles = StyleSheet.create({
     justifyContent:  'center',
     gap:             10,
   },
-  googleBadge: {
-    width:           24,
-    height:          24,
-    borderRadius:    12,
-    backgroundColor: Colors.trust,
-    alignItems:      'center',
-    justifyContent:  'center',
+  urBadge: {
+    paddingHorizontal: 7,
+    paddingVertical:   3,
+    borderRadius:      6,
+    backgroundColor:   Colors.trust,
+    alignItems:        'center',
+    justifyContent:    'center',
   },
-  googleG: {
+  urText: {
     fontFamily: 'Inter_700Bold',
-    fontSize:   13,
+    fontSize:   11,
     color:      Colors.bone,
-    lineHeight: 17,
+    letterSpacing: 0.5,
   },
   socialButtonText: {
     fontFamily: 'Inter_600SemiBold',
@@ -232,18 +203,34 @@ const styles = StyleSheet.create({
     fontSize:   12,
     color:      Colors.boneDim,
   },
-  phoneButton: {
+  personalButton: {
     width:           '100%',
-    height:          52,
+    height:          54,
     borderRadius:    Radius.full,
     borderWidth:     1.5,
     borderColor:     Colors.divider,
+    flexDirection:   'row',
     alignItems:      'center',
     justifyContent:  'center',
+    gap:             10,
   },
-  phoneButtonText: {
+  inviteBadge: {
+    paddingHorizontal: 6,
+    paddingVertical:   2,
+    borderRadius:      6,
+    backgroundColor:   Colors.inkRaised,
+    alignItems:        'center',
+    justifyContent:    'center',
+  },
+  inviteText: {
+    fontFamily: 'Inter_700Bold',
+    fontSize:   9,
+    color:      Colors.gold,
+    letterSpacing: 0.5,
+  },
+  personalButtonText: {
     fontFamily: 'Inter_600SemiBold',
-    fontSize:   15,
+    fontSize:   14,
     color:      Colors.bone,
   },
   signInLink: {
