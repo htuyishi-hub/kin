@@ -47,8 +47,9 @@ jobs:
           distribution: 'temurin'
           java-version: 17
 
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
+      - name: Accept Android SDK licenses
+        run: |
+          yes | sdkmanager --licenses || true
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile=false
@@ -56,9 +57,9 @@ jobs:
       - name: Configure Environment Variables
         run: |
           cat <<EOF > artifacts/kin/.env
-          EXPO_PUBLIC_SUPABASE_URL=${{ secrets.EXPO_PUBLIC_SUPABASE_URL }}
+          EXPO_PUBLIC_SUPABASE_URL=${{ secrets.EXPO_PUBLIC_SUPABASE_URL || 'https://aqxjlxxigwlfgpeityhz.supabase.co' }}
           EXPO_PUBLIC_SUPABASE_ANON_KEY=${{ secrets.EXPO_PUBLIC_SUPABASE_ANON_KEY }}
-          EXPO_PUBLIC_API_URL=${{ secrets.EXPO_PUBLIC_API_URL }}
+          EXPO_PUBLIC_API_URL=${{ secrets.EXPO_PUBLIC_API_URL || 'https://kin-x81d.onrender.com' }}
           EOF
 
       - name: Prebuild Native Android Project
@@ -74,6 +75,12 @@ jobs:
           else
             ./gradlew assembleDebug
           fi
+
+      - name: Locate APK
+        id: apk-path
+        run: |
+          APK_PATHS=$(find artifacts/kin/android/app/build/outputs/apk -name "*.apk")
+          echo "Found APK files: $APK_PATHS"
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
@@ -92,5 +99,5 @@ jobs:
             TAG="v1.0.0-build-$(date +'%Y%m%d%H%M%S')"
             gh release create "$TAG" $APK_PATHS \
               --title "Kin Android App ($TAG)" \
-              --notes "Automated Android APK build from GitHub Actions. Download the APK file below and install on your Android device."
+              --notes "Automated Android APK build from GitHub Actions. Download the APK file below and install directly on your Android phone."
           fi
