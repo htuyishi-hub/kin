@@ -24,6 +24,20 @@ const ShadowCanvas = lazy(async () => {
   return import('@/components/ShadowCanvas');
 });
 
+class SafeShadowCanvas extends React.Component<{ children: React.ReactNode }, { hasError: boolean }> {
+  state = { hasError: false };
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+  componentDidCatch(err: any) {
+    console.warn('[Welcome] ShadowCanvas error:', err);
+  }
+  render() {
+    if (this.state.hasError) return null;
+    return this.props.children;
+  }
+}
+
 export default function WelcomeScreen() {
   const insets            = useSafeAreaInsets();
   const { width, height } = useWindowDimensions();
@@ -32,9 +46,11 @@ export default function WelcomeScreen() {
   const buttonOpacity = useSharedValue(0);
 
   useEffect(() => {
-    setTimeout(() => {
-      buttonOpacity.value = withTiming(1, { duration: 800, easing: Easing.out(Easing.ease) });
-    }, 2000);
+    textOpacity.value = withTiming(1, { duration: 600 });
+    const timer = setTimeout(() => {
+      buttonOpacity.value = withTiming(1, { duration: 600, easing: Easing.out(Easing.ease) });
+    }, 600);
+    return () => clearTimeout(timer);
   }, []);
 
   const taglineStyle = useAnimatedStyle(() => ({ opacity: textOpacity.value }));
@@ -42,13 +58,15 @@ export default function WelcomeScreen() {
 
   return (
     <View style={styles.root}>
-      <Suspense fallback={null}>
-        <ShadowCanvas
-          textOpacity={textOpacity}
-          screenWidth={width}
-          screenHeight={height}
-        />
-      </Suspense>
+      <SafeShadowCanvas>
+        <Suspense fallback={null}>
+          <ShadowCanvas
+            textOpacity={textOpacity}
+            screenWidth={width}
+            screenHeight={height}
+          />
+        </Suspense>
+      </SafeShadowCanvas>
 
       <Animated.View
         style={[styles.taglineContainer, { top: height * 0.52 }, taglineStyle]}

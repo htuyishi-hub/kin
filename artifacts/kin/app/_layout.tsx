@@ -33,7 +33,7 @@ const apiBaseUrl =
 
 setBaseUrl(apiBaseUrl);
 
-SplashScreen.preventAutoHideAsync();
+SplashScreen.preventAutoHideAsync().catch(() => {});
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -152,13 +152,23 @@ export default function RootLayout() {
     Fraunces_700Bold,
   });
 
-  useEffect(() => {
-    if (fontsLoaded || fontError) {
-      SplashScreen.hideAsync();
-    }
-  }, [fontsLoaded, fontError]);
+  const [splashTimedOut, setSplashTimedOut] = React.useState(false);
 
-  if (!fontsLoaded && !fontError) return null;
+  React.useEffect(() => {
+    const timer = setTimeout(() => {
+      setSplashTimedOut(true);
+      SplashScreen.hideAsync().catch(() => {});
+    }, 2000);
+    return () => clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
+    if (fontsLoaded || fontError || splashTimedOut) {
+      SplashScreen.hideAsync().catch(() => {});
+    }
+  }, [fontsLoaded, fontError, splashTimedOut]);
+
+  if (!fontsLoaded && !fontError && !splashTimedOut) return null;
 
   return (
     <SafeAreaProvider>
