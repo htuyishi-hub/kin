@@ -16,18 +16,11 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { Colors } from "@/constants/colors";
 import { Radius, Space } from "@/constants/spacing";
-import { useAuth } from "@/contexts/AuthContext";
-import {
-  fetchProfileRouting,
-  isValidEmail,
-  sendOtpForSignUp,
-  signInWithGoogle,
-} from "@/services/authService";
+import { isValidEmail, sendOtpForSignUp } from "@/services/authService";
 
 export default function EmailScreen() {
   const insets = useSafeAreaInsets();
   const isWeb = Platform.OS === "web";
-  const { setSession, signIn } = useAuth();
 
   const { role } = useLocalSearchParams<{ role?: "student" | "personal" }>();
   const isStudent = role === "student";
@@ -35,44 +28,12 @@ export default function EmailScreen() {
   const [email, setEmail] = useState("");
   const [error, setError] = useState("");
   const [isPending, setIsPending] = useState(false);
-  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
-
-  async function handleGoogleSignIn() {
-    setError("");
-    setIsGoogleLoading(true);
-
-    try {
-      const res = await signInWithGoogle();
-      if (!res.success) {
-        if (res.error && !res.error.includes("Canceled")) {
-          setError(res.error);
-        }
-        return;
-      }
-
-      if (res.session && res.user) {
-        await setSession(res.session);
-        await signIn(res.session.access_token, res.user.id);
-
-        const routing = await fetchProfileRouting(res.user.id);
-        if (routing.onboardingComplete) {
-          router.replace("/(tabs)");
-        } else {
-          router.replace("/(onboarding)/personal");
-        }
-      }
-    } catch (err: any) {
-      setError(err?.message || "Habaye ikibazo cyo kwinjira na Google.");
-    } finally {
-      setIsGoogleLoading(false);
-    }
-  }
 
   async function handleSubmit() {
     const cleaned = email.trim().toLowerCase();
 
     if (!cleaned) {
-      setError("Injiza imeri yawe ya Google · Enter your Google email");
+      setError("Injiza imeri yawe · Enter your email");
       return;
     }
 
@@ -124,6 +85,14 @@ export default function EmailScreen() {
       >
         {/* Header */}
         <View style={styles.header}>
+          <TouchableOpacity
+            onPress={() => router.back()}
+            style={styles.backButton}
+            accessibilityRole="button"
+          >
+            <Text style={styles.backButtonText}>← Inyuma · Back</Text>
+          </TouchableOpacity>
+
           <View style={styles.badgeRow}>
             {isStudent ? (
               <View style={styles.urBadge}>
@@ -145,45 +114,19 @@ export default function EmailScreen() {
 
           <Text style={styles.subtitle}>
             {isStudent
-              ? "Koresha imeri yawe ya Google. Icyemezo cy'umunyeshuri (UR Badge) kizakorwa mu ntambwe ikurikira ukoresheje registration number yawe."
-              : "Koresha imeri yawe ya Google. Kwinjira bisaba ubutumire bw'umunyamuryango (Invite code) cyangwa kwemeza n'abandi."}
+              ? "Koresha imeri yawe. Icyemezo cy'umunyeshuri (UR Badge) kizakorwa mu ntambwe ikurikira ukoresheje registration number yawe."
+              : "Koresha imeri yawe. Kwinjira bisaba ubutumire bw'umunyamuryango (Invite code) cyangwa kwemeza n'abandi."}
           </Text>
         </View>
 
-        {/* Action 1: Google OAuth */}
+        {/* Action: Email OTP Sign Up */}
         <View style={styles.actionSection}>
-          <TouchableOpacity
-            style={[styles.googleButton, isGoogleLoading && { opacity: 0.7 }]}
-            onPress={handleGoogleSignIn}
-            disabled={isGoogleLoading || isPending}
-            activeOpacity={0.88}
-            accessibilityLabel="Continue with Google"
-            accessibilityRole="button"
-          >
-            {isGoogleLoading ? (
-              <ActivityIndicator color={Colors.night} />
-            ) : (
-              <>
-                <GoogleIcon />
-                <Text style={styles.googleButtonText}>Komeza na Google · Continue with Google</Text>
-              </>
-            )}
-          </TouchableOpacity>
-
-          {/* Divider */}
-          <View style={styles.dividerRow}>
-            <View style={styles.dividerLine} />
-            <Text style={styles.dividerText}>cyangwa koresha imeri · or use email</Text>
-            <View style={styles.dividerLine} />
-          </View>
-
-          {/* Action 2: Email OTP */}
           <View style={styles.inputContainer}>
-            <Text style={styles.inputLabel}>Imeri ya Google · Google Email</Text>
+            <Text style={styles.inputLabel}>Imeri yawe · Email Address</Text>
             <View style={[styles.inputWrapper, !!error && styles.inputWrapperError]}>
               <TextInput
                 style={styles.textInput}
-                placeholder="urugero@gmail.com"
+                placeholder="izina@gmail.com"
                 placeholderTextColor={Colors.boneGhost}
                 keyboardType="email-address"
                 autoCapitalize="none"
@@ -195,6 +138,7 @@ export default function EmailScreen() {
                 }}
                 onSubmitEditing={handleSubmit}
                 returnKeyType="send"
+                autoFocus
               />
             </View>
 
@@ -203,7 +147,7 @@ export default function EmailScreen() {
             <TouchableOpacity
               style={[styles.primaryButton, isPending && { opacity: 0.7 }]}
               onPress={handleSubmit}
-              disabled={isPending || isGoogleLoading}
+              disabled={isPending}
               activeOpacity={0.88}
               accessibilityLabel="Send verification code"
               accessibilityRole="button"
@@ -233,14 +177,6 @@ export default function EmailScreen() {
   );
 }
 
-function GoogleIcon() {
-  return (
-    <View style={styles.googleIconContainer}>
-      <Text style={styles.googleLetter}>G</Text>
-    </View>
-  );
-}
-
 const styles = StyleSheet.create({
   root: {
     flex: 1,
@@ -253,7 +189,18 @@ const styles = StyleSheet.create({
   },
   header: {
     gap: 8,
-    marginTop: 10,
+    marginTop: 6,
+  },
+  backButton: {
+    alignSelf: "flex-start",
+    paddingVertical: 6,
+    paddingHorizontal: 2,
+    marginBottom: 4,
+  },
+  backButtonText: {
+    fontFamily: "Inter_500Medium",
+    fontSize: 14,
+    color: Colors.coral,
   },
   badgeRow: {
     flexDirection: "row",
@@ -307,50 +254,6 @@ const styles = StyleSheet.create({
     marginVertical: 28,
     gap: 20,
   },
-  googleButton: {
-    width: "100%",
-    height: 56,
-    backgroundColor: Colors.bone,
-    borderRadius: Radius.full,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 12,
-  },
-  googleIconContainer: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: "#EA4335",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  googleLetter: {
-    color: "#FFFFFF",
-    fontFamily: "Inter_700Bold",
-    fontSize: 14,
-  },
-  googleButtonText: {
-    fontFamily: "Inter_600SemiBold",
-    fontSize: 15,
-    color: Colors.night,
-  },
-  dividerRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    paddingHorizontal: 4,
-  },
-  dividerLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: Colors.divider,
-  },
-  dividerText: {
-    fontFamily: "Inter_400Regular",
-    fontSize: 12,
-    color: Colors.boneDim,
-  },
   inputContainer: {
     gap: 10,
   },
@@ -393,7 +296,7 @@ const styles = StyleSheet.create({
     borderRadius: Radius.full,
     alignItems: "center",
     justifyContent: "center",
-    marginTop: 6,
+    marginTop: 8,
   },
   primaryButtonText: {
     fontFamily: "Inter_700Bold",

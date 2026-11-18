@@ -16,54 +16,15 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { Colors } from "@/constants/colors";
 import { Radius, Space } from "@/constants/spacing";
-import { useAuth } from "@/contexts/AuthContext";
-import {
-  fetchProfileRouting,
-  isValidEmail,
-  sendOtpForRecovery,
-  signInWithGoogle,
-} from "@/services/authService";
+import { isValidEmail, sendOtpForRecovery } from "@/services/authService";
 
 export default function ForgotAccountScreen() {
   const insets = useSafeAreaInsets();
   const isWeb = Platform.OS === "web";
-  const { setSession, signIn } = useAuth();
 
   const [email, setEmail] = useState("");
   const [error, setError] = useState("");
   const [isPending, setIsPending] = useState(false);
-  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
-
-  async function handleGoogleSignIn() {
-    setError("");
-    setIsGoogleLoading(true);
-
-    try {
-      const res = await signInWithGoogle();
-      if (!res.success) {
-        if (res.error && !res.error.includes("Canceled")) {
-          setError(res.error);
-        }
-        return;
-      }
-
-      if (res.session && res.user) {
-        await setSession(res.session);
-        await signIn(res.session.access_token, res.user.id);
-
-        const routing = await fetchProfileRouting(res.user.id);
-        if (routing.onboardingComplete) {
-          router.replace("/(tabs)");
-        } else {
-          router.replace("/(onboarding)/personal");
-        }
-      }
-    } catch (err: any) {
-      setError(err?.message || "Habaye ikibazo cyo kwinjira na Google.");
-    } finally {
-      setIsGoogleLoading(false);
-    }
-  }
 
   async function handleRecoverySubmit() {
     const cleaned = email.trim().toLowerCase();
@@ -132,48 +93,12 @@ export default function ForgotAccountScreen() {
           <Text style={styles.title}>Kugarura Konti</Text>
           <Text style={styles.titleEn}>Recover Your Account</Text>
           <Text style={styles.subtitle}>
-            Hitamo uburyo bwo kugarura konti yawe ukoresheje Google cyangwa kode yo kuri imeri.
+            Injiza imeri wakoresheje ufungura konti kugira ngo tukoherereze kode y'imibare 6 yo kugarura konti yawe.
           </Text>
         </View>
 
-        {/* Section 1: Google One-Tap Recovery */}
+        {/* Section: Email OTP Recovery */}
         <View style={styles.section}>
-          <View style={styles.card}>
-            <View style={styles.cardHeader}>
-              <Text style={styles.cardTitle}>Waba warakoresheje Google?</Text>
-              <Text style={styles.cardSubtitle}>Registered with Google?</Text>
-            </View>
-            <Text style={styles.cardDescription}>
-              Niba warinjiriye kuri Google, kanda hano winjire ako kanya nta kode bisabye.
-            </Text>
-
-            <TouchableOpacity
-              style={[styles.googleButton, isGoogleLoading && { opacity: 0.7 }]}
-              onPress={handleGoogleSignIn}
-              disabled={isGoogleLoading || isPending}
-              activeOpacity={0.88}
-              accessibilityLabel="Continue with Google"
-              accessibilityRole="button"
-            >
-              {isGoogleLoading ? (
-                <ActivityIndicator color={Colors.night} />
-              ) : (
-                <>
-                  <GoogleIcon />
-                  <Text style={styles.googleButtonText}>Injira na Google · Google Recovery</Text>
-                </>
-              )}
-            </TouchableOpacity>
-          </View>
-
-          {/* Divider */}
-          <View style={styles.dividerRow}>
-            <View style={styles.dividerLine} />
-            <Text style={styles.dividerText}>cyangwa kode kuri imeri · or email recovery</Text>
-            <View style={styles.dividerLine} />
-          </View>
-
-          {/* Section 2: Email OTP Recovery */}
           <View style={styles.inputContainer}>
             <Text style={styles.inputLabel}>Imeri yawe · Email Address</Text>
             <View style={[styles.inputWrapper, !!error && styles.inputWrapperError]}>
@@ -191,6 +116,7 @@ export default function ForgotAccountScreen() {
                 }}
                 onSubmitEditing={handleRecoverySubmit}
                 returnKeyType="send"
+                autoFocus
               />
             </View>
 
@@ -199,7 +125,7 @@ export default function ForgotAccountScreen() {
             <TouchableOpacity
               style={[styles.primaryButton, isPending && { opacity: 0.7 }]}
               onPress={handleRecoverySubmit}
-              disabled={isPending || isGoogleLoading}
+              disabled={isPending}
               activeOpacity={0.88}
               accessibilityLabel="Send recovery code"
               accessibilityRole="button"
@@ -231,14 +157,6 @@ export default function ForgotAccountScreen() {
   );
 }
 
-function GoogleIcon() {
-  return (
-    <View style={styles.googleIconContainer}>
-      <Text style={styles.googleLetter}>G</Text>
-    </View>
-  );
-}
-
 const styles = StyleSheet.create({
   root: {
     flex: 1,
@@ -251,13 +169,13 @@ const styles = StyleSheet.create({
   },
   header: {
     gap: 8,
-    marginTop: 8,
+    marginTop: 6,
   },
   backButton: {
     alignSelf: "flex-start",
     paddingVertical: 6,
     paddingHorizontal: 2,
-    marginBottom: 8,
+    marginBottom: 4,
   },
   backButtonText: {
     fontFamily: "Inter_500Medium",
@@ -285,80 +203,8 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   section: {
-    marginVertical: 24,
+    marginVertical: 28,
     gap: 20,
-  },
-  card: {
-    backgroundColor: Colors.ink,
-    borderWidth: 1,
-    borderColor: Colors.divider,
-    borderRadius: Radius.lg,
-    padding: 18,
-    gap: 12,
-  },
-  cardHeader: {
-    gap: 2,
-  },
-  cardTitle: {
-    fontFamily: "Inter_700Bold",
-    fontSize: 16,
-    color: Colors.bone,
-  },
-  cardSubtitle: {
-    fontFamily: "Inter_400Regular",
-    fontSize: 13,
-    color: Colors.boneDim,
-  },
-  cardDescription: {
-    fontFamily: "Inter_400Regular",
-    fontSize: 13,
-    color: Colors.boneDim,
-    lineHeight: 19,
-  },
-  googleButton: {
-    width: "100%",
-    height: 52,
-    backgroundColor: Colors.bone,
-    borderRadius: Radius.full,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 12,
-    marginTop: 4,
-  },
-  googleIconContainer: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    backgroundColor: "#EA4335",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  googleLetter: {
-    color: "#FFFFFF",
-    fontFamily: "Inter_700Bold",
-    fontSize: 13,
-  },
-  googleButtonText: {
-    fontFamily: "Inter_600SemiBold",
-    fontSize: 14,
-    color: Colors.night,
-  },
-  dividerRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    paddingHorizontal: 4,
-  },
-  dividerLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: Colors.divider,
-  },
-  dividerText: {
-    fontFamily: "Inter_400Regular",
-    fontSize: 12,
-    color: Colors.boneDim,
   },
   inputContainer: {
     gap: 10,
@@ -402,7 +248,7 @@ const styles = StyleSheet.create({
     borderRadius: Radius.full,
     alignItems: "center",
     justifyContent: "center",
-    marginTop: 6,
+    marginTop: 8,
   },
   primaryButtonText: {
     fontFamily: "Inter_700Bold",

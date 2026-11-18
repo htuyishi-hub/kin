@@ -16,56 +16,16 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { Colors } from "@/constants/colors";
 import { Radius, Space } from "@/constants/spacing";
-import { useAuth } from "@/contexts/AuthContext";
-import {
-  fetchProfileRouting,
-  isValidEmail,
-  sendOtpForSignIn,
-  signInWithGoogle,
-} from "@/services/authService";
+import { isValidEmail, sendOtpForSignIn } from "@/services/authService";
 
 export default function SignInScreen() {
   const insets = useSafeAreaInsets();
   const isWeb = Platform.OS === "web";
-  const { setSession, signIn } = useAuth();
 
   const [email, setEmail] = useState("");
   const [error, setError] = useState("");
   const [isNotFound, setIsNotFound] = useState(false);
   const [isPending, setIsPending] = useState(false);
-  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
-
-  async function handleGoogleSignIn() {
-    setError("");
-    setIsNotFound(false);
-    setIsGoogleLoading(true);
-
-    try {
-      const res = await signInWithGoogle();
-      if (!res.success) {
-        if (res.error && !res.error.includes("Canceled")) {
-          setError(res.error);
-        }
-        return;
-      }
-
-      if (res.session && res.user) {
-        await setSession(res.session);
-        await signIn(res.session.access_token, res.user.id);
-
-        const routing = await fetchProfileRouting(res.user.id);
-        if (routing.onboardingComplete) {
-          router.replace("/(tabs)");
-        } else {
-          router.replace("/(onboarding)/personal");
-        }
-      }
-    } catch (err: any) {
-      setError(err?.message || "Habaye ikibazo cyo kwinjira na Google.");
-    } finally {
-      setIsGoogleLoading(false);
-    }
-  }
 
   async function handleSubmit() {
     const cleaned = email.trim().toLowerCase();
@@ -124,41 +84,23 @@ export default function SignInScreen() {
       >
         {/* Header */}
         <View style={styles.header}>
+          <TouchableOpacity
+            onPress={() => router.back()}
+            style={styles.backButton}
+            accessibilityRole="button"
+          >
+            <Text style={styles.backButtonText}>← Inyuma · Back</Text>
+          </TouchableOpacity>
+
           <Text style={styles.title}>Injira muri Konti</Text>
           <Text style={styles.titleEn}>Sign In to Kin</Text>
           <Text style={styles.subtitle}>
-            Koresha Google cyangwa imeri yawe winjire muri konti yawe ya Kin.
+            Injiza imeri yawe yakoreshejwe ufungura konti kugira ngo tukoherereze kode yo kwinjira.
           </Text>
         </View>
 
-        {/* Action 1: Google OAuth */}
+        {/* Action: Email OTP Sign In */}
         <View style={styles.actionSection}>
-          <TouchableOpacity
-            style={[styles.googleButton, isGoogleLoading && { opacity: 0.7 }]}
-            onPress={handleGoogleSignIn}
-            disabled={isGoogleLoading || isPending}
-            activeOpacity={0.88}
-            accessibilityLabel="Continue with Google"
-            accessibilityRole="button"
-          >
-            {isGoogleLoading ? (
-              <ActivityIndicator color={Colors.night} />
-            ) : (
-              <>
-                <GoogleIcon />
-                <Text style={styles.googleButtonText}>Komeza na Google · Continue with Google</Text>
-              </>
-            )}
-          </TouchableOpacity>
-
-          {/* Divider */}
-          <View style={styles.dividerRow}>
-            <View style={styles.dividerLine} />
-            <Text style={styles.dividerText}>cyangwa koresha imeri · or use email</Text>
-            <View style={styles.dividerLine} />
-          </View>
-
-          {/* Action 2: Email OTP Sign In */}
           <View style={styles.inputContainer}>
             <Text style={styles.inputLabel}>Imeri yawe · Email Address</Text>
             <View style={[styles.inputWrapper, !!error && styles.inputWrapperError]}>
@@ -177,6 +119,7 @@ export default function SignInScreen() {
                 }}
                 onSubmitEditing={handleSubmit}
                 returnKeyType="send"
+                autoFocus
               />
             </View>
 
@@ -200,7 +143,7 @@ export default function SignInScreen() {
             <TouchableOpacity
               style={[styles.primaryButton, isPending && { opacity: 0.7 }]}
               onPress={handleSubmit}
-              disabled={isPending || isGoogleLoading}
+              disabled={isPending}
               activeOpacity={0.88}
               accessibilityLabel="Send login code"
               accessibilityRole="button"
@@ -213,7 +156,7 @@ export default function SignInScreen() {
             </TouchableOpacity>
           </View>
 
-          {/* Task 4: Forgot Account Link */}
+          {/* Forgot Account Link */}
           <Pressable
             onPress={() => router.push("/(onboarding)/forgot-account")}
             style={styles.forgotLink}
@@ -239,14 +182,6 @@ export default function SignInScreen() {
   );
 }
 
-function GoogleIcon() {
-  return (
-    <View style={styles.googleIconContainer}>
-      <Text style={styles.googleLetter}>G</Text>
-    </View>
-  );
-}
-
 const styles = StyleSheet.create({
   root: {
     flex: 1,
@@ -259,7 +194,18 @@ const styles = StyleSheet.create({
   },
   header: {
     gap: 8,
-    marginTop: 10,
+    marginTop: 6,
+  },
+  backButton: {
+    alignSelf: "flex-start",
+    paddingVertical: 6,
+    paddingHorizontal: 2,
+    marginBottom: 4,
+  },
+  backButtonText: {
+    fontFamily: "Inter_500Medium",
+    fontSize: 14,
+    color: Colors.coral,
   },
   title: {
     fontFamily: "Fraunces_700Bold",
@@ -284,50 +230,6 @@ const styles = StyleSheet.create({
   actionSection: {
     marginVertical: 28,
     gap: 18,
-  },
-  googleButton: {
-    width: "100%",
-    height: 56,
-    backgroundColor: Colors.bone,
-    borderRadius: Radius.full,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 12,
-  },
-  googleIconContainer: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: "#EA4335",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  googleLetter: {
-    color: "#FFFFFF",
-    fontFamily: "Inter_700Bold",
-    fontSize: 14,
-  },
-  googleButtonText: {
-    fontFamily: "Inter_600SemiBold",
-    fontSize: 15,
-    color: Colors.night,
-  },
-  dividerRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    paddingHorizontal: 4,
-  },
-  dividerLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: Colors.divider,
-  },
-  dividerText: {
-    fontFamily: "Inter_400Regular",
-    fontSize: 12,
-    color: Colors.boneDim,
   },
   inputContainer: {
     gap: 10,
@@ -391,7 +293,7 @@ const styles = StyleSheet.create({
     borderRadius: Radius.full,
     alignItems: "center",
     justifyContent: "center",
-    marginTop: 6,
+    marginTop: 8,
   },
   primaryButtonText: {
     fontFamily: "Inter_700Bold",
