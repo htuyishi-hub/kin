@@ -85,12 +85,12 @@ export default function WelcomeScreen() {
             styles.socialButton,
             pressed && { opacity: 0.88, transform: [{ scale: 0.97 }] },
           ]}
-          onPress={() => router.push({ pathname: '/(onboarding)/email', params: { role: 'student' } })}
+          onPress={() => router.push({ pathname: '/(onboarding)/email', params: { role: 'student', mode: 'signup' } })}
           accessibilityLabel="Continue as Student"
           accessibilityRole="button"
         >
           <UrBadge />
-          <Text style={styles.socialButtonText}>Injira nk'Umunyeshuri · Student Sign In</Text>
+          <Text style={styles.socialButtonText}>Injira nk'Umunyeshuri · Student Sign Up</Text>
         </Pressable>
 
         {/* Divider */}
@@ -106,7 +106,7 @@ export default function WelcomeScreen() {
             styles.personalButton,
             pressed && { opacity: 0.88, transform: [{ scale: 0.97 }] },
           ]}
-          onPress={() => router.push({ pathname: '/(onboarding)/email', params: { role: 'personal' } })}
+          onPress={() => router.push({ pathname: '/(onboarding)/email', params: { role: 'personal', mode: 'signup' } })}
           accessibilityLabel="Continue with Personal Account"
           accessibilityRole="button"
         >
@@ -115,8 +115,10 @@ export default function WelcomeScreen() {
         </Pressable>
 
         <Pressable
-          onPress={() => router.push('/(onboarding)/email')}
+          onPress={() => router.push('/(onboarding)/sign-in')}
           style={styles.signInLink}
+          accessibilityLabel="Sign In"
+          accessibilityRole="button"
         >
           <Text style={styles.signInLabel}>Ufite konti?</Text>
           <Text style={styles.signInAction}> Injira · Sign in</Text>

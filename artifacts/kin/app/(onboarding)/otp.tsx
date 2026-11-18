@@ -1,9 +1,10 @@
-import { useVerifyOtp } from "@workspace/api-client-react";
 import { router, useLocalSearchParams } from "expo-router";
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  KeyboardAvoidingView,
   Platform,
+  Pressable,
   StyleSheet,
   Text,
   TextInput,
@@ -12,85 +13,111 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { Colors } from "@/constants/colors";
+import { Radius, Space } from "@/constants/spacing";
 import { useAuth } from "@/contexts/AuthContext";
-import { useColors } from "@/hooks/useColors";
-import { verifyStudentEmailOtp, verifyPhoneOtp } from "@/services/authService";
+import {
+  fetchProfileRouting,
+  sendOtpForRecovery,
+  sendOtpForSignIn,
+  sendOtpForSignUp,
+  sendPhoneOtp,
+  verifyEmailOtp,
+  verifyPhoneOtp,
+} from "@/services/authService";
 
 export default function OtpScreen() {
-  const { phone, email, type } = useLocalSearchParams<{
+  const { phone, email, type, mode, role } = useLocalSearchParams<{
     phone?: string;
     email?: string;
-    type?: string;
+    type?: "email" | "sms" | "signup" | "recovery";
+    mode?: "signup" | "signin" | "recovery";
+    role?: "student" | "personal";
   }>();
 
   const isEmail = type === "email" || !!email;
   const targetRecipient = isEmail ? email : phone;
 
-  const colors = useColors();
   const insets = useSafeAreaInsets();
   const isWeb = Platform.OS === "web";
   const { signIn, setSession } = useAuth();
 
   const [otp, setOtp] = useState(["", "", "", "", "", ""]);
   const [error, setError] = useState("");
+  const [infoMessage, setInfoMessage] = useState("");
   const [verifying, setVerifying] = useState(false);
+  const [resending, setResending] = useState(false);
+  const [countdown, setCountdown] = useState(60);
+
   const inputs = useRef<(TextInput | null)[]>([]);
 
-  // Fallback API mutation for dev environments
-  const { mutate: verifyOtpFallback } = useVerifyOtp({
-    mutation: {
-      onSuccess: async (data) => {
-        await signIn(data.token, data.userId);
-        if (data.isNewUser || !data.onboardingComplete) {
-          router.replace("/(onboarding)/personal");
-        } else {
-          router.replace("/");
-        }
-      },
-      onError: (err: any) => {
-        setError(err?.data?.message ?? "Invalid code. Please try again.");
-        setOtp(["", "", "", "", "", ""]);
-        inputs.current[0]?.focus();
-      },
-    },
-  });
+  // 60-second countdown timer for Resend Code
+  useEffect(() => {
+    if (countdown <= 0) return;
+    const interval = setInterval(() => {
+      setCountdown((prev) => Math.max(0, prev - 1));
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [countdown]);
 
   async function handleVerify(code: string) {
     if (code.length !== 6) return;
 
     setError("");
+    setInfoMessage("");
     setVerifying(true);
 
     try {
       if (isEmail && email) {
-        // Path A: Supabase Student Email OTP verification
-        const res = await verifyStudentEmailOtp(email, code);
+        // Task 3.1: Wire directly to Supabase verifyOtp
+        const otpType = (mode === "recovery" ? "recovery" : mode === "signup" ? "signup" : "email") as
+          | "email"
+          | "signup"
+          | "recovery";
+
+        const res = await verifyEmailOtp(email, code, otpType);
+
         if (!res.success || !res.session || !res.user) {
-          setError(res.error || "Kode ntabwo ari yo cyangwa yarangiye.");
+          setError(res.error || "Kode ntabwo ari yo cyangwa yarangiye · Invalid or expired code.");
           setOtp(["", "", "", "", "", ""]);
           inputs.current[0]?.focus();
           return;
         }
 
+        // Task 3.4: Confirm session active in SecureStore
         await setSession(res.session);
         await signIn(res.session.access_token, res.user.id);
-        router.replace("/(onboarding)/personal");
+
+        // Post-verification profile routing check
+        const routing = await fetchProfileRouting(res.user.id);
+
+        if (routing.onboardingComplete) {
+          router.replace("/(tabs)");
+        } else {
+          router.replace("/(onboarding)/personal");
+        }
         return;
       }
 
       if (phone) {
-        // Path B: Supabase Phone SMS OTP verification
+        // Fallback SMS verification path
         const res = await verifyPhoneOtp(phone, code);
         if (res.success && res.session && res.user) {
           await setSession(res.session);
           await signIn(res.session.access_token, res.user.id);
-          router.replace("/(onboarding)/personal");
+
+          const routing = await fetchProfileRouting(res.user.id);
+          if (routing.onboardingComplete) {
+            router.replace("/(tabs)");
+          } else {
+            router.replace("/(onboarding)/personal");
+          }
           return;
         }
 
-        // Graceful fallback to local dev OTP handler if Supabase SMS unconfigured
-        verifyOtpFallback({ data: { phoneNumber: phone, otp: code } });
-        return;
+        setError(res.error || "Kode ntabwo ari yo cyangwa yarangiye.");
+        setOtp(["", "", "", "", "", ""]);
+        inputs.current[0]?.focus();
       }
     } catch (err: any) {
       setError(err?.message || "Ikibazo cyabaye mu kwemeza kode.");
@@ -99,8 +126,77 @@ export default function OtpScreen() {
     }
   }
 
+  async function handleResendCode() {
+    if (countdown > 0 || resending) return;
+
+    setError("");
+    setInfoMessage("");
+    setResending(true);
+
+    try {
+      if (isEmail && email) {
+        let res;
+        if (mode === "recovery") {
+          res = await sendOtpForRecovery(email);
+        } else if (mode === "signin") {
+          res = await sendOtpForSignIn(email);
+        } else {
+          res = await sendOtpForSignUp(email);
+        }
+
+        if (!res.success) {
+          setError(res.error || "Ntibyashobotse kongera kohereza kode.");
+          return;
+        }
+
+        setInfoMessage("Kode nshya yoherejwe kuri imeri yawe · New code sent.");
+        setCountdown(60);
+        setOtp(["", "", "", "", "", ""]);
+        inputs.current[0]?.focus();
+        return;
+      }
+
+      if (phone) {
+        const res = await sendPhoneOtp(phone);
+        if (!res.success) {
+          setError(res.error || "Ntibyashobotse kohereza SMS.");
+          return;
+        }
+        setInfoMessage("Kode nshya yoherejwe kuri telefoni · New SMS sent.");
+        setCountdown(60);
+        setOtp(["", "", "", "", "", ""]);
+        inputs.current[0]?.focus();
+      }
+    } catch (err: any) {
+      setError(err?.message || "Habaye ikibazo cyo kohereza kode.");
+    } finally {
+      setResending(false);
+    }
+  }
+
   function handleChange(text: string, index: number) {
-    const digit = text.slice(-1);
+    // Handle multi-digit paste
+    if (text.length > 1) {
+      const digits = text.replace(/\D/g, "").slice(0, 6).split("");
+      if (digits.length > 0) {
+        const newOtp = [...otp];
+        digits.forEach((d, i) => {
+          if (i < 6) newOtp[i] = d;
+        });
+        setOtp(newOtp);
+        setError("");
+
+        const nextIndex = Math.min(digits.length, 5);
+        inputs.current[nextIndex]?.focus();
+
+        if (digits.length === 6) {
+          handleVerify(digits.join(""));
+        }
+        return;
+      }
+    }
+
+    const digit = text.slice(-1).replace(/\D/g, "");
     const newOtp = [...otp];
     newOtp[index] = digit;
     setOtp(newOtp);
@@ -111,9 +207,9 @@ export default function OtpScreen() {
     }
 
     if (index === 5 && digit) {
-      const code = [...newOtp.slice(0, 5), digit].join("");
-      if (code.length === 6) {
-        handleVerify(code);
+      const fullCode = [...newOtp.slice(0, 5), digit].join("");
+      if (fullCode.length === 6) {
+        handleVerify(fullCode);
       }
     }
   }
@@ -131,84 +227,251 @@ export default function OtpScreen() {
   const isPending = verifying;
 
   return (
-    <View
-      style={[
-        styles.container,
-        {
-          backgroundColor: colors.background,
-          paddingTop: isWeb ? 67 : insets.top + 24,
-          paddingBottom: isWeb ? 34 : insets.bottom + 24,
-        },
-      ]}
+    <KeyboardAvoidingView
+      style={styles.root}
+      behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
-      <View style={styles.header}>
-        <Text style={[styles.title, { color: colors.foreground }]}>Enter the code</Text>
-        <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>
-          Sent to {targetRecipient}
-        </Text>
-      </View>
-
-      <View style={styles.otpRow}>
-        {otp.map((digit, i) => (
-          <TextInput
-            key={i}
-            ref={(r) => { inputs.current[i] = r; }}
-            style={[
-              styles.otpCell,
-              {
-                borderColor: digit ? colors.primary : colors.border,
-                backgroundColor: colors.card,
-                color: colors.foreground,
-              },
-            ]}
-            value={digit}
-            onChangeText={(t) => handleChange(t, i)}
-            onKeyPress={(e) => handleKeyPress(e, i)}
-            keyboardType="number-pad"
-            maxLength={1}
-            selectTextOnFocus
-            autoFocus={i === 0}
-          />
-        ))}
-      </View>
-
-      {error ? <Text style={[styles.error, { color: colors.destructive }]}>{error}</Text> : null}
-
-      <TouchableOpacity
+      <View
         style={[
-          styles.button,
-          { backgroundColor: colors.primary, opacity: isPending || code.length < 6 ? 0.5 : 1 },
+          styles.container,
+          {
+            paddingTop: isWeb ? 50 : insets.top + 24,
+            paddingBottom: isWeb ? 34 : insets.bottom + 24,
+          },
         ]}
-        onPress={() => handleVerify(code)}
-        disabled={isPending || code.length < 6}
-        activeOpacity={0.85}
       >
-        {isPending ? (
-          <ActivityIndicator color={colors.primaryForeground} />
-        ) : (
-          <Text style={[styles.buttonText, { color: colors.primaryForeground }]}>Emeza</Text>
-        )}
-      </TouchableOpacity>
-    </View>
+        {/* Header */}
+        <View style={styles.header}>
+          <TouchableOpacity
+            onPress={() => router.back()}
+            style={styles.backButton}
+            accessibilityRole="button"
+          >
+            <Text style={styles.backButtonText}>← Hindura imeri · Change email</Text>
+          </TouchableOpacity>
+
+          <Text style={styles.title}>Injiza kode y'imibare 6</Text>
+          <Text style={styles.titleEn}>Enter 6-Digit Code</Text>
+          <Text style={styles.subtitle}>
+            Kode yoherejwe kuri:{"\n"}
+            <Text style={styles.recipientHighlight}>{targetRecipient}</Text>
+          </Text>
+        </View>
+
+        {/* 6 Digit Input Cells */}
+        <View style={styles.otpSection}>
+          <View style={styles.otpRow}>
+            {otp.map((digit, i) => (
+              <TextInput
+                key={i}
+                ref={(r) => {
+                  inputs.current[i] = r;
+                }}
+                style={[
+                  styles.otpCell,
+                  digit ? styles.otpCellFilled : styles.otpCellEmpty,
+                  error ? styles.otpCellError : null,
+                ]}
+                value={digit}
+                onChangeText={(t) => handleChange(t, i)}
+                onKeyPress={(e) => handleKeyPress(e, i)}
+                keyboardType="number-pad"
+                maxLength={i === 0 ? 6 : 1}
+                selectTextOnFocus
+                autoFocus={i === 0}
+              />
+            ))}
+          </View>
+
+          {/* Feedback messages */}
+          {error ? <Text style={styles.errorText}>{error}</Text> : null}
+          {infoMessage ? <Text style={styles.infoText}>{infoMessage}</Text> : null}
+        </View>
+
+        {/* Verify Action Button */}
+        <View style={styles.actionBlock}>
+          <TouchableOpacity
+            style={[
+              styles.verifyButton,
+              (isPending || code.length < 6) && styles.verifyButtonDisabled,
+            ]}
+            onPress={() => handleVerify(code)}
+            disabled={isPending || code.length < 6}
+            activeOpacity={0.85}
+            accessibilityLabel="Verify code"
+            accessibilityRole="button"
+          >
+            {isPending ? (
+              <ActivityIndicator color={Colors.bone} />
+            ) : (
+              <Text style={styles.verifyButtonText}>Emeza Kode · Verify</Text>
+            )}
+          </TouchableOpacity>
+
+          {/* Task 3.2: 60-Second Countdown & Resend Code Button */}
+          <View style={styles.resendContainer}>
+            {countdown > 0 ? (
+              <Text style={styles.countdownText}>
+                Ohereza indi kode nyuma y'amasegonda:{" "}
+                <Text style={styles.countdownNumber}>{countdown}s</Text>
+              </Text>
+            ) : (
+              <TouchableOpacity
+                onPress={handleResendCode}
+                disabled={resending}
+                style={styles.resendButton}
+                activeOpacity={0.8}
+                accessibilityRole="button"
+              >
+                {resending ? (
+                  <ActivityIndicator size="small" color={Colors.trust} />
+                ) : (
+                  <Text style={styles.resendButtonText}>
+                    Ohereza indi kode · Resend code
+                  </Text>
+                )}
+              </TouchableOpacity>
+            )}
+          </View>
+        </View>
+      </View>
+    </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, paddingHorizontal: 24, gap: 32 },
-  header: { gap: 6 },
-  title: { fontFamily: "Inter_700Bold", fontSize: 28, letterSpacing: -0.5 },
-  subtitle: { fontFamily: "Inter_400Regular", fontSize: 15 },
-  otpRow: { flexDirection: "row", gap: 10, justifyContent: "center" },
+  root: {
+    flex: 1,
+    backgroundColor: Colors.night,
+  },
+  container: {
+    flex: 1,
+    paddingHorizontal: Space.px6,
+    justifyContent: "space-between",
+  },
+  header: {
+    gap: 8,
+  },
+  backButton: {
+    alignSelf: "flex-start",
+    paddingVertical: 6,
+    paddingHorizontal: 2,
+    marginBottom: 6,
+  },
+  backButtonText: {
+    fontFamily: "Inter_500Medium",
+    fontSize: 14,
+    color: Colors.coral,
+  },
+  title: {
+    fontFamily: "Fraunces_700Bold",
+    fontSize: 26,
+    color: Colors.bone,
+    letterSpacing: -0.5,
+    lineHeight: 32,
+  },
+  titleEn: {
+    fontFamily: "Inter_500Medium",
+    fontSize: 15,
+    color: Colors.boneDim,
+    marginTop: -4,
+  },
+  subtitle: {
+    fontFamily: "Inter_400Regular",
+    fontSize: 14,
+    color: Colors.boneDim,
+    lineHeight: 20,
+    marginTop: 4,
+  },
+  recipientHighlight: {
+    fontFamily: "Inter_700Bold",
+    color: Colors.bone,
+  },
+  otpSection: {
+    gap: 16,
+    alignItems: "center",
+  },
+  otpRow: {
+    flexDirection: "row",
+    gap: 10,
+    justifyContent: "center",
+    width: "100%",
+  },
   otpCell: {
-    width: 48,
-    height: 60,
-    borderRadius: 12,
+    width: 46,
+    height: 58,
+    borderRadius: Radius.md,
     borderWidth: 1.5,
     textAlign: "center",
     fontFamily: "Inter_700Bold",
     fontSize: 24,
+    color: Colors.bone,
   },
-  error: { fontFamily: "Inter_400Regular", fontSize: 13, textAlign: "center" },
-  button: { paddingVertical: 18, borderRadius: 16, alignItems: "center" },
-  buttonText: { fontFamily: "Inter_700Bold", fontSize: 17 },
+  otpCellEmpty: {
+    borderColor: Colors.divider,
+    backgroundColor: Colors.ink,
+  },
+  otpCellFilled: {
+    borderColor: Colors.trust,
+    backgroundColor: Colors.inkRaised,
+  },
+  otpCellError: {
+    borderColor: Colors.coral,
+  },
+  errorText: {
+    fontFamily: "Inter_500Medium",
+    fontSize: 13,
+    color: Colors.coral,
+    textAlign: "center",
+    paddingHorizontal: 8,
+    lineHeight: 18,
+  },
+  infoText: {
+    fontFamily: "Inter_500Medium",
+    fontSize: 13,
+    color: Colors.success,
+    textAlign: "center",
+    paddingHorizontal: 8,
+  },
+  actionBlock: {
+    gap: 16,
+    marginBottom: 16,
+  },
+  verifyButton: {
+    backgroundColor: Colors.trust,
+    height: 54,
+    borderRadius: Radius.full,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  verifyButtonDisabled: {
+    opacity: 0.5,
+  },
+  verifyButtonText: {
+    fontFamily: "Inter_700Bold",
+    fontSize: 16,
+    color: Colors.bone,
+  },
+  resendContainer: {
+    alignItems: "center",
+    paddingVertical: 8,
+  },
+  countdownText: {
+    fontFamily: "Inter_400Regular",
+    fontSize: 13,
+    color: Colors.boneDim,
+  },
+  countdownNumber: {
+    fontFamily: "Inter_700Bold",
+    color: Colors.coral,
+  },
+  resendButton: {
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+  },
+  resendButtonText: {
+    fontFamily: "Inter_600SemiBold",
+    fontSize: 14,
+    color: Colors.trust,
+  },
 });
