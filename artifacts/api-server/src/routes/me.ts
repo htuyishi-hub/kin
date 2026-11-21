@@ -40,7 +40,18 @@ function mapProfile(p: typeof profilesTable.$inferSelect) {
     crossingFeePaid: p.crossingFeePaid ?? false,
     profileActive: p.profileActive ?? true,
     profilePaused: p.profilePaused ?? false,
-    onboardingComplete: p.onboardingComplete ?? false,
+    onboardingComplete: Boolean(
+      p.onboardingComplete &&
+      p.fullName &&
+      p.fullName.trim().length > 0 &&
+      p.dateOfBirth &&
+      p.gender &&
+      p.gender.trim().length > 0 &&
+      p.faculty &&
+      p.faculty.trim().length > 0 &&
+      p.primaryIntent &&
+      p.primaryIntent.trim().length > 0
+    ),
     phoneVerified: p.phoneVerified ?? false,
     idVerified: p.idVerified ?? false,
     proximityConsent: p.proximityConsent ?? false,
@@ -94,17 +105,9 @@ router.get("/me", requireAuth, async (req, res) => {
 
   let p = rows[0] as any;
 
-  // Lazily ensure user has an invite code
+  // Lazily provide invite code for response without writing to database during GET
   if (!p.inviteCode) {
-    const code = generateInviteCode();
-    await db.update(profilesTable).set({ inviteCode: code }).where(eq(profilesTable.id, userId));
-    p.inviteCode = code;
-  }
-
-  // Auto-repair: unblock existing users who completed core profile info but got stuck when prompts were removed
-  if (!p.onboardingComplete && p.fullName && (p.dateOfBirth || p.gender)) {
-    await db.update(profilesTable).set({ onboardingComplete: true }).where(eq(profilesTable.id, userId));
-    p.onboardingComplete = true;
+    p.inviteCode = generateInviteCode();
   }
 
   try {
@@ -254,6 +257,7 @@ router.post("/me/onboarding", requireAuth, async (req, res) => {
     .set({
       hiddenTier: hiddenTier as any,
       primaryIntent,
+      faculty: occupation,
       campusName: campusName ?? null,
       fullName,
       gender,

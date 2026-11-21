@@ -293,7 +293,7 @@ export async function fetchProfileRouting(userId: string): Promise<{
   try {
     const { data, error } = await supabase
       .from('profiles')
-      .select('id, full_name, onboarding_complete, is_verified, institution_verified, account_status')
+      .select('id, full_name, date_of_birth, gender, faculty, primary_intent, onboarding_complete, is_verified, institution_verified, account_status')
       .eq('id', userId)
       .maybeSingle();
 
@@ -307,14 +307,20 @@ export async function fetchProfileRouting(userId: string): Promise<{
       };
     }
 
-    const hasName = Boolean(data.full_name && data.full_name.trim().length > 0);
-    let onboardingComplete = Boolean(data.onboarding_complete);
+    const hasAllFive = Boolean(
+      data.full_name &&
+      data.full_name.trim().length > 0 &&
+      data.date_of_birth &&
+      data.gender &&
+      data.gender.trim().length > 0 &&
+      data.faculty &&
+      data.faculty.trim().length > 0 &&
+      data.primary_intent &&
+      data.primary_intent.trim().length > 0
+    );
 
-    // Auto-repair: unblock existing users with profile info who were stuck when prompts were removed
-    if (!onboardingComplete && hasName) {
-      onboardingComplete = true;
-      supabase.from('profiles').update({ onboarding_complete: true }).eq('id', userId).then();
-    }
+    const onboardingComplete = Boolean(data.onboarding_complete && hasAllFive);
+    const hasName = Boolean(data.full_name && data.full_name.trim().length > 0);
 
     return {
       onboardingComplete,
