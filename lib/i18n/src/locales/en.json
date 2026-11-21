@@ -233,5 +233,18 @@
     "generic": "Something went wrong. Try again.",
     "urRegistrationInvalid": "Registration number must be 9 digits",
     "inviteAlreadyClaimed": "You have already claimed an invite"
+  },
+  "moderation": {
+    "title": "Community Moderation",
+    "reviewQueue": "Review Queue",
+    "emptyTitle": "Queue Caught Up",
+    "refresh": "Check for New Candidates",
+    "approve": "Approve",
+    "deny": "Deny",
+    "confirmTitle": "Approve {{name}}?",
+    "confirmButton": "Confirm Approval",
+    "approvedStatus": "Approved {{name}}",
+    "activatedStatus": "{{name}} activated",
+    "quorumProgress": "Quorum: {{approvers}}/2 approvers · {{score}}/5 pts"
   }
 }

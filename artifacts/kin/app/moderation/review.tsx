@@ -25,6 +25,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useAuth } from "@/contexts/AuthContext";
 import { Colors } from "@/constants/colors";
+import { useTranslation } from "@workspace/i18n";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 const SWIPE_THRESHOLD = 120;
@@ -43,6 +44,7 @@ type ModerationCandidate = {
 export default function ModerationReviewScreen() {
   const insets = useSafeAreaInsets();
   const { token } = useAuth();
+  const { t } = useTranslation();
 
   const [loading, setLoading] = useState(true);
   const [candidates, setCandidates] = useState<ModerationCandidate[]>([]);
@@ -135,8 +137,8 @@ export default function ModerationReviewScreen() {
       Haptics.notificationAsync?.(Haptics.NotificationFeedbackType.Success);
       setFeedbackBanner(
         data.activated
-          ? `${pendingCandidate.firstName} reached the threshold and is now an active member!`
-          : `Approved ${pendingCandidate.firstName} (+${data.weightAdded} trust weight applied).`
+          ? t("moderation.activatedStatus", { name: pendingCandidate.firstName })
+          : t("moderation.approvedStatus", { name: pendingCandidate.firstName })
       );
 
       setTimeout(() => setFeedbackBanner(null), 3000);
@@ -145,7 +147,7 @@ export default function ModerationReviewScreen() {
       advanceNextCard();
     } catch (err: any) {
       Haptics.notificationAsync?.(Haptics.NotificationFeedbackType.Error);
-      alert(err?.message || "Approval failed.");
+      alert(err?.message || t("errors.generic"));
     } finally {
       setSubmitting(false);
     }
@@ -219,7 +221,7 @@ export default function ModerationReviewScreen() {
       <View style={[styles.center, { backgroundColor: Colors.night }]}>
         <ActivityIndicator size="large" color={Colors.trust} />
         <Text style={[styles.loadingText, { color: Colors.boneDim }]}>
-          Loading moderation deck...
+          {t("common.loading")}
         </Text>
       </View>
     );
@@ -233,8 +235,7 @@ export default function ModerationReviewScreen() {
           <Feather name="arrow-left" size={20} color={Colors.bone} />
         </TouchableOpacity>
         <View style={styles.headerTitleBlock}>
-          <Text style={styles.headerTitle}>Community Moderation</Text>
-          <Text style={styles.headerSub}>Review Waitlisted Candidates</Text>
+          <Text style={styles.headerTitle}>{t("moderation.title")}</Text>
         </View>
         <View style={{ width: 40 }} />
       </View>
@@ -251,17 +252,14 @@ export default function ModerationReviewScreen() {
       {!currentCandidate ? (
         <View style={styles.emptyContainer}>
           <Feather name="shield" size={54} color={Colors.gold} />
-          <Text style={styles.emptyTitle}>Queue Caught Up</Text>
-          <Text style={styles.emptySubtitle}>
-            There are currently no more waitlisted applicants awaiting community review.
-          </Text>
+          <Text style={styles.emptyTitle}>{t("moderation.emptyTitle")}</Text>
           <TouchableOpacity
             style={styles.refreshBtn}
             onPress={loadModerationQueue}
             activeOpacity={0.85}
           >
             <Feather name="rotate-cw" size={16} color={Colors.bone} />
-            <Text style={styles.btnText}>Check for New Candidates</Text>
+            <Text style={styles.btnText}>{t("moderation.refresh")}</Text>
           </TouchableOpacity>
         </View>
       ) : (
@@ -314,11 +312,11 @@ export default function ModerationReviewScreen() {
 
               {/* Stamp Badges */}
               <Animated.View style={[styles.stampBadge, styles.approveBadge, approveBadgeStyle]}>
-                <Text style={styles.approveBadgeText}>APPROVE</Text>
+                <Text style={styles.approveBadgeText}>{t("moderation.approve").toUpperCase()}</Text>
               </Animated.View>
 
               <Animated.View style={[styles.stampBadge, styles.denyBadge, denyBadgeStyle]}>
-                <Text style={styles.denyBadgeText}>DENY</Text>
+                <Text style={styles.denyBadgeText}>{t("moderation.deny").toUpperCase()}</Text>
               </Animated.View>
 
               {/* Teaser Overlay: FIRST NAME ONLY */}
@@ -327,7 +325,10 @@ export default function ModerationReviewScreen() {
                 <View style={styles.scorePill}>
                   <Feather name="shield" size={12} color={Colors.gold} />
                   <Text style={styles.scorePillText}>
-                    Quorum: {currentCandidate.approverCount ?? 0}/2 approvers · {currentCandidate.approvalScore ?? 0}/5 pts
+                    {t("moderation.quorumProgress", {
+                      approvers: currentCandidate.approverCount ?? 0,
+                      score: currentCandidate.approvalScore ?? 0,
+                    })}
                   </Text>
                 </View>
               </View>
@@ -342,7 +343,7 @@ export default function ModerationReviewScreen() {
               activeOpacity={0.85}
             >
               <Feather name="x" size={26} color={Colors.danger} />
-              <Text style={styles.actionBtnText}>Deny</Text>
+              <Text style={styles.actionBtnText}>{t("moderation.deny")}</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -351,7 +352,7 @@ export default function ModerationReviewScreen() {
               activeOpacity={0.85}
             >
               <Feather name="check" size={26} color={Colors.success} />
-              <Text style={styles.actionBtnText}>Approve</Text>
+              <Text style={styles.actionBtnText}>{t("moderation.approve")}</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -373,18 +374,8 @@ export default function ModerationReviewScreen() {
               <Feather name="alert-triangle" size={32} color={Colors.gold} />
             </View>
 
-            <Text style={styles.modalTitle}>Confirm Community Approval</Text>
-
-            <Text style={styles.modalBody}>
-              Approving a bad actor will permanently deduct 25 points from your Trust Score.
-            </Text>
-
-            <Text style={styles.modalSub}>
-              Kin enforces multi-sig quorum: at least 2 verified community members must approve{" "}
-              <Text style={{ color: Colors.bone, fontFamily: "Inter_600SemiBold" }}>
-                {pendingCandidate?.firstName}
-              </Text>{" "}
-              to activate their profile.
+            <Text style={styles.modalTitle}>
+              {t("moderation.confirmTitle", { name: pendingCandidate?.firstName ?? "" })}
             </Text>
 
             <View style={styles.modalButtons}>
@@ -398,7 +389,7 @@ export default function ModerationReviewScreen() {
                 disabled={submitting}
                 activeOpacity={0.8}
               >
-                <Text style={styles.cancelModalBtnText}>Cancel</Text>
+                <Text style={styles.cancelModalBtnText}>{t("common.cancel")}</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
@@ -410,7 +401,7 @@ export default function ModerationReviewScreen() {
                 {submitting ? (
                   <ActivityIndicator color={Colors.bone} size="small" />
                 ) : (
-                  <Text style={styles.confirmApproveBtnText}>Confirm Approval</Text>
+                  <Text style={styles.confirmApproveBtnText}>{t("moderation.confirmButton")}</Text>
                 )}
               </TouchableOpacity>
             </View>
@@ -457,11 +448,6 @@ const styles = StyleSheet.create({
     fontFamily: "Fraunces_700Bold",
     fontSize: 18,
     color: Colors.bone,
-  },
-  headerSub: {
-    fontFamily: "Inter_400Regular",
-    fontSize: 12,
-    color: Colors.boneDim,
   },
   feedbackCard: {
     flexDirection: "row",
@@ -633,13 +619,6 @@ const styles = StyleSheet.create({
     color: Colors.bone,
     textAlign: "center",
   },
-  emptySubtitle: {
-    fontFamily: "Inter_400Regular",
-    fontSize: 14,
-    color: Colors.boneDim,
-    textAlign: "center",
-    lineHeight: 21,
-  },
   refreshBtn: {
     flexDirection: "row",
     alignItems: "center",
@@ -687,20 +666,6 @@ const styles = StyleSheet.create({
     fontSize: 20,
     color: Colors.bone,
     textAlign: "center",
-  },
-  modalBody: {
-    fontFamily: "Inter_600SemiBold",
-    fontSize: 14,
-    color: Colors.gold,
-    textAlign: "center",
-    lineHeight: 20,
-  },
-  modalSub: {
-    fontFamily: "Inter_400Regular",
-    fontSize: 13,
-    color: Colors.boneDim,
-    textAlign: "center",
-    lineHeight: 18,
   },
   modalButtons: {
     flexDirection: "row",

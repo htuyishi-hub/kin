@@ -166,7 +166,7 @@ export default function DiscoverScreen() {
               activeOpacity={0.8}
             >
               <Feather name="shield" size={14} color={Colors.gold} />
-              <Text style={styles.moderationBtnText}>Review Queue</Text>
+              <Text style={styles.moderationBtnText}>{t("moderation.reviewQueue")}</Text>
             </TouchableOpacity>
           )}
 

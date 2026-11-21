@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useLocation } from 'wouter';
-import { Clock, Share2, Check, ShieldCheck, Users, Copy } from 'lucide-react';
+import { Clock, Share2, Check, Copy } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -33,29 +33,6 @@ export default function OnboardingWaiting() {
 
       {/* Card Stats */}
       <div className="flex flex-col gap-3 my-auto py-2">
-        {/* Status card */}
-        <div className="p-4 bg-[#1A1A2E] border border-[#21262D] rounded-2xl flex flex-col gap-3">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-[#A8A49E] flex items-center gap-1.5">
-              <Users className="w-3.5 h-3.5 text-[#2563EB]" />
-              {t('waiting.queuePosition')}
-            </span>
-            <span className="text-xs font-bold text-[#F0EDE6] bg-[#242438] px-2.5 py-0.5 rounded-full font-mono">
-              {t('waiting.positionNumber')}
-            </span>
-          </div>
-
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-[#A8A49E] flex items-center gap-1.5">
-              <ShieldCheck className="w-3.5 h-3.5 text-[#3FB950]" />
-              {t('waiting.trustScore')}
-            </span>
-            <span className="text-xs font-bold text-[#3FB950] font-mono">
-              50 / 100
-            </span>
-          </div>
-        </div>
-
         {/* Shareable Invite Link Card */}
         <div className="p-4 bg-[#1A1A2E]/70 border border-[#21262D] rounded-2xl flex flex-col gap-2">
           <label className="text-xs font-semibold uppercase tracking-wider text-[#A8A49E]">

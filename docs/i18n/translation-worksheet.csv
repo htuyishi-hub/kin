@@ -194,3 +194,14 @@ profile.shareInviteMessage,profile,notification,Join me on Kin: {{link}},Injira 
 errors.generic,errors,error,Something went wrong. Try again.,Hari ikitagenze neza. Ongera ugerageze.,Hari ikitagenze neza. Ongera ugerageze.,,60,generic error fallback message,approved
 errors.urRegistrationInvalid,errors,error,Registration number must be 9 digits,Nimero yo kwiyandikisha igomba kuba imibare 9,Nimero yo kwiyandikisha igomba kuba imibare 9,,60,UR registration format error from API code UR_REGISTRATION_INVALID,approved
 errors.inviteAlreadyClaimed,errors,error,You have already claimed an invite,Wamaze gukoresha ubutumire,Wamaze gukoresha ubutumire,,60,Invite already claimed error from API code INVITE_ALREADY_CLAIMED,approved
+moderation.title,moderation,title,Community Moderation,Igenzura ry'umuryango,,,40,moderation screen title,needs_review
+moderation.reviewQueue,discover,button,Review Queue,Urutonde rwo gusuzuma,,,30,discover header shortcut pill,needs_review
+moderation.emptyTitle,moderation,title,Queue Caught Up,Nta basaba bategereje,,,40,empty queue title,needs_review
+moderation.refresh,moderation,button,Check for New Candidates,Reba abasaba bashya,,,35,refresh queue button,needs_review
+moderation.approve,moderation,button,Approve,Emeza,,,20,approve action button and stamp,needs_review
+moderation.deny,moderation,button,Deny,Hakana,,,20,deny action button and stamp,needs_review
+moderation.confirmTitle,moderation,title,Approve {{name}}?,Kwemeza {{name}}?,,{{name}},40,modal approval title,needs_review
+moderation.confirmButton,moderation,button,Confirm Approval,Emeza,,,25,confirm modal button,needs_review
+moderation.approvedStatus,moderation,status,Approved {{name}},Wemeje {{name}},,{{name}},50,approval success toast,needs_review
+moderation.activatedStatus,moderation,status,{{name}} activated,{{name}} yemejwe mu muryango,,{{name}},50,candidate activation toast,needs_review
+moderation.quorumProgress,moderation,status,Quorum: {{approvers}}/2 approvers · {{score}}/5 pts,Abemeje: {{approvers}}/2 · amanota {{score}}/5,,{{approvers}}; {{score}},60,multi-sig progress indicator,needs_review

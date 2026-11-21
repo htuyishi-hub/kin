@@ -233,5 +233,18 @@
     "generic": "Hari ikitagenze neza. Ongera ugerageze.",
     "urRegistrationInvalid": "Nimero yo kwiyandikisha igomba kuba imibare 9",
     "inviteAlreadyClaimed": "Wamaze gukoresha ubutumire"
+  },
+  "moderation": {
+    "title": "Igenzura ry'umuryango",
+    "reviewQueue": "Urutonde rwo gusuzuma",
+    "emptyTitle": "Nta basaba bategereje",
+    "refresh": "Reba abasaba bashya",
+    "approve": "Emeza",
+    "deny": "Hakana",
+    "confirmTitle": "Kwemeza {{name}}?",
+    "confirmButton": "Emeza",
+    "approvedStatus": "Wemeje {{name}}",
+    "activatedStatus": "{{name}} yemejwe mu muryango",
+    "quorumProgress": "Abemeje: {{approvers}}/2 · amanota {{score}}/5"
   }
 }
