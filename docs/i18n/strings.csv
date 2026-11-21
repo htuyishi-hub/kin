@@ -1,0 +1,165 @@
+key,english,file,screen
+welcome.tagline,The person you will marry is here.,artifacts/kin/app/(onboarding)/welcome.tsx,welcome
+welcome.studentSignUp,Student Sign Up,artifacts/kin/app/(onboarding)/welcome.tsx,welcome
+welcome.orDivider,or,artifacts/kin/app/(onboarding)/welcome.tsx,welcome
+welcome.personalSignUp,Personal Account (Invited),artifacts/kin/app/(onboarding)/welcome.tsx,welcome
+welcome.alreadyHaveAccount,Already have an account?,artifacts/kin/app/(onboarding)/welcome.tsx,welcome
+welcome.signInAction,Sign in,artifacts/kin/app/(onboarding)/welcome.tsx,welcome
+welcome.urBadge,UR,artifacts/kin/app/(onboarding)/welcome.tsx,welcome
+welcome.inviteBadge,INVITE,artifacts/kin/app/(onboarding)/welcome.tsx,welcome
+welcome.selectLanguage,Language,artifacts/kin/app/(onboarding)/welcome.tsx,welcome
+auth.email.back,Back,artifacts/kin/app/(onboarding)/email.tsx,auth.email
+auth.email.studentTitle,Student Sign Up,artifacts/kin/app/(onboarding)/email.tsx,auth.email
+auth.email.personalTitle,Personal Account Sign Up,artifacts/kin/app/(onboarding)/email.tsx,auth.email
+auth.email.inputLabel,Email Address,artifacts/kin/app/(onboarding)/email.tsx,auth.email
+auth.email.placeholder,name@gmail.com,artifacts/kin/app/(onboarding)/email.tsx,auth.email
+auth.email.sendCode,Send 6-Digit Code,artifacts/kin/app/(onboarding)/email.tsx,auth.email
+auth.email.alreadyHaveAccount,Already have an account?,artifacts/kin/app/(onboarding)/email.tsx,auth.email
+auth.email.signInAction,Sign in,artifacts/kin/app/(onboarding)/email.tsx,auth.email
+auth.email.enterEmail,Enter your email,artifacts/kin/app/(onboarding)/email.tsx,auth.email
+auth.email.invalidFormat,Invalid email format,artifacts/kin/app/(onboarding)/email.tsx,auth.email
+auth.email.sendFailed,Failed to send code. Please try again.,artifacts/kin/app/(onboarding)/email.tsx,auth.email
+auth.signIn.title,Sign In,artifacts/kin/app/(onboarding)/sign-in.tsx,auth.signIn
+auth.signIn.emailLabel,Email Address,artifacts/kin/app/(onboarding)/sign-in.tsx,auth.signIn
+auth.signIn.emailPlaceholder,name@gmail.com,artifacts/kin/app/(onboarding)/sign-in.tsx,auth.signIn
+auth.signIn.sendCode,Send Code,artifacts/kin/app/(onboarding)/sign-in.tsx,auth.signIn
+auth.signIn.forgotAccount,Forgot account?,artifacts/kin/app/(onboarding)/sign-in.tsx,auth.signIn
+auth.signIn.noAccount,Don't have an account?,artifacts/kin/app/(onboarding)/sign-in.tsx,auth.signIn
+auth.signIn.createAccount,Create an account,artifacts/kin/app/(onboarding)/sign-in.tsx,auth.signIn
+auth.signIn.accountNotFound,Account not found. Please create an account.,artifacts/kin/app/(onboarding)/sign-in.tsx,auth.signIn
+auth.forgot.title,Recover Your Account,artifacts/kin/app/(onboarding)/forgot-account.tsx,auth.forgotAccount
+auth.forgot.emailLabel,Email Address,artifacts/kin/app/(onboarding)/forgot-account.tsx,auth.forgotAccount
+auth.forgot.emailPlaceholder,name@gmail.com,artifacts/kin/app/(onboarding)/forgot-account.tsx,auth.forgotAccount
+auth.forgot.sendRecoveryCode,Send Recovery Code,artifacts/kin/app/(onboarding)/forgot-account.tsx,auth.forgotAccount
+auth.forgot.rememberAccount,Remember your account?,artifacts/kin/app/(onboarding)/forgot-account.tsx,auth.forgotAccount
+auth.forgot.signInAction,Sign in,artifacts/kin/app/(onboarding)/forgot-account.tsx,auth.forgotAccount
+auth.forgot.noAccountFound,No account associated with this email address.,artifacts/kin/app/(onboarding)/forgot-account.tsx,auth.forgotAccount
+auth.otp.changeEmail,Change email,artifacts/kin/app/(onboarding)/otp.tsx,auth.otp
+auth.otp.changePhone,Change phone,artifacts/kin/app/(onboarding)/otp.tsx,auth.otp
+auth.otp.title,Enter 6-Digit Code,artifacts/kin/app/(onboarding)/otp.tsx,auth.otp
+auth.otp.codeSentTo,Code sent to:,artifacts/kin/app/(onboarding)/otp.tsx,auth.otp
+auth.otp.verify,Verify,artifacts/kin/app/(onboarding)/otp.tsx,auth.otp
+auth.otp.resendCountdown,Resend code in:,artifacts/kin/app/(onboarding)/otp.tsx,auth.otp
+auth.otp.resendCode,Resend code,artifacts/kin/app/(onboarding)/otp.tsx,auth.otp
+auth.otp.newCodeSent,New code sent.,artifacts/kin/app/(onboarding)/otp.tsx,auth.otp
+auth.otp.invalidCode,Invalid or expired code.,artifacts/kin/app/(onboarding)/otp.tsx,auth.otp
+auth.otp.verifyFailed,Failed to verify code. Please try again.,artifacts/kin/app/(onboarding)/otp.tsx,auth.otp
+auth.otp.resendFailed,Failed to resend code.,artifacts/kin/app/(onboarding)/otp.tsx,auth.otp
+onboarding.personal.step,Step 1 of 3,artifacts/kin/app/(onboarding)/personal.tsx,onboarding.personal
+onboarding.personal.title,Tell us about yourself,artifacts/kin/app/(onboarding)/personal.tsx,onboarding.personal
+onboarding.personal.fullNameLabel,Full Name,artifacts/kin/app/(onboarding)/personal.tsx,onboarding.personal
+onboarding.personal.fullNamePlaceholder,Enter your full name,artifacts/kin/app/(onboarding)/personal.tsx,onboarding.personal
+onboarding.personal.dobLabel,Date of Birth,artifacts/kin/app/(onboarding)/personal.tsx,onboarding.personal
+onboarding.personal.dobPlaceholder,YYYY-MM-DD,artifacts/kin/app/(onboarding)/personal.tsx,onboarding.personal
+onboarding.personal.genderLabel,Gender,artifacts/kin/app/(onboarding)/personal.tsx,onboarding.personal
+onboarding.personal.genderMale,Male,artifacts/kin/app/(onboarding)/personal.tsx,onboarding.personal
+onboarding.personal.genderFemale,Female,artifacts/kin/app/(onboarding)/personal.tsx,onboarding.personal
+onboarding.personal.continue,Continue,artifacts/kin/app/(onboarding)/personal.tsx,onboarding.personal
+onboarding.personal.enterFullName,Enter your full name,artifacts/kin/app/(onboarding)/personal.tsx,onboarding.personal
+onboarding.personal.selectDob,Select your birth date,artifacts/kin/app/(onboarding)/personal.tsx,onboarding.personal
+onboarding.personal.enterDateFormat,Enter date as YYYY-MM-DD,artifacts/kin/app/(onboarding)/personal.tsx,onboarding.personal
+onboarding.personal.mustBe18,Must be 18 or older,artifacts/kin/app/(onboarding)/personal.tsx,onboarding.personal
+onboarding.personal.selectGender,Select your gender,artifacts/kin/app/(onboarding)/personal.tsx,onboarding.personal
+onboarding.personal.saveFailed,Failed to save profile. Please try again.,artifacts/kin/app/(onboarding)/personal.tsx,onboarding.personal
+onboarding.occupation.step,Step 2 of 3,artifacts/kin/app/(onboarding)/occupation.tsx,onboarding.occupation
+onboarding.occupation.title,Career & Relationship Intent,artifacts/kin/app/(onboarding)/occupation.tsx,onboarding.occupation
+onboarding.occupation.careerLabel,Career / Occupation,artifacts/kin/app/(onboarding)/occupation.tsx,onboarding.occupation
+onboarding.occupation.careerPlaceholder,"e.g. Software Engineer, Doctor, Student...",artifacts/kin/app/(onboarding)/occupation.tsx,onboarding.occupation
+onboarding.occupation.intentLabel,Your Intent,artifacts/kin/app/(onboarding)/occupation.tsx,onboarding.occupation
+onboarding.occupation.seriousMarriage,Serious Marriage,artifacts/kin/app/(onboarding)/occupation.tsx,onboarding.occupation
+onboarding.occupation.longTerm,Long-term Relationship,artifacts/kin/app/(onboarding)/occupation.tsx,onboarding.occupation
+onboarding.occupation.casualDating,Casual Dating,artifacts/kin/app/(onboarding)/occupation.tsx,onboarding.occupation
+onboarding.occupation.tier1Badge,Tier 1,artifacts/kin/app/(onboarding)/occupation.tsx,onboarding.occupation
+onboarding.occupation.selectOccupation,Select your occupation,artifacts/kin/app/(onboarding)/occupation.tsx,onboarding.occupation
+onboarding.occupation.selectIntent,Select your primary intent,artifacts/kin/app/(onboarding)/occupation.tsx,onboarding.occupation
+onboarding.occupation.chooseCampus,Choose where you study,artifacts/kin/app/(onboarding)/occupation.tsx,onboarding.occupation
+onboarding.occupation.continue,Continue,artifacts/kin/app/(onboarding)/occupation.tsx,onboarding.occupation
+onboarding.ur.step,Step 3 of 3,artifacts/kin/app/(onboarding)/ur-registration.tsx,onboarding.ur
+onboarding.ur.campusTitle,Choose your campus,artifacts/kin/app/(onboarding)/ur-campus.tsx,onboarding.ur
+onboarding.ur.campusLabel,UR Campus,artifacts/kin/app/(onboarding)/ur-campus.tsx,onboarding.ur
+onboarding.ur.registrationTitle,Registration Number,artifacts/kin/app/(onboarding)/ur-registration.tsx,onboarding.ur
+onboarding.ur.registrationLabel,Registration Number (9 Digits),artifacts/kin/app/(onboarding)/ur-registration.tsx,onboarding.ur
+onboarding.ur.registrationPlaceholder,e.g. 222012345,artifacts/kin/app/(onboarding)/ur-registration.tsx,onboarding.ur
+onboarding.ur.enterRegNumber,Enter your 9-digit registration number,artifacts/kin/app/(onboarding)/ur-registration.tsx,onboarding.ur
+onboarding.ur.mustBe9Digits,Registration number must be 9 digits (e.g. 222012345),artifacts/kin/app/(onboarding)/ur-registration.tsx,onboarding.ur
+onboarding.ur.selectCampusError,Select your campus,artifacts/kin/app/(onboarding)/ur-campus.tsx,onboarding.ur
+onboarding.ur.alreadyClaimed,This registration number is already linked to another Kin account.,artifacts/kin/app/(onboarding)/ur-registration.tsx,onboarding.ur
+onboarding.ur.verifyStudent,Verify Student,artifacts/kin/app/(onboarding)/ur-registration.tsx,onboarding.ur
+onboarding.ur.skipNotUr,Skip / Not a UR student,artifacts/kin-web/src/pages/OnboardingUr.tsx,onboarding.ur
+onboarding.ur.verifiedSuccess,UR Badge verified successfully!,artifacts/kin-web/src/pages/OnboardingUr.tsx,onboarding.ur
+onboarding.invite.step,Step 3 of 3,artifacts/kin/app/(onboarding)/vouch.tsx,onboarding.invite
+onboarding.invite.title,Have an invite code?,artifacts/kin/app/(onboarding)/vouch.tsx,onboarding.invite
+onboarding.invite.codeLabel,Invite Code,artifacts/kin/app/(onboarding)/vouch.tsx,onboarding.invite
+onboarding.invite.placeholder,e.g. KIN-A1B2C3,artifacts/kin/app/(onboarding)/vouch.tsx,onboarding.invite
+onboarding.invite.applyCode,Apply Code,artifacts/kin/app/(onboarding)/vouch.tsx,onboarding.invite
+onboarding.invite.continueToWaiting,Continue to Waiting Room,artifacts/kin/app/(onboarding)/vouch.tsx,onboarding.invite
+onboarding.invite.enterCodeError,Please enter an invite code,artifacts/kin/app/(onboarding)/vouch.tsx,onboarding.invite
+onboarding.invite.invalidCode,Invalid or expired invite code.,artifacts/kin/app/(onboarding)/vouch.tsx,onboarding.invite
+onboarding.invite.verifiedByMember,Verified by community member!,artifacts/kin/app/(onboarding)/vouch.tsx,onboarding.invite
+waiting.title,The Waiting Room,artifacts/kin/app/(onboarding)/waiting.tsx,waiting
+waiting.almostThere,Almost there,artifacts/kin/app/(onboarding)/waiting.tsx,waiting
+waiting.queuePosition,Waitlist Position,artifacts/kin/app/(onboarding)/waiting.tsx,waiting
+waiting.positionNumber,#42 in line,artifacts/kin/app/(onboarding)/waiting.tsx,waiting
+waiting.trustScore,Trust Score,artifacts/kin/app/(onboarding)/waiting.tsx,waiting
+waiting.inviteLinkTitle,Your Invite Link,artifacts/kin/app/(onboarding)/waiting.tsx,waiting
+waiting.copy,Copy,artifacts/kin/app/(onboarding)/waiting.tsx,waiting
+waiting.copied,Copied,artifacts/kin/app/(onboarding)/waiting.tsx,waiting
+waiting.share,Share Invite Link,artifacts/kin/app/(onboarding)/waiting.tsx,waiting
+waiting.previewDiscovery,Preview Discovery,artifacts/kin/app/(onboarding)/waiting.tsx,waiting
+waiting.earlyAccessTitle,Early access — you're in,artifacts/kin/app/(onboarding)/waiting.tsx,waiting
+waiting.enterKin,Enter Kin,artifacts/kin/app/(onboarding)/waiting.tsx,waiting
+discover.tabTitle,Discover,artifacts/kin/app/(tabs)/index.tsx,tabs.discover
+discover.goldenBids,Golden Bids,artifacts/kin/app/(tabs)/index.tsx,tabs.discover
+discover.goldenBidAlert,Golden Bid sent to {{name}}!,artifacts/kin-web/src/pages/AppScreen.tsx,tabs.discover
+discover.matchAlert,You liked {{name}}! (It's a Match),artifacts/kin-web/src/pages/AppScreen.tsx,tabs.discover
+discover.urStudentBadge,UR STUDENT,artifacts/kin/components/TeaserSwipeDeck.tsx,tabs.discover
+discover.trustBadge,Trust {{score}},artifacts/kin/components/TeaserSwipeDeck.tsx,tabs.discover
+discover.noMoreProfiles,No more profiles right now,artifacts/kin/app/(tabs)/index.tsx,tabs.discover
+discover.checkBackLater,Check back soon for new curated intros.,artifacts/kin/app/(tabs)/index.tsx,tabs.discover
+matches.tabTitle,Chat,artifacts/kin/app/(tabs)/matches.tsx,tabs.matches
+matches.guidedChatTitle,Guided Chat,artifacts/kin/app/(tabs)/matches.tsx,tabs.matches
+matches.noMatches,No matches yet,artifacts/kin/app/(tabs)/matches.tsx,tabs.matches
+matches.keepSwiping,Keep discovering people with matching intentions.,artifacts/kin/app/(tabs)/matches.tsx,tabs.matches
+matches.phase1,Phase 1: Icebreakers,artifacts/kin/app/match/[matchId].tsx,tabs.matches
+matches.phase2,Phase 2: Mutual Prompts,artifacts/kin/app/match/[matchId].tsx,tabs.matches
+matches.phase3,Phase 3: Open Chat,artifacts/kin/app/match/[matchId].tsx,tabs.matches
+matches.timeRemaining,{{hours}}h {{minutes}}m left,artifacts/kin/app/match/[matchId].tsx,tabs.matches
+matches.typeMessage,Type a message...,artifacts/kin/app/match/[matchId].tsx,tabs.matches
+matches.send,Send,artifacts/kin/app/match/[matchId].tsx,tabs.matches
+serious.tabTitle,Serious,artifacts/kin/app/(tabs)/serious.tsx,tabs.serious
+serious.queueTitle,Serious Queue,artifacts/kin/app/(tabs)/serious.tsx,tabs.serious
+serious.description,Reserved for members with marriage intent. Matched based on mutual trust and values.,artifacts/kin/app/(tabs)/serious.tsx,tabs.serious
+serious.connectionTokens,Connection Tokens,artifacts/kin/app/(tabs)/serious.tsx,tabs.serious
+serious.tokensRemaining,tokens remaining,artifacts/kin/app/(tabs)/serious.tsx,tabs.serious
+serious.tokenExplainer,Each trusted connection gives you an opportunity for a long-term relationship.,artifacts/kin/app/(tabs)/serious.tsx,tabs.serious
+profile.tabTitle,Profile,artifacts/kin/app/(tabs)/profile.tsx,tabs.profile
+profile.myProfile,My Profile,artifacts/kin/app/(tabs)/profile.tsx,tabs.profile
+profile.language,Language,artifacts/kin/app/(tabs)/profile.tsx,tabs.profile
+profile.languageEn,English,artifacts/kin/app/(tabs)/profile.tsx,tabs.profile
+profile.languageRw,Kinyarwanda,artifacts/kin/app/(tabs)/profile.tsx,tabs.profile
+profile.signOut,Sign Out,artifacts/kin/app/(tabs)/profile.tsx,tabs.profile
+profile.trustScore,Trust {{score}},artifacts/kin/app/(tabs)/profile.tsx,tabs.profile
+profile.urBadge,UR Badge,artifacts/kin/app/(tabs)/profile.tsx,tabs.profile
+profile.invitedMember,Invited Member,artifacts/kin/app/(tabs)/profile.tsx,tabs.profile
+profile.version,Version 1.0.0,artifacts/kin/app/(tabs)/profile.tsx,tabs.profile
+common.back,Back,artifacts/kin/app/_layout.tsx,common
+common.continue,Continue,artifacts/kin/app/_layout.tsx,common
+common.cancel,Cancel,artifacts/kin/app/_layout.tsx,common
+common.save,Save,artifacts/kin/app/_layout.tsx,common
+common.close,Close,artifacts/kin/app/_layout.tsx,common
+common.networkError,Network error. Please try again.,artifacts/kin/services/authService.ts,common.errors
+common.tooManyAttempts,Too many attempts. Please wait.,artifacts/kin/services/authService.ts,common.errors
+common.notFoundTitle,Page Not Found,artifacts/kin/app/+not-found.tsx,common
+common.notFoundAction,Go to Home,artifacts/kin/app/+not-found.tsx,common
+notification.newMessageTitle,New message from {{name}},artifacts/api-server/src/routes/messages.ts,notifications
+notification.newMatchTitle,New Match!,artifacts/api-server/src/routes/matches.ts,notifications
+notification.newMatchBody,You and {{name}} matched on Kin.,artifacts/api-server/src/routes/matches.ts,notifications
+notification.smsVerification,Your Kin verification code is {{otp}}. It expires in 10 minutes. Do not share it.,artifacts/api-server/src/routes/auth.ts,notifications
+notification.smsFailed,Could not send verification SMS. Please try again.,artifacts/api-server/src/routes/auth.ts,notifications
+landing.openApp,Open App,artifacts/kin-web/src/pages/home.tsx,landing.home
+landing.installApp,Install App,artifacts/kin-web/src/pages/home.tsx,landing.home
+landing.learnHow,Learn how it works,artifacts/kin-web/src/pages/home.tsx,landing.home
+landing.getInvited,Get Invited,artifacts/kin-web/src/pages/home.tsx,landing.home
+landing.getInvitedDesc,A current member must invite you. This keeps our community safe and aligned.,artifacts/kin-web/src/pages/home.tsx,landing.home
+landing.shareIntentions,Share Intentions,artifacts/kin-web/src/pages/home.tsx,landing.home
+landing.curatedMatches,Curated Matches,artifacts/kin-web/src/pages/home.tsx,landing.home
