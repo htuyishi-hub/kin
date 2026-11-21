@@ -240,11 +240,6 @@ export default function MatchScreen() {
                     : [styles.bubbleThem, { backgroundColor: colors.card, borderColor: colors.border }],
                 ]}
               >
-                {item.promptKey && (
-                  <Text style={[styles.bubblePrompt, { color: isMe ? colors.primaryForeground : colors.mutedForeground, opacity: 0.7 }]}>
-                    Prompt
-                  </Text>
-                )}
                 <Text
                   style={[
                     styles.bubbleText,
@@ -358,7 +353,6 @@ const styles = StyleSheet.create({
   },
   bubbleMe: { alignSelf: "flex-end", borderBottomRightRadius: 4 },
   bubbleThem: { alignSelf: "flex-start", borderBottomLeftRadius: 4, borderWidth: 1 },
-  bubblePrompt: { fontFamily: "Inter_600SemiBold", fontSize: 10, letterSpacing: 0.5 },
   bubbleText: { fontFamily: "Inter_400Regular", fontSize: 15, lineHeight: 22 },
   inputBar: {
     flexDirection: "row",

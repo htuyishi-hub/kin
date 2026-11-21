@@ -442,23 +442,6 @@ const styles = StyleSheet.create({
     width:           1,
     backgroundColor: Colors.divider,
   },
-  promptCard: {
-    backgroundColor: Colors.ink,
-    borderRadius:    14,
-    padding:         16,
-    gap:             6,
-  },
-  promptQ: {
-    fontFamily: "Inter_600SemiBold",
-    fontSize:   13,
-    color:      Colors.trust,
-  },
-  promptA: {
-    fontFamily: "Inter_400Regular",
-    fontSize:   15,
-    color:      Colors.bone,
-    lineHeight: 22,
-  },
   actionRow: {
     flexDirection:   "row",
     alignItems:      "center",

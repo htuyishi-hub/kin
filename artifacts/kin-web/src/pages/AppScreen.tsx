@@ -250,7 +250,7 @@ export default function AppScreen() {
                 <p className="text-xs text-[#A8A49E] truncate">Muraho neza! Nshimishijwe no...</p>
                 <div className="flex items-center gap-2 mt-1.5">
                   <span className="text-[9px] font-bold bg-[#2563EB]/20 text-[#2563EB] px-2 py-0.5 rounded">
-                    {t('matches.phase1')}
+                    {t('matches.phaseValues')}
                   </span>
                   <span className="text-[10px] text-[#FF6B6B] flex items-center gap-1 font-mono">
                     <Clock className="w-3 h-3" />
@@ -274,7 +274,7 @@ export default function AppScreen() {
                 <p className="text-xs text-[#A8A49E] truncate">Golden Bid Accepted! Mwatangiye...</p>
                 <div className="flex items-center gap-2 mt-1.5">
                   <span className="text-[9px] font-bold bg-[#C9A84C]/20 text-[#C9A84C] px-2 py-0.5 rounded">
-                    {t('matches.phase2')}
+                    {t('matches.phaseVision')}
                   </span>
                 </div>
               </div>

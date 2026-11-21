@@ -149,7 +149,7 @@ flowchart TD
 | **Mobile File** | [`artifacts/kin/app/(tabs)/matches.tsx`](file:///home/antigravity/htuyishi-hub/kin/artifacts/kin/app/(tabs)/matches.tsx) |
 | **Web File** | [`artifacts/kin-web/src/pages/AppScreen.tsx`](file:///home/antigravity/htuyishi-hub/kin/artifacts/kin-web/src/pages/AppScreen.tsx) (`activeTab === 'matches'`) |
 | **Route** | `/(tabs)/matches` (mobile), `/app` (web) |
-| **Keys Used** | `matches.tabTitle`<br/>`matches.guidedChatTitle`<br/>`matches.noMatches`<br/>`matches.keepSwiping`<br/>`matches.phase1`<br/>`matches.phase2`<br/>`matches.phase3`<br/>`matches.timeRemaining` |
+| **Keys Used** | `matches.tabTitle`<br/>`matches.guidedChatTitle`<br/>`matches.noMatches`<br/>`matches.keepSwiping`<br/>`matches.phaseValues`<br/>`matches.phaseVision`<br/>`matches.phaseFreeTalk`<br/>`matches.timeRemaining` |
 
 #### Tab 3: Serious (Marriage Intent Queue & Token Purchase)
 | Metric | Detail |
@@ -175,7 +175,7 @@ flowchart TD
 | **Mobile File** | [`artifacts/kin/app/match/[matchId].tsx`](file:///home/antigravity/htuyishi-hub/kin/artifacts/kin/app/match/[matchId].tsx) |
 | **Web File** | [`artifacts/kin-web/src/pages/AppScreen.tsx`](file:///home/antigravity/htuyishi-hub/kin/artifacts/kin-web/src/pages/AppScreen.tsx) (chat view) |
 | **Route** | `/match/[matchId]` (mobile) |
-| **Keys Used** | `matches.phase1`<br/>`matches.phase2`<br/>`matches.phase3`<br/>`matches.timeRemaining`<br/>`matches.typeMessage`<br/>`matches.send`<br/>`common.back` |
+| **Keys Used** | `matches.phaseValues`<br/>`matches.phaseVision`<br/>`matches.phaseFreeTalk`<br/>`matches.timeRemaining`<br/>`matches.typeMessage`<br/>`matches.send`<br/>`common.back` |
 
 ---
 

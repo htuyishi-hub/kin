@@ -121,7 +121,6 @@ matches.guidedChatTitle,Guided Chat,artifacts/kin/app/(tabs)/matches.tsx,tabs.ma
 matches.noMatches,No matches yet,artifacts/kin/app/(tabs)/matches.tsx,tabs.matches
 matches.keepSwiping,Keep discovering people with matching intentions.,artifacts/kin/app/(tabs)/matches.tsx,tabs.matches
 matches.phase1,Phase 1: Icebreakers,artifacts/kin/app/match/[matchId].tsx,tabs.matches
-matches.phase2,Phase 2: Mutual Prompts,artifacts/kin/app/match/[matchId].tsx,tabs.matches
 matches.phase3,Phase 3: Open Chat,artifacts/kin/app/match/[matchId].tsx,tabs.matches
 matches.timeRemaining,{{hours}}h {{minutes}}m left,artifacts/kin/app/match/[matchId].tsx,tabs.matches
 matches.typeMessage,Type a message...,artifacts/kin/app/match/[matchId].tsx,tabs.matches
