@@ -307,9 +307,18 @@ export async function fetchProfileRouting(userId: string): Promise<{
       };
     }
 
+    const hasName = Boolean(data.full_name && data.full_name.trim().length > 0);
+    let onboardingComplete = Boolean(data.onboarding_complete);
+
+    // Auto-repair: unblock existing users with profile info who were stuck when prompts were removed
+    if (!onboardingComplete && hasName) {
+      onboardingComplete = true;
+      supabase.from('profiles').update({ onboarding_complete: true }).eq('id', userId).then();
+    }
+
     return {
-      onboardingComplete: Boolean(data.onboarding_complete),
-      hasName: Boolean(data.full_name && data.full_name.trim().length > 0),
+      onboardingComplete,
+      hasName,
       isVerified: Boolean(data.is_verified),
       institutionVerified: Boolean(data.institution_verified),
       accountStatus: data.account_status || 'waitlisted',

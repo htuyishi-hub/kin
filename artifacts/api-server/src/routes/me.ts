@@ -101,6 +101,12 @@ router.get("/me", requireAuth, async (req, res) => {
     p.inviteCode = code;
   }
 
+  // Auto-repair: unblock existing users who completed core profile info but got stuck when prompts were removed
+  if (!p.onboardingComplete && p.fullName && (p.dateOfBirth || p.gender)) {
+    await db.update(profilesTable).set({ onboardingComplete: true }).where(eq(profilesTable.id, userId));
+    p.onboardingComplete = true;
+  }
+
   try {
     (req as any).log?.info?.(
       {
