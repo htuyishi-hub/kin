@@ -58,6 +58,8 @@ function mapProfile(p: typeof profilesTable.$inferSelect) {
     language: (p as any).language ?? "en",
     bio: p.bio ?? null,
     tags: (p.tags as string[]) ?? [],
+    voiceIntroPath: p.voiceIntroPath ?? null,
+    voiceIntroDurationMs: p.voiceIntroDurationMs ?? null,
     createdAt: p.createdAt?.toISOString() ?? new Date().toISOString(),
     lastActive: p.lastActive?.toISOString() ?? new Date().toISOString(),
   };
@@ -398,7 +400,12 @@ function containsContactInfo(text: string): boolean {
 // PATCH /me/profile-extras
 router.patch("/me/profile-extras", requireAuth, async (req, res) => {
   const userId = (req as AuthedRequest).userId;
-  const body = req.body as { bio?: string | null; tags?: string[] | null };
+  const body = req.body as {
+    bio?: string | null;
+    tags?: string[] | null;
+    voiceIntroPath?: string | null;
+    voiceIntroDurationMs?: number | null;
+  };
 
   // Check rate limit: 10 edits / 24 hours
   if (!checkAndIncrementRateLimit(userId)) {
@@ -410,7 +417,12 @@ router.patch("/me/profile-extras", requireAuth, async (req, res) => {
     return;
   }
 
-  const updates: { bio?: string | null; tags?: string[] | null } = {};
+  const updates: {
+    bio?: string | null;
+    tags?: string[] | null;
+    voiceIntroPath?: string | null;
+    voiceIntroDurationMs?: number | null;
+  } = {};
 
   if (body.bio !== undefined) {
     if (body.bio === null || body.bio.trim() === "") {
@@ -472,6 +484,35 @@ router.patch("/me/profile-extras", requireAuth, async (req, res) => {
     }
   }
 
+  if (body.voiceIntroPath !== undefined) {
+    updates.voiceIntroPath = body.voiceIntroPath;
+  }
+
+  if (body.voiceIntroDurationMs !== undefined) {
+    if (body.voiceIntroDurationMs !== null) {
+      const dur = Number(body.voiceIntroDurationMs);
+      if (dur > 30000) {
+        res.status(400).json({
+          code: "VOICE_INTRO_TOO_LONG",
+          error: "bad_request",
+          message: "Voice intro must be 30 seconds or fewer.",
+        });
+        return;
+      }
+      if (dur < 1000) {
+        res.status(400).json({
+          code: "VOICE_INTRO_TOO_SHORT",
+          error: "bad_request",
+          message: "Voice intro must be at least 1 second.",
+        });
+        return;
+      }
+      updates.voiceIntroDurationMs = Math.round(dur);
+    } else {
+      updates.voiceIntroDurationMs = null;
+    }
+  }
+
   if (Object.keys(updates).length === 0) {
     res.status(400).json({
       error: "bad_request",
@@ -496,6 +537,99 @@ router.patch("/me/profile-extras", requireAuth, async (req, res) => {
   } catch (err) {
     console.error("[PATCH /me/profile-extras] update failed", err);
     res.status(500).json({ error: "server_error", message: "Failed to update profile extras" });
+  }
+});
+
+// POST /me/voice-intro
+router.post("/me/voice-intro", requireAuth, async (req, res) => {
+  const userId = (req as AuthedRequest).userId;
+  const { storagePath, durationMs } = req.body as {
+    storagePath?: string;
+    durationMs?: number;
+  };
+
+  if (!storagePath || typeof storagePath !== "string" || storagePath.trim() === "") {
+    res.status(400).json({
+      code: "INVALID_STORAGE_PATH",
+      error: "bad_request",
+      message: "storagePath is required",
+    });
+    return;
+  }
+
+  const dur = Number(durationMs);
+  if (!durationMs || isNaN(dur) || dur < 1000) {
+    res.status(400).json({
+      code: "VOICE_INTRO_TOO_SHORT",
+      error: "bad_request",
+      message: "Voice intro must be at least 1 second.",
+    });
+    return;
+  }
+
+  if (dur > 30000) {
+    res.status(400).json({
+      code: "VOICE_INTRO_TOO_LONG",
+      error: "bad_request",
+      message: "Voice intro must be 30 seconds or fewer.",
+    });
+    return;
+  }
+
+  if (!checkAndIncrementRateLimit(userId)) {
+    res.status(429).json({
+      code: "TOO_MANY_EDITS",
+      error: "too_many_requests",
+      message: "Daily edit limit reached. Try again tomorrow.",
+    });
+    return;
+  }
+
+  try {
+    const [updated] = await db
+      .update(profilesTable)
+      .set({
+        voiceIntroPath: storagePath.trim(),
+        voiceIntroDurationMs: Math.round(dur),
+      } as any)
+      .where(eq(profilesTable.id, userId))
+      .returning();
+
+    if (!updated) {
+      res.status(404).json({ error: "not_found", message: "Profile not found" });
+      return;
+    }
+
+    res.json(mapProfile(updated));
+  } catch (err) {
+    console.error("[POST /me/voice-intro] upload failed", err);
+    res.status(500).json({ error: "server_error", message: "Failed to upload voice intro" });
+  }
+});
+
+// DELETE /me/voice-intro
+router.delete("/me/voice-intro", requireAuth, async (req, res) => {
+  const userId = (req as AuthedRequest).userId;
+
+  try {
+    const [updated] = await db
+      .update(profilesTable)
+      .set({
+        voiceIntroPath: null,
+        voiceIntroDurationMs: null,
+      } as any)
+      .where(eq(profilesTable.id, userId))
+      .returning();
+
+    if (!updated) {
+      res.status(404).json({ error: "not_found", message: "Profile not found" });
+      return;
+    }
+
+    res.json(mapProfile(updated));
+  } catch (err) {
+    console.error("[DELETE /me/voice-intro] delete failed", err);
+    res.status(500).json({ error: "server_error", message: "Failed to delete voice intro" });
   }
 });
 

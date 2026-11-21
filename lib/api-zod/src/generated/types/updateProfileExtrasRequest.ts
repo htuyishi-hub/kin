@@ -11,4 +11,6 @@ export interface UpdateProfileExtrasRequest {
   bio?: string | null;
   /** @maxItems 5 */
   tags?: string[];
+  voiceIntroPath?: string | null;
+  voiceIntroDurationMs?: number | null;
 }

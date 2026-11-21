@@ -26,6 +26,8 @@ export interface MatchCandidate {
   vouchOverlap: number;
   bio?: string | null;
   tags?: string[];
+  voiceIntroPath?: string | null;
+  voiceIntroDurationMs?: number | null;
   /** Human-readable shared milieu strings */
   milieuCards: string[];
 }

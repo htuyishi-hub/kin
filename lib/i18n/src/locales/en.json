@@ -204,7 +204,15 @@
     "bioPlaceholder": "A few words about you",
     "clearExtras": "Clear",
     "tagsLimit": "Up to 5 tags",
-    "saved": "Saved"
+    "saved": "Saved",
+    "voiceIntroTitle": "Voice Intro",
+    "recordVoice": "Record",
+    "stopRecording": "Stop",
+    "playVoice": "Play",
+    "pauseVoice": "Pause",
+    "deleteVoice": "Delete",
+    "voiceDuration": "{{seconds}}s",
+    "voiceLimit": "Max 30s"
   },
   "tags": {
     "faith": "Faith",
@@ -263,7 +271,10 @@
     "bioContactInfo": "Contact information is not allowed in bio.",
     "tooManyEdits": "Daily edit limit reached. Try again tomorrow.",
     "invalidTag": "Invalid tag provided.",
-    "tagsLimitExceeded": "You can select up to 5 tags."
+    "tagsLimitExceeded": "You can select up to 5 tags.",
+    "voiceTooLong": "Voice intro must be 30 seconds or fewer.",
+    "voiceTooShort": "Voice intro must be at least 1 second.",
+    "micPermission": "Microphone permission required."
   },
   "moderation": {
     "title": "Community Moderation",

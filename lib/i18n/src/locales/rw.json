@@ -203,7 +203,15 @@
     "bioPlaceholder": "Amagambo make akwerekeyeho",
     "clearExtras": "Hanagura",
     "tagsLimit": "Ibyiciro bitarenze 5",
-    "saved": "Byabitswe"
+    "saved": "Byabitswe",
+    "voiceIntroTitle": "Ijwi ryawe",
+    "recordVoice": "Fata ijwi",
+    "stopRecording": "Hagarika",
+    "playVoice": "Umva",
+    "pauseVoice": "Hagarika gato",
+    "deleteVoice": "Siba",
+    "voiceDuration": "amasegonda {{seconds}}",
+    "voiceLimit": "Amasegonda 30 gusa"
   },
   "tags": {
     "faith": "Ukwemera",
@@ -262,7 +270,10 @@
     "bioContactInfo": "Ntibyemewe gushyiramo amakuru y'itumanaho.",
     "tooManyEdits": "Warengeje inshuro zo guhindura zigenewe umunsi.",
     "invalidTag": "Icyiciro cyatanzwe si cyo.",
-    "tagsLimitExceeded": "Wahitamo ibyiciro bitarenze 5."
+    "tagsLimitExceeded": "Wahitamo ibyiciro bitarenze 5.",
+    "voiceTooLong": "Ijwi rigomba kuba amasegonda 30 cyangwa munsi.",
+    "voiceTooShort": "Ijwi rigomba kuba byibuze isegonda 1.",
+    "micPermission": "Uruhushya rwo gufata amajwi rurakenewe."
   },
   "moderation": {
     "title": "Igenzura ry'umuryango",

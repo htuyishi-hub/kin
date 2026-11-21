@@ -32,6 +32,8 @@ export interface MyProfile {
   proximityConsent: boolean;
   bio?: string | null;
   tags?: string[];
+  voiceIntroPath?: string | null;
+  voiceIntroDurationMs?: number | null;
   createdAt: Date;
   lastActive: Date;
 }

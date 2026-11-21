@@ -46,6 +46,7 @@ import type {
   SendOtpResponse,
   UpdateProfileExtrasRequest,
   UpdateProfileRequest,
+  UploadVoiceIntroRequest,
   VerifyOtpRequest,
   VerifyURRegistration200,
   VerifyURRegistrationBody
@@ -585,6 +586,148 @@ export const useUpdateProfileExtras = <TError = ErrorType<ErrorResponse>,
         TContext
       > => {
       return useMutation(getUpdateProfileExtrasMutationOptions(options));
+    }
+
+export const getUploadVoiceIntroUrl = () => {
+
+
+
+
+  return `/api/me/voice-intro`
+}
+
+/**
+ * @summary Upload or update voice intro
+ */
+export const uploadVoiceIntro = async (uploadVoiceIntroRequest: UploadVoiceIntroRequest, options?: RequestInit): Promise<MyProfile> => {
+
+  return customFetch<MyProfile>(getUploadVoiceIntroUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(uploadVoiceIntroRequest)
+  }
+);}
+
+
+
+
+
+export const getUploadVoiceIntroMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof uploadVoiceIntro>>, TError,{data: BodyType<UploadVoiceIntroRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof uploadVoiceIntro>>, TError,{data: BodyType<UploadVoiceIntroRequest>}, TContext> => {
+
+const mutationKey = ['uploadVoiceIntro'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof uploadVoiceIntro>>, {data: BodyType<UploadVoiceIntroRequest>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  uploadVoiceIntro(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UploadVoiceIntroMutationResult = NonNullable<Awaited<ReturnType<typeof uploadVoiceIntro>>>
+    export type UploadVoiceIntroMutationBody = BodyType<UploadVoiceIntroRequest>
+    export type UploadVoiceIntroMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Upload or update voice intro
+ */
+export const useUploadVoiceIntro = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof uploadVoiceIntro>>, TError,{data: BodyType<UploadVoiceIntroRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof uploadVoiceIntro>>,
+        TError,
+        {data: BodyType<UploadVoiceIntroRequest>},
+        TContext
+      > => {
+      return useMutation(getUploadVoiceIntroMutationOptions(options));
+    }
+
+export const getDeleteVoiceIntroUrl = () => {
+
+
+
+
+  return `/api/me/voice-intro`
+}
+
+/**
+ * @summary Delete voice intro
+ */
+export const deleteVoiceIntro = async ( options?: RequestInit): Promise<MyProfile> => {
+
+  return customFetch<MyProfile>(getDeleteVoiceIntroUrl(),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getDeleteVoiceIntroMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteVoiceIntro>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteVoiceIntro>>, TError,void, TContext> => {
+
+const mutationKey = ['deleteVoiceIntro'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteVoiceIntro>>, void> = () => {
+
+
+          return  deleteVoiceIntro(requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteVoiceIntroMutationResult = NonNullable<Awaited<ReturnType<typeof deleteVoiceIntro>>>
+
+    export type DeleteVoiceIntroMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Delete voice intro
+ */
+export const useDeleteVoiceIntro = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteVoiceIntro>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteVoiceIntro>>,
+        TError,
+        void,
+        TContext
+      > => {
+      return useMutation(getDeleteVoiceIntroMutationOptions(options));
     }
 
 export const getVerifyURRegistrationUrl = () => {

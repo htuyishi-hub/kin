@@ -241,6 +241,8 @@ router.get("/match-queue", requireAuth, async (req, res) => {
       trustScore: c.trustScore ?? 1,
       bio: c.bio ?? null,
       tags: (c.tags as string[]) ?? [],
+      voiceIntroPath: c.voiceIntroPath ?? null,
+      voiceIntroDurationMs: c.voiceIntroDurationMs ?? null,
       // Terminology updated to 'approvedBy' (with backward compatible 'vouchedBy')
       approvedBy: approvedByMap.get(c.id) ?? null,
       vouchedBy: approvedByMap.get(c.id) ?? null,

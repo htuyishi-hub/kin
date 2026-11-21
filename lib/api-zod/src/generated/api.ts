@@ -77,6 +77,8 @@ export const GetMeResponse = zod.object({
   "proximityConsent": zod.boolean(),
   "bio": zod.string().nullish(),
   "tags": zod.array(zod.string()).optional(),
+  "voiceIntroPath": zod.string().nullish(),
+  "voiceIntroDurationMs": zod.number().nullish(),
   "createdAt": zod.coerce.date(),
   "lastActive": zod.coerce.date()
 })
@@ -122,6 +124,8 @@ export const UpdateMeResponse = zod.object({
   "proximityConsent": zod.boolean(),
   "bio": zod.string().nullish(),
   "tags": zod.array(zod.string()).optional(),
+  "voiceIntroPath": zod.string().nullish(),
+  "voiceIntroDurationMs": zod.number().nullish(),
   "createdAt": zod.coerce.date(),
   "lastActive": zod.coerce.date()
 })
@@ -164,6 +168,8 @@ export const CompleteOnboardingResponse = zod.object({
   "proximityConsent": zod.boolean(),
   "bio": zod.string().nullish(),
   "tags": zod.array(zod.string()).optional(),
+  "voiceIntroPath": zod.string().nullish(),
+  "voiceIntroDurationMs": zod.number().nullish(),
   "createdAt": zod.coerce.date(),
   "lastActive": zod.coerce.date()
 })
@@ -180,7 +186,9 @@ export const updateProfileExtrasBodyTagsMax = 5;
 
 export const UpdateProfileExtrasBody = zod.object({
   "bio": zod.string().max(updateProfileExtrasBodyBioMax).nullish(),
-  "tags": zod.array(zod.string()).max(updateProfileExtrasBodyTagsMax).optional()
+  "tags": zod.array(zod.string()).max(updateProfileExtrasBodyTagsMax).optional(),
+  "voiceIntroPath": zod.string().nullish(),
+  "voiceIntroDurationMs": zod.number().nullish()
 })
 
 export const UpdateProfileExtrasResponse = zod.object({
@@ -207,6 +215,86 @@ export const UpdateProfileExtrasResponse = zod.object({
   "proximityConsent": zod.boolean(),
   "bio": zod.string().nullish(),
   "tags": zod.array(zod.string()).optional(),
+  "voiceIntroPath": zod.string().nullish(),
+  "voiceIntroDurationMs": zod.number().nullish(),
+  "createdAt": zod.coerce.date(),
+  "lastActive": zod.coerce.date()
+})
+
+
+/**
+ * @summary Upload or update voice intro
+ */
+export const uploadVoiceIntroBodyDurationMsMin = 1000;
+export const uploadVoiceIntroBodyDurationMsMax = 30000;
+
+
+
+export const UploadVoiceIntroBody = zod.object({
+  "storagePath": zod.string(),
+  "durationMs": zod.number().min(uploadVoiceIntroBodyDurationMsMin).max(uploadVoiceIntroBodyDurationMsMax)
+})
+
+export const UploadVoiceIntroResponse = zod.object({
+  "id": zod.string(),
+  "phoneNumber": zod.string(),
+  "fullName": zod.string().nullish(),
+  "gender": zod.enum(['Male', 'Female', 'Prefer not to say']).nullish(),
+  "age": zod.number().nullish(),
+  "campusName": zod.string().nullish(),
+  "faculty": zod.string().nullish(),
+  "yearOfStudy": zod.number().nullish(),
+  "hostelName": zod.string().nullish(),
+  "city": zod.string().nullish(),
+  "district": zod.string().nullish(),
+  "primaryIntent": zod.enum(['Marriage', 'Serious', 'Casual']).nullish(),
+  "vouchCount": zod.number(),
+  "tokensRemaining": zod.number(),
+  "crossingFeePaid": zod.boolean(),
+  "profileActive": zod.boolean(),
+  "profilePaused": zod.boolean(),
+  "onboardingComplete": zod.boolean(),
+  "phoneVerified": zod.boolean(),
+  "idVerified": zod.boolean(),
+  "proximityConsent": zod.boolean(),
+  "bio": zod.string().nullish(),
+  "tags": zod.array(zod.string()).optional(),
+  "voiceIntroPath": zod.string().nullish(),
+  "voiceIntroDurationMs": zod.number().nullish(),
+  "createdAt": zod.coerce.date(),
+  "lastActive": zod.coerce.date()
+})
+
+
+/**
+ * @summary Delete voice intro
+ */
+export const DeleteVoiceIntroResponse = zod.object({
+  "id": zod.string(),
+  "phoneNumber": zod.string(),
+  "fullName": zod.string().nullish(),
+  "gender": zod.enum(['Male', 'Female', 'Prefer not to say']).nullish(),
+  "age": zod.number().nullish(),
+  "campusName": zod.string().nullish(),
+  "faculty": zod.string().nullish(),
+  "yearOfStudy": zod.number().nullish(),
+  "hostelName": zod.string().nullish(),
+  "city": zod.string().nullish(),
+  "district": zod.string().nullish(),
+  "primaryIntent": zod.enum(['Marriage', 'Serious', 'Casual']).nullish(),
+  "vouchCount": zod.number(),
+  "tokensRemaining": zod.number(),
+  "crossingFeePaid": zod.boolean(),
+  "profileActive": zod.boolean(),
+  "profilePaused": zod.boolean(),
+  "onboardingComplete": zod.boolean(),
+  "phoneVerified": zod.boolean(),
+  "idVerified": zod.boolean(),
+  "proximityConsent": zod.boolean(),
+  "bio": zod.string().nullish(),
+  "tags": zod.array(zod.string()).optional(),
+  "voiceIntroPath": zod.string().nullish(),
+  "voiceIntroDurationMs": zod.number().nullish(),
   "createdAt": zod.coerce.date(),
   "lastActive": zod.coerce.date()
 })
@@ -259,6 +347,8 @@ export const PauseProfileResponse = zod.object({
   "proximityConsent": zod.boolean(),
   "bio": zod.string().nullish(),
   "tags": zod.array(zod.string()).optional(),
+  "voiceIntroPath": zod.string().nullish(),
+  "voiceIntroDurationMs": zod.number().nullish(),
   "createdAt": zod.coerce.date(),
   "lastActive": zod.coerce.date()
 })
@@ -344,6 +434,8 @@ export const GetMatchQueueResponseItem = zod.object({
   "vouchOverlap": zod.number().describe('Number of shared vouchers'),
   "bio": zod.string().nullish(),
   "tags": zod.array(zod.string()).optional(),
+  "voiceIntroPath": zod.string().nullish(),
+  "voiceIntroDurationMs": zod.number().nullish(),
   "milieuCards": zod.array(zod.string()).describe('Human-readable shared milieu strings')
 })
 export const GetMatchQueueResponse = zod.array(GetMatchQueueResponseItem)
@@ -425,6 +517,8 @@ export const GetMatchResponse = zod.object({
   "vouchOverlap": zod.number().describe('Number of shared vouchers'),
   "bio": zod.string().nullish(),
   "tags": zod.array(zod.string()).optional(),
+  "voiceIntroPath": zod.string().nullish(),
+  "voiceIntroDurationMs": zod.number().nullish(),
   "milieuCards": zod.array(zod.string()).describe('Human-readable shared milieu strings')
 }),
   "introductionCard": zod.string().describe('The system-generated introduction text'),

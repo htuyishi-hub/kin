@@ -233,3 +233,14 @@ errors.bioContactInfo,errors,error,Contact information is not allowed in bio.,Nt
 errors.tooManyEdits,errors,error,Daily edit limit reached. Try again tomorrow.,Warengeje inshuro zo guhindura zigenewe umunsi.,,,70,rate limit error for profile extras,needs_review
 errors.invalidTag,errors,error,Invalid tag provided.,Icyiciro cyatanzwe si cyo.,,,50,invalid tag provided error,needs_review
 errors.tagsLimitExceeded,errors,error,You can select up to 5 tags.,Wahitamo ibyiciro bitarenze 5.,,,50,tags limit error,needs_review
+profile.voiceIntroTitle,profile,label,Voice Intro,Ijwi ryawe,,,25,profile extras voice intro section label,needs_review
+profile.recordVoice,profile,button,Record,Fata ijwi,,,20,start recording voice intro button,needs_review
+profile.stopRecording,profile,button,Stop,Hagarika,,,20,stop recording voice intro button,needs_review
+profile.playVoice,profile,button,Play,Umva,,,20,play voice intro button,needs_review
+profile.pauseVoice,profile,button,Pause,Hagarika gato,,,20,pause voice intro button,needs_review
+profile.deleteVoice,profile,button,Delete,Siba,,,20,delete voice intro button,needs_review
+profile.voiceDuration,profile,status,{{seconds}}s,amasegonda {{seconds}},,{{seconds}},20,voice intro duration display,needs_review
+profile.voiceLimit,profile,label,Max 30s,Amasegonda 30 gusa,,,20,voice intro max duration limit,needs_review
+errors.voiceTooLong,errors,error,Voice intro must be 30 seconds or fewer.,Ijwi rigomba kuba amasegonda 30 cyangwa munsi.,,,70,voice intro duration too long error,needs_review
+errors.voiceTooShort,errors,error,Voice intro must be at least 1 second.,Ijwi rigomba kuba byibuze isegonda 1.,,,70,voice intro duration too short error,needs_review
+errors.micPermission,errors,error,Microphone permission required.,Uruhushya rwo gufata amajwi rurakenewe.,,,60,microphone permission required error,needs_review

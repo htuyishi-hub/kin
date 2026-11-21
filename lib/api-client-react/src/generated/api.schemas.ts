@@ -86,6 +86,8 @@ export interface MyProfile {
   proximityConsent: boolean;
   bio?: string | null;
   tags?: string[];
+  voiceIntroPath?: string | null;
+  voiceIntroDurationMs?: number | null;
   createdAt: string;
   lastActive: string;
 }
@@ -117,6 +119,17 @@ export interface UpdateProfileExtrasRequest {
   bio?: string | null;
   /** @maxItems 5 */
   tags?: string[];
+  voiceIntroPath?: string | null;
+  voiceIntroDurationMs?: number | null;
+}
+
+export interface UploadVoiceIntroRequest {
+  storagePath: string;
+  /**
+     * @minimum 1000
+     * @maximum 30000
+     */
+  durationMs: number;
 }
 
 export type OnboardingRequestOccupation = typeof OnboardingRequestOccupation[keyof typeof OnboardingRequestOccupation];
@@ -208,6 +221,8 @@ export interface MatchCandidate {
   vouchOverlap: number;
   bio?: string | null;
   tags?: string[];
+  voiceIntroPath?: string | null;
+  voiceIntroDurationMs?: number | null;
   /** Human-readable shared milieu strings */
   milieuCards: string[];
 }

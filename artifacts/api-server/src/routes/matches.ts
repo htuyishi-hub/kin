@@ -165,6 +165,8 @@ router.get("/matches/:matchId", requireAuth, async (req, res) => {
       primaryPhotoPath: photo[0]?.storagePath ?? null,
       bio: other[0].bio ?? null,
       tags: (other[0].tags as string[]) ?? [],
+      voiceIntroPath: other[0].voiceIntroPath ?? null,
+      voiceIntroDurationMs: other[0].voiceIntroDurationMs ?? null,
       milieuScore: 0,
       vouchOverlap: 0,
       milieuCards,
