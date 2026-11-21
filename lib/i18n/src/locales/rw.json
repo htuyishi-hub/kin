@@ -107,9 +107,9 @@
       "campusLabel": "Campus ya UR",
       "registrationTitle": "Registration Number",
       "registrationLabel": "Registration Number (Imibare 9)",
-      "registrationPlaceholder": "urugero: 222012345",
+      "registrationPlaceholder": "222012345",
       "enterRegNumber": "Injiza registration number yawe y'imibare 9",
-      "mustBe9Digits": "Registration number igomba kuba igizwe n'imibare 9 (urugero: 222012345)",
+      "mustBe9Digits": "Nimero yo kwiyandikisha igomba kuba imibare 9",
       "selectCampusError": "Hitamo campus yawe",
       "alreadyClaimed": "Iyi registration number yamaze guhuzwa n'indi konti ya Kin.",
       "verifyStudent": "Emeza ko Uri Umunyeshuri",
@@ -162,7 +162,10 @@
     "phase3": "Icyiciro cya 3: Ikiganiro Cyisanzuye",
     "timeRemaining": "Hasigaye amasaha {{hours}} n'iminota {{minutes}}",
     "typeMessage": "Andika ubutumwa...",
-    "send": "Ohereza"
+    "send": "Ohereza",
+    "phaseValues": "Indangagaciro",
+    "phaseVision": "Icyerekezo",
+    "phaseFreeTalk": "Kuvugana kubuntu"
   },
   "serious": {
     "tabTitle": "Abiyemeje",
@@ -195,7 +198,8 @@
     "statsTokens": "Amatike",
     "statsIntent": "Intego",
     "urStudentVerified": "Umunyeshuri wa UR wemejwe",
-    "verifiedMember": "Umunyamuryango wemejwe"
+    "verifiedMember": "Umunyamuryango wemejwe",
+    "shareInviteMessage": "Injira muri Kin: {{link}}"
   },
   "common": {
     "back": "Subira inyuma",
@@ -206,7 +210,8 @@
     "networkError": "Ikibazo cy'itumanaho. Ongera ugerageze.",
     "tooManyAttempts": "Wagerageje inshuro nyinshi. Tegereza gato.",
     "notFoundTitle": "Urupapuro ntirubonetse",
-    "notFoundAction": "Subira ahabanza"
+    "notFoundAction": "Subira ahabanza",
+    "loading": "Tegereza…"
   },
   "notification": {
     "newMessageTitle": "Ubutumwa bushya kuva kuri {{name}}",
@@ -223,5 +228,10 @@
     "getInvitedDesc": "Umunyamuryango agomba kugutumira. Ibi bituma umuryango wacu ukomeza gutuza no kwizerana.",
     "shareIntentions": "Sangiza Intego Zawe",
     "curatedMatches": "Guhuzwa Kwizewe"
+  },
+  "errors": {
+    "generic": "Hari ikitagenze neza. Ongera ugerageze.",
+    "urRegistrationInvalid": "Nimero yo kwiyandikisha igomba kuba imibare 9",
+    "inviteAlreadyClaimed": "Wamaze gukoresha ubutumire"
   }
 }

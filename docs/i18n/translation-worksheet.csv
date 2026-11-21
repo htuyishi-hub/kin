@@ -89,9 +89,9 @@ onboarding.ur.campusTitle,onboarding.ur,title,Choose your campus,Hitamo Campus Y
 onboarding.ur.campusLabel,onboarding.ur,label,UR Campus,Campus ya UR,,,35,onboarding.ur field label / tag,needs_review
 onboarding.ur.registrationTitle,onboarding.ur,title,Registration Number,Registration Number,,,40,onboarding.ur header title,needs_review
 onboarding.ur.registrationLabel,onboarding.ur,label,Registration Number (9 Digits),Registration Number (Imibare 9),,,42,onboarding.ur field label / tag,needs_review
-onboarding.ur.registrationPlaceholder,onboarding.ur,placeholder,e.g. 222012345,urugero: 222012345,,,35,onboarding.ur input placeholder,needs_review
+onboarding.ur.registrationPlaceholder,onboarding.ur,placeholder,222012345,222012345,,,35,onboarding.ur input placeholder,needs_review
 onboarding.ur.enterRegNumber,onboarding.ur,label,Enter your 9-digit registration number,Injiza registration number yawe y'imibare 9,,,53,onboarding.ur field label / tag,needs_review
-onboarding.ur.mustBe9Digits,onboarding.ur,error,Registration number must be 9 digits (e.g. 222012345),Registration number igomba kuba igizwe n'imibare 9 (urugero: 222012345),,,74,onboarding.ur validation/error message,needs_review
+onboarding.ur.mustBe9Digits,onboarding.ur,error,Registration number must be 9 digits,Registration number igomba kuba igizwe n'imibare 9 (urugero: 222012345),Nimero yo kwiyandikisha igomba kuba imibare 9,,74,onboarding.ur validation/error message,approved
 onboarding.ur.selectCampusError,onboarding.ur,error,Select your campus,Hitamo campus yawe,,,70,onboarding.ur validation/error message,needs_review
 onboarding.ur.alreadyClaimed,onboarding.ur,error,This registration number is already linked to another Kin account.,Iyi registration number yamaze guhuzwa n'indi konti ya Kin.,,,92,onboarding.ur validation/error message,needs_review
 onboarding.ur.verifyStudent,onboarding.ur,button,Verify Student,Emeza ko Uri Umunyeshuri,,,30,onboarding.ur action button,needs_review
@@ -186,3 +186,11 @@ landing.getInvited,landing,label,Get Invited,Habwa Ubutumire,Saba ubutumire,,35,
 landing.getInvitedDesc,landing,label,A current member must invite you. This keeps our community safe and aligned.,Umunyamuryango agomba kugutumira. Ibi bituma umuryango wacu ukomeza gutuza no kwizerana.,,,106,landing field label / tag,needs_review
 landing.shareIntentions,landing,button,Share Intentions,Sangiza Intego Zawe,,,30,landing action button,needs_review
 landing.curatedMatches,landing,label,Curated Matches,Guhuzwa Kwizewe,,,35,landing field label / tag,needs_review
+common.loading,common,status,Loading…,Tegereza…,Tegereza…,,20,common loading indicator status,approved
+matches.phaseValues,matches,label,Values,Indangagaciro,Indangagaciro,,25,conversation phase 1 tag,approved
+matches.phaseVision,matches,label,Vision,Icyerekezo,Icyerekezo,,25,conversation phase 2 tag,approved
+matches.phaseFreeTalk,matches,label,Free talk,Kuvugana kubuntu,Kuvugana kubuntu,,25,conversation phase 3 tag,approved
+profile.shareInviteMessage,profile,notification,Join me on Kin: {{link}},Injira muri Kin: {{link}},Injira muri Kin: {{link}},{{link}},80,share invite message template with link variable,approved
+errors.generic,errors,error,Something went wrong. Try again.,Hari ikitagenze neza. Ongera ugerageze.,Hari ikitagenze neza. Ongera ugerageze.,,60,generic error fallback message,approved
+errors.urRegistrationInvalid,errors,error,Registration number must be 9 digits,Nimero yo kwiyandikisha igomba kuba imibare 9,Nimero yo kwiyandikisha igomba kuba imibare 9,,60,UR registration format error from API code UR_REGISTRATION_INVALID,approved
+errors.inviteAlreadyClaimed,errors,error,You have already claimed an invite,Wamaze gukoresha ubutumire,Wamaze gukoresha ubutumire,,60,Invite already claimed error from API code INVITE_ALREADY_CLAIMED,approved

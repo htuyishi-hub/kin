@@ -107,9 +107,9 @@
       "campusLabel": "UR Campus",
       "registrationTitle": "Registration Number",
       "registrationLabel": "Registration Number (9 Digits)",
-      "registrationPlaceholder": "e.g. 222012345",
+      "registrationPlaceholder": "222012345",
       "enterRegNumber": "Enter your 9-digit registration number",
-      "mustBe9Digits": "Registration number must be 9 digits (e.g. 222012345)",
+      "mustBe9Digits": "Registration number must be 9 digits",
       "selectCampusError": "Select your campus",
       "alreadyClaimed": "This registration number is already linked to another Kin account.",
       "verifyStudent": "Verify Student",
@@ -162,7 +162,10 @@
     "phase3": "Phase 3: Open Chat",
     "timeRemaining": "{{hours}}h {{minutes}}m left",
     "typeMessage": "Type a message...",
-    "send": "Send"
+    "send": "Send",
+    "phaseValues": "Values",
+    "phaseVision": "Vision",
+    "phaseFreeTalk": "Free talk"
   },
   "serious": {
     "tabTitle": "Serious",
@@ -195,7 +198,8 @@
     "statsTokens": "Tokens",
     "statsIntent": "Intent",
     "urStudentVerified": "UR Student Verified",
-    "verifiedMember": "Verified Member"
+    "verifiedMember": "Verified Member",
+    "shareInviteMessage": "Join me on Kin: {{link}}"
   },
   "common": {
     "back": "Back",
@@ -206,7 +210,8 @@
     "networkError": "Network error. Please try again.",
     "tooManyAttempts": "Too many attempts. Please wait.",
     "notFoundTitle": "Page Not Found",
-    "notFoundAction": "Go to Home"
+    "notFoundAction": "Go to Home",
+    "loading": "Loading…"
   },
   "notification": {
     "newMessageTitle": "New message from {{name}}",
@@ -223,5 +228,10 @@
     "getInvitedDesc": "A current member must invite you. This keeps our community safe and aligned.",
     "shareIntentions": "Share Intentions",
     "curatedMatches": "Curated Matches"
+  },
+  "errors": {
+    "generic": "Something went wrong. Try again.",
+    "urRegistrationInvalid": "Registration number must be 9 digits",
+    "inviteAlreadyClaimed": "You have already claimed an invite"
   }
 }
