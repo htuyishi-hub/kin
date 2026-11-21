@@ -141,7 +141,6 @@ function RootLayoutNav() {
         <Stack.Screen name="(onboarding)" />
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="match/[matchId]" options={{ headerShown: false }} />
-        <Stack.Screen name="vouch/[userId]" options={{ headerShown: false }} />
         <Stack.Screen name="moderation/review" options={{ headerShown: false }} />
         <Stack.Screen name="+not-found" />
         <Stack.Screen name="callback" />
