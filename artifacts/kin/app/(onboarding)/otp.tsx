@@ -78,7 +78,7 @@ export default function OtpScreen() {
         const res = await verifyEmailOtp(email, code, otpType);
 
         if (!res.success || !res.session || !res.user) {
-          setError(res.error || "Kode ntabwo ari yo cyangwa yarangiye · Invalid or expired code.");
+          setError(res.error || "Invalid or expired code.");
           setOtp(["", "", "", "", "", ""]);
           inputs.current[0]?.focus();
           return;
@@ -120,7 +120,7 @@ export default function OtpScreen() {
         inputs.current[0]?.focus();
       }
     } catch (err: any) {
-      setError(err?.message || "Ikibazo cyabaye mu kwemeza kode.");
+      setError(err?.message || "Failed to verify code. Please try again.");
     } finally {
       setVerifying(false);
     }
@@ -145,11 +145,11 @@ export default function OtpScreen() {
         }
 
         if (!res.success) {
-          setError(res.error || "Ntibyashobotse kongera kohereza kode.");
+          setError(res.error || "Failed to resend code.");
           return;
         }
 
-        setInfoMessage("Kode nshya yoherejwe kuri imeri yawe · New code sent.");
+        setInfoMessage("New code sent.");
         setCountdown(60);
         setOtp(["", "", "", "", "", ""]);
         inputs.current[0]?.focus();
@@ -159,16 +159,16 @@ export default function OtpScreen() {
       if (phone) {
         const res = await sendPhoneOtp(phone);
         if (!res.success) {
-          setError(res.error || "Ntibyashobotse kohereza SMS.");
+          setError(res.error || "Failed to resend SMS.");
           return;
         }
-        setInfoMessage("Kode nshya yoherejwe kuri telefoni · New SMS sent.");
+        setInfoMessage("New SMS sent.");
         setCountdown(60);
         setOtp(["", "", "", "", "", ""]);
         inputs.current[0]?.focus();
       }
     } catch (err: any) {
-      setError(err?.message || "Habaye ikibazo cyo kohereza kode.");
+      setError(err?.message || "Failed to resend code.");
     } finally {
       setResending(false);
     }
@@ -247,13 +247,12 @@ export default function OtpScreen() {
             style={styles.backButton}
             accessibilityRole="button"
           >
-            <Text style={styles.backButtonText}>← Hindura imeri · Change email</Text>
+            <Text style={styles.backButtonText}>← {isEmail ? "Change email" : "Change phone"}</Text>
           </TouchableOpacity>
 
-          <Text style={styles.title}>Injiza kode y'imibare 6</Text>
-          <Text style={styles.titleEn}>Enter 6-Digit Code</Text>
+          <Text style={styles.title}>Enter 6-Digit Code</Text>
           <Text style={styles.subtitle}>
-            Kode yoherejwe kuri:{"\n"}
+            Code sent to:{"\n"}
             <Text style={styles.recipientHighlight}>{targetRecipient}</Text>
           </Text>
         </View>
@@ -304,7 +303,7 @@ export default function OtpScreen() {
             {isPending ? (
               <ActivityIndicator color={Colors.bone} />
             ) : (
-              <Text style={styles.verifyButtonText}>Emeza Kode · Verify</Text>
+              <Text style={styles.verifyButtonText}>Verify</Text>
             )}
           </TouchableOpacity>
 
@@ -312,7 +311,7 @@ export default function OtpScreen() {
           <View style={styles.resendContainer}>
             {countdown > 0 ? (
               <Text style={styles.countdownText}>
-                Ohereza indi kode nyuma y'amasegonda:{" "}
+                Resend code in:{" "}
                 <Text style={styles.countdownNumber}>{countdown}s</Text>
               </Text>
             ) : (
@@ -327,7 +326,7 @@ export default function OtpScreen() {
                   <ActivityIndicator size="small" color={Colors.trust} />
                 ) : (
                   <Text style={styles.resendButtonText}>
-                    Ohereza indi kode · Resend code
+                    Resend code
                   </Text>
                 )}
               </TouchableOpacity>

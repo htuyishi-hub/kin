@@ -16,7 +16,7 @@ export default function OnboardingOccupation() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!occupation.trim()) {
-      setError('Injiza ibyo ukora cyangwa umwuga wawe · Enter your occupation');
+      setError('Enter your occupation');
       return;
     }
 
@@ -35,7 +35,7 @@ export default function OnboardingOccupation() {
       }
       setLocation('/onboarding/ur');
     } catch (err: any) {
-      setError(err?.message || 'Habaye ikibazo.');
+      setError(err?.message || 'Failed to save. Please try again.');
     } finally {
       setIsPending(false);
     }
@@ -46,19 +46,16 @@ export default function OnboardingOccupation() {
       {/* Step Header */}
       <div className="flex flex-col gap-2">
         <div className="flex items-center justify-between text-xs text-[#A8A49E]">
-          <span className="font-semibold text-[#2563EB]">Intambwe ya 2/5</span>
-          <span className="font-mono">Intego & Umwuga</span>
+          <span className="font-semibold text-[#2563EB]">Step 2 of 3</span>
+          <span className="font-mono">Career & Intent</span>
         </div>
         <div className="w-full h-1 bg-[#21262D] rounded-full overflow-hidden">
-          <div className="w-2/5 h-full bg-[#2563EB] rounded-full" />
+          <div className="w-2/3 h-full bg-[#2563EB] rounded-full" />
         </div>
 
         <h1 className="font-serif text-2xl font-bold text-[#F0EDE6] leading-tight mt-3">
-          Ibyo ukora & Intego yawe
-        </h1>
-        <h2 className="text-sm font-medium text-[#A8A49E] -mt-1">
           Career & Relationship Intent
-        </h2>
+        </h1>
       </div>
 
       {/* Form Area */}
@@ -66,11 +63,11 @@ export default function OnboardingOccupation() {
         {/* Occupation input */}
         <div className="flex flex-col gap-1.5">
           <label className="text-xs font-semibold uppercase tracking-wider text-[#A8A49E]">
-            Umwuga wawe · Career / Occupation
+            Career / Occupation
           </label>
           <input
             type="text"
-            placeholder="Urugero: Software Engineer, Umuganga, Umunyeshuri..."
+            placeholder="e.g. Software Engineer, Doctor, Student..."
             value={occupation}
             onChange={(e) => {
               setOccupation(e.target.value);
@@ -83,13 +80,13 @@ export default function OnboardingOccupation() {
         {/* Intent Cards */}
         <div className="flex flex-col gap-2">
           <label className="text-xs font-semibold uppercase tracking-wider text-[#A8A49E]">
-            Intego yawe muri Kin · Your Intent
+            Your Intent
           </label>
 
           {/* Option 1: Marriage */}
           <div
             onClick={() => setIntent('marriage')}
-            className={`p-3.5 rounded-xl border-1.5 flex items-start gap-3 cursor-pointer transition-all ${
+            className={`p-3.5 rounded-xl border-1.5 flex items-center gap-3 cursor-pointer transition-all ${
               intent === 'marriage'
                 ? 'border-[#C9A84C] bg-[#C9A84C]/10'
                 : 'border-[#21262D] bg-[#1A1A2E]/60 hover:border-[#A8A49E]/40'
@@ -98,19 +95,16 @@ export default function OnboardingOccupation() {
             <div className={`p-2 rounded-lg ${intent === 'marriage' ? 'bg-[#C9A84C] text-[#0D1117]' : 'bg-[#242438] text-[#C9A84C]'}`}>
               <Heart className="w-4 h-4 fill-current" />
             </div>
-            <div className="flex-1">
-              <div className="flex items-center justify-between">
-                <span className="font-semibold text-sm text-[#F0EDE6]">Gushyingirwa · Serious Marriage</span>
-                <span className="text-[10px] font-bold text-[#C9A84C] bg-[#C9A84C]/20 px-2 py-0.5 rounded">Tier 1</span>
-              </div>
-              <p className="text-xs text-[#A8A49E] mt-0.5">Niteguye kubaka urugo rugari kandi rwiza mu gihe cya vuba.</p>
+            <div className="flex-1 flex items-center justify-between">
+              <span className="font-semibold text-sm text-[#F0EDE6]">Serious Marriage</span>
+              <span className="text-[10px] font-bold text-[#C9A84C] bg-[#C9A84C]/20 px-2 py-0.5 rounded">Tier 1</span>
             </div>
           </div>
 
           {/* Option 2: Long-term */}
           <div
             onClick={() => setIntent('long_term')}
-            className={`p-3.5 rounded-xl border-1.5 flex items-start gap-3 cursor-pointer transition-all ${
+            className={`p-3.5 rounded-xl border-1.5 flex items-center gap-3 cursor-pointer transition-all ${
               intent === 'long_term'
                 ? 'border-[#2563EB] bg-[#2563EB]/10'
                 : 'border-[#21262D] bg-[#1A1A2E]/60 hover:border-[#A8A49E]/40'
@@ -120,15 +114,14 @@ export default function OnboardingOccupation() {
               <Sparkles className="w-4 h-4" />
             </div>
             <div className="flex-1">
-              <span className="font-semibold text-sm text-[#F0EDE6]">Umubano w'Igihe Kirekire · Long-term</span>
-              <p className="text-xs text-[#A8A49E] mt-0.5">Gukundana n'umuntu dushyigikirana mu buzima.</p>
+              <span className="font-semibold text-sm text-[#F0EDE6]">Long-term Relationship</span>
             </div>
           </div>
 
           {/* Option 3: Casual */}
           <div
             onClick={() => setIntent('casual')}
-            className={`p-3.5 rounded-xl border-1.5 flex items-start gap-3 cursor-pointer transition-all ${
+            className={`p-3.5 rounded-xl border-1.5 flex items-center gap-3 cursor-pointer transition-all ${
               intent === 'casual'
                 ? 'border-[#A8A49E] bg-white/5'
                 : 'border-[#21262D] bg-[#1A1A2E]/60 hover:border-[#A8A49E]/40'
@@ -138,8 +131,7 @@ export default function OnboardingOccupation() {
               <Coffee className="w-4 h-4" />
             </div>
             <div className="flex-1">
-              <span className="font-semibold text-sm text-[#F0EDE6]">Kumenyana · Casual Dating</span>
-              <p className="text-xs text-[#A8A49E] mt-0.5">Kuganira no kumenyana nta gitutu.</p>
+              <span className="font-semibold text-sm text-[#F0EDE6]">Casual Dating</span>
             </div>
           </div>
         </div>
@@ -157,7 +149,7 @@ export default function OnboardingOccupation() {
           {isPending ? (
             <Loader2 className="w-5 h-5 animate-spin text-white" />
           ) : (
-            <span>Komeza · Continue</span>
+            <span>Continue</span>
           )}
         </button>
       </div>

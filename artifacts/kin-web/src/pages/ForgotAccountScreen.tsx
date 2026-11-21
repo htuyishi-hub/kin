@@ -15,12 +15,12 @@ export default function ForgotAccountScreen() {
     const cleaned = email.trim().toLowerCase();
 
     if (!cleaned) {
-      setError('Injiza imeri yawe · Enter your email');
+      setError('Enter your email');
       return;
     }
 
     if (!isValidEmail(cleaned)) {
-      setError('Injiza imeri ifite ireme (urugero: izina@gmail.com) · Invalid email format');
+      setError('Invalid email format');
       return;
     }
 
@@ -30,13 +30,13 @@ export default function ForgotAccountScreen() {
     try {
       const res = await sendOtpForRecovery(cleaned);
       if (!res.success) {
-        setError(res.error || 'Ntibyashobotse kohereza kode yo kugarura konti.');
+        setError(res.error || 'Failed to send recovery code.');
         return;
       }
 
       setLocation(`/otp?email=${encodeURIComponent(cleaned)}&mode=recovery`);
     } catch (err: any) {
-      setError(err?.message || 'Habaye ikibazo. Ongera ugerageze.');
+      setError(err?.message || 'An error occurred. Please try again.');
     } finally {
       setIsPending(false);
     }
@@ -50,26 +50,19 @@ export default function ForgotAccountScreen() {
           onClick={() => setLocation('/signin')}
           className="self-start py-1.5 text-sm font-medium text-[#FF6B6B] hover:opacity-80 transition-opacity cursor-pointer mb-2"
         >
-          ← Inyuma · Back
+          ← Back
         </button>
 
         <h1 className="font-serif text-2xl font-bold text-[#F0EDE6] leading-tight">
-          Kugarura Konti
-        </h1>
-        <h2 className="text-sm font-medium text-[#A8A49E] -mt-1">
           Recover Your Account
-        </h2>
-
-        <p className="text-xs text-[#A8A49E] leading-relaxed mt-1">
-          Injiza imeri wakoresheje ufungura konti kugira ngo tukoherereze kode y'imibare 6 yo kugarura konti yawe.
-        </p>
+        </h1>
       </div>
 
       {/* Form Area */}
       <form onSubmit={handleRecoverySubmit} className="flex flex-col gap-4 my-auto py-6">
         <div className="flex flex-col gap-1.5">
           <label className="text-xs font-semibold uppercase tracking-wider text-[#A8A49E]">
-            Imeri yawe · Email Address
+            Email Address
           </label>
           <div
             className={`flex items-center bg-[#1A1A2E] border-1.5 rounded-xl overflow-hidden transition-colors ${
@@ -99,7 +92,7 @@ export default function ForgotAccountScreen() {
           {isPending ? (
             <Loader2 className="w-5 h-5 animate-spin text-white" />
           ) : (
-            <span>Ohereza kode yo kugarura · Send Recovery Code</span>
+            <span>Send Recovery Code</span>
           )}
         </button>
       </form>
@@ -110,8 +103,8 @@ export default function ForgotAccountScreen() {
           onClick={() => setLocation('/signin')}
           className="flex items-center gap-1.5 text-sm cursor-pointer hover:opacity-90 transition-opacity"
         >
-          <span className="text-[#A8A49E]">Wibutse amakuru yawe?</span>
-          <span className="font-semibold text-[#2563EB]">Injira · Sign in</span>
+          <span className="text-[#A8A49E]">Remember your account?</span>
+          <span className="font-semibold text-[#2563EB]">Sign in</span>
         </button>
       </div>
     </div>

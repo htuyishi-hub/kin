@@ -55,7 +55,7 @@ export default function OtpScreen() {
       const res = await verifyEmailOtp(email, code, otpType);
 
       if (!res.success || !res.session || !res.user) {
-        setError(res.error || 'Kode ntabwo ari yo cyangwa yarangiye · Invalid or expired code.');
+        setError(res.error || 'Invalid or expired code.');
         setOtp(['', '', '', '', '', '']);
         inputs.current[0]?.focus();
         return;
@@ -72,7 +72,7 @@ export default function OtpScreen() {
         setLocation('/onboarding/personal');
       }
     } catch (err: any) {
-      setError(err?.message || 'Ikibazo cyabaye mu kwemeza kode.');
+      setError(err?.message || 'Failed to verify code. Please try again.');
     } finally {
       setVerifying(false);
     }
@@ -96,16 +96,16 @@ export default function OtpScreen() {
       }
 
       if (!res.success) {
-        setError(res.error || 'Ntibyashobotse kongera kohereza kode.');
+        setError(res.error || 'Failed to resend code.');
         return;
       }
 
-      setInfoMessage('Kode nshya yoherejwe kuri imeri yawe · New code sent.');
+      setInfoMessage('New code sent.');
       setCountdown(60);
       setOtp(['', '', '', '', '', '']);
       inputs.current[0]?.focus();
     } catch (err: any) {
-      setError(err?.message || 'Habaye ikibazo cyo kohereza kode.');
+      setError(err?.message || 'Failed to resend code.');
     } finally {
       setResending(false);
     }
@@ -171,19 +171,16 @@ export default function OtpScreen() {
           onClick={() => setLocation(mode === 'signin' ? '/signin' : '/signup')}
           className="self-start py-1.5 text-sm font-medium text-[#FF6B6B] hover:opacity-80 transition-opacity cursor-pointer mb-2"
         >
-          ← Hindura imeri · Change email
+          ← Change email
         </button>
 
         <h1 className="font-serif text-2xl font-bold text-[#F0EDE6] leading-tight">
-          Injiza kode y'imibare 6
-        </h1>
-        <h2 className="text-sm font-medium text-[#A8A49E] -mt-1">
           Enter 6-Digit Code
-        </h2>
+        </h1>
 
         <p className="text-xs text-[#A8A49E] leading-relaxed mt-1">
-          Kode yoherejwe kuri: <br />
-          <strong className="text-[#F0EDE6] font-semibold">{email || 'imeri yawe'}</strong>
+          Code sent to: <br />
+          <strong className="text-[#F0EDE6] font-semibold">{email || 'your email'}</strong>
         </p>
       </div>
 
@@ -227,7 +224,7 @@ export default function OtpScreen() {
           {isPending ? (
             <Loader2 className="w-5 h-5 animate-spin text-white" />
           ) : (
-            <span>Emeza Kode · Verify</span>
+            <span>Verify</span>
           )}
         </button>
 
@@ -235,7 +232,7 @@ export default function OtpScreen() {
         <div className="flex justify-center items-center py-2">
           {countdown > 0 ? (
             <span className="text-xs text-[#A8A49E]">
-              Ohereza indi kode nyuma y'amasegonda:{' '}
+              Resend code in:{' '}
               <strong className="text-[#FF6B6B] font-bold">{countdown}s</strong>
             </span>
           ) : (
@@ -247,7 +244,7 @@ export default function OtpScreen() {
               {resending ? (
                 <Loader2 className="w-3.5 h-3.5 animate-spin text-[#2563EB]" />
               ) : null}
-              <span>Ohereza indi kode · Resend code</span>
+              <span>Resend code</span>
             </button>
           )}
         </div>

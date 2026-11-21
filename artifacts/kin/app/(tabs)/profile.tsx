@@ -1,6 +1,6 @@
 import { Feather } from "@expo/vector-icons";
 import {
-  useGetMe, useGetMyPrompts, useAddPhoto,
+  useGetMe, useAddPhoto,
   usePauseProfile,
 } from "@workspace/api-client-react";
 import { router } from "expo-router";
@@ -49,7 +49,6 @@ export default function ProfileScreen() {
     query: { enabled: !authLoading && !!token },
   } as any);
 
-  const { data: prompts = [] } = useGetMyPrompts();
   const { mutate: addPhoto } = useAddPhoto();
   const { mutate: pauseProfile, isPending: isPausing } = usePauseProfile({
     mutation: { onSuccess: () => refetch() },
@@ -88,7 +87,6 @@ export default function ProfileScreen() {
   const isURVerified = Boolean((profile as any)?.institutionVerified);
   const vouchScore = Math.min(100, (profile?.vouchCount ?? 0) * 30);
   const isPaused = profile?.profilePaused ?? false;
-  const vouchedBy = (profile as any)?.vouchedBy ?? (profile as any)?.vouched_by ?? null;
 
   const initials = profile?.fullName
     ? profile.fullName.split(' ').map((w: string) => w[0]).join('').toUpperCase().slice(0, 2)
@@ -111,9 +109,6 @@ export default function ProfileScreen() {
       {/* Header */}
       <View style={[styles.header, { paddingTop: paddingT }]}>
         <Text style={styles.headerTitle}>Profile</Text>
-        <TouchableOpacity onPress={() => router.push("/(onboarding)/prompts")} activeOpacity={0.8}>
-          <Feather name="edit-2" size={20} color={Colors.trust} />
-        </TouchableOpacity>
       </View>
 
       <View style={styles.content}>
@@ -148,19 +143,6 @@ export default function ProfileScreen() {
                 </>
               )}
             </View>
-
-            {/* Trust Chain badge */}
-            {vouchedBy ? (
-              <View style={styles.trustChainBadge}>
-                <Feather name="shield" size={12} color={Colors.trust} />
-                <Text style={styles.trustChainText}>
-                  Approved by {vouchedBy.firstName}
-                </Text>
-                {vouchedBy.isVerified && (
-                  <Feather name="check" size={12} color={Colors.trust} />
-                )}
-              </View>
-            ) : null}
           </View>
         </View>
 
@@ -218,24 +200,6 @@ export default function ProfileScreen() {
           <View style={styles.statDivider} />
           <StatBox label="Intent" value={profile?.primaryIntent ?? "—"} />
         </View>
-
-        {/* Prompts */}
-        {prompts.length > 0 && (
-          <View style={styles.section}>
-            <View style={styles.sectionHeaderRow}>
-              <Text style={styles.sectionLabel}>MY PROMPTS</Text>
-              <TouchableOpacity onPress={() => router.push("/(onboarding)/prompts")}>
-                <Text style={styles.editLink}>Edit</Text>
-              </TouchableOpacity>
-            </View>
-            {prompts.map((p) => (
-              <View key={p.id} style={styles.promptCard}>
-                <Text style={styles.promptQ}>{p.promptText}</Text>
-                <Text style={styles.promptA}>{p.answer}</Text>
-              </View>
-            ))}
-          </View>
-        )}
 
         {/* Actions */}
         <View style={styles.section}>

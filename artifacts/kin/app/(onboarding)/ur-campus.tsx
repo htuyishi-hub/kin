@@ -89,11 +89,8 @@ export default function UrCampusScreen() {
       ]}
       keyboardShouldPersistTaps="handled"
     >
-      <Text style={[styles.step, { color: colors.mutedForeground }]}>Step 2 of 4</Text>
+      <Text style={[styles.step, { color: colors.mutedForeground }]}>Step 2 of 3</Text>
       <Text style={[styles.title, { color: colors.foreground }]}>Choose your campus</Text>
-      <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>
-        University of Rwanda
-      </Text>
 
       <View style={styles.section}>
         <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>CAMPUSES</Text>

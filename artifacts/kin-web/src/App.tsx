@@ -17,7 +17,6 @@ import OnboardingPersonal from "@/pages/OnboardingPersonal";
 import OnboardingOccupation from "@/pages/OnboardingOccupation";
 import OnboardingUr from "@/pages/OnboardingUr";
 import OnboardingVouch from "@/pages/OnboardingVouch";
-import OnboardingPrompts from "@/pages/OnboardingPrompts";
 import OnboardingWaiting from "@/pages/OnboardingWaiting";
 import AppScreen from "@/pages/AppScreen";
 
@@ -59,7 +58,6 @@ function Router() {
         <Route path="/onboarding/occupation" component={OnboardingOccupation} />
         <Route path="/onboarding/ur" component={OnboardingUr} />
         <Route path="/onboarding/vouch" component={OnboardingVouch} />
-        <Route path="/onboarding/prompts" component={OnboardingPrompts} />
         <Route path="/onboarding/waiting" component={OnboardingWaiting} />
         <Route path="/app" component={AppScreen} />
         <Route component={NotFound} />

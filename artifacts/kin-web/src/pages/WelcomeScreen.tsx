@@ -27,13 +27,10 @@ export default function WelcomeScreen() {
 
       {/* Central Tagline */}
       <div className="flex flex-col items-center text-center px-4 my-auto relative z-10 gap-2">
-        <h1 className="font-serif text-2xl font-bold text-[#F0EDE6] leading-snug">
-          Umuntu uzabana nawe <br />
-          <span className="italic text-[#C9A84C]">ari hano.</span>
+        <h1 className="font-serif text-3xl font-bold text-[#F0EDE6] leading-snug">
+          The person you will marry <br />
+          <span className="italic text-[#C9A84C]">is here.</span>
         </h1>
-        <p className="font-sans text-sm text-[#A8A49E] max-w-[260px]">
-          The person you will marry is here.
-        </p>
       </div>
 
       {/* Bottom Action Buttons */}
@@ -46,13 +43,13 @@ export default function WelcomeScreen() {
           <span className="bg-[#2563EB] text-[#F0EDE6] text-[10px] font-bold px-2 py-0.5 rounded tracking-wider">
             UR
           </span>
-          <span>Injira nk'Umunyeshuri · Student Sign Up</span>
+          <span>Student Sign Up</span>
         </button>
 
         {/* Divider */}
         <div className="flex items-center gap-3 w-full px-2 my-1">
           <div className="flex-1 h-px bg-[#21262D]" />
-          <span className="text-xs text-[#A8A49E] font-medium">cyangwa · or</span>
+          <span className="text-xs text-[#A8A49E] font-medium">or</span>
           <div className="flex-1 h-px bg-[#21262D]" />
         </div>
 
@@ -64,7 +61,7 @@ export default function WelcomeScreen() {
           <span className="bg-[#242438] text-[#C9A84C] text-[9px] font-bold px-1.5 py-0.5 rounded tracking-wider">
             INVITE
           </span>
-          <span>Konti Isanzwe · Personal Account</span>
+          <span>Personal Account</span>
         </button>
 
         {/* Sign In Link */}
@@ -72,8 +69,8 @@ export default function WelcomeScreen() {
           onClick={() => setLocation('/signin')}
           className="flex items-center gap-1.5 py-2 mt-1 text-sm cursor-pointer hover:opacity-90 transition-opacity"
         >
-          <span className="text-[#A8A49E]">Ufite konti?</span>
-          <span className="font-semibold text-[#2563EB]">Injira · Sign in</span>
+          <span className="text-[#A8A49E]">Already have an account?</span>
+          <span className="font-semibold text-[#2563EB]">Sign in</span>
         </button>
       </div>
     </div>

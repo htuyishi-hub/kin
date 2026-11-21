@@ -30,12 +30,12 @@ export default function OnboardingUr() {
     const cleanReg = regNumber.trim();
 
     if (!cleanReg) {
-      setError('Injiza registration number yawe ya UR · Enter your 9-digit reg number');
+      setError('Enter your 9-digit registration number');
       return;
     }
 
     if (cleanReg.length !== 9 || !/^\d{9}$/.test(cleanReg)) {
-      setError('Registration number igomba kuba igizwe n\'imibare 9 (urugero: 222012345)');
+      setError('Registration number must be 9 digits (e.g. 222012345)');
       return;
     }
 
@@ -54,16 +54,18 @@ export default function OnboardingUr() {
             institution_verified: true,
             is_verified: true,
             verification_method: 'ur_registration',
+            onboarding_complete: true,
+            account_status: 'active',
           })
           .eq('id', user.id);
       }
 
       setVerifiedSuccess(true);
       setTimeout(() => {
-        setLocation('/onboarding/prompts');
-      }, 1200);
+        setLocation('/app');
+      }, 1000);
     } catch (err: any) {
-      setError(err?.message || 'Ntibyashobotse kwemeza registration number.');
+      setError(err?.message || 'Failed to verify registration number.');
     } finally {
       setIsPending(false);
     }
@@ -74,11 +76,11 @@ export default function OnboardingUr() {
       {/* Step Header */}
       <div className="flex flex-col gap-2">
         <div className="flex items-center justify-between text-xs text-[#A8A49E]">
-          <span className="font-semibold text-[#2563EB]">Intambwe ya 3/5</span>
+          <span className="font-semibold text-[#2563EB]">Step 3 of 3</span>
           <span className="font-mono">UR Verification</span>
         </div>
         <div className="w-full h-1 bg-[#21262D] rounded-full overflow-hidden">
-          <div className="w-3/5 h-full bg-[#2563EB] rounded-full" />
+          <div className="w-full h-full bg-[#2563EB] rounded-full" />
         </div>
 
         <div className="flex items-center gap-2 mt-3">
@@ -86,12 +88,9 @@ export default function OnboardingUr() {
             UR BADGE
           </span>
           <h1 className="font-serif text-2xl font-bold text-[#F0EDE6] leading-tight">
-            Kaminuza y'u Rwanda
+            University of Rwanda
           </h1>
         </div>
-        <p className="text-xs text-[#A8A49E] leading-relaxed">
-          Abanyeshuri n'abize muri UR bahabwa ikirango cy'icyizere (UR Badge) cyemeza umwirondoro wabo.
-        </p>
       </div>
 
       {/* Form Area */}
@@ -99,7 +98,7 @@ export default function OnboardingUr() {
         {/* Campus Selection */}
         <div className="flex flex-col gap-1.5">
           <label className="text-xs font-semibold uppercase tracking-wider text-[#A8A49E]">
-            Hitamo Campus yawe · UR Campus
+            UR Campus
           </label>
           <div className="grid grid-cols-2 gap-2">
             {CAMPUSES.map((c) => (
@@ -122,7 +121,7 @@ export default function OnboardingUr() {
         {/* 9-Digit Registration Number */}
         <div className="flex flex-col gap-1.5 mt-2">
           <label className="text-xs font-semibold uppercase tracking-wider text-[#A8A49E]">
-            Registration Number (Imibare 9)
+            Registration Number (9 Digits)
           </label>
           <div
             className={`flex items-center bg-[#1A1A2E] border-1.5 rounded-xl overflow-hidden transition-colors ${
@@ -131,7 +130,7 @@ export default function OnboardingUr() {
           >
             <input
               type="text"
-              placeholder="Urugero: 222012345"
+              placeholder="e.g. 222012345"
               value={regNumber}
               maxLength={9}
               onChange={(e) => {
@@ -148,7 +147,7 @@ export default function OnboardingUr() {
         {verifiedSuccess && (
           <div className="p-3 bg-[#3FB950]/15 border border-[#3FB950] rounded-xl flex items-center gap-2.5 text-[#3FB950]">
             <CheckCircle className="w-5 h-5 flex-shrink-0" />
-            <span className="text-xs font-semibold">UR Badge yemejwe neza! Uhawe ikirango cy'icyizere.</span>
+            <span className="text-xs font-semibold">UR Badge verified successfully!</span>
           </div>
         )}
       </form>
@@ -165,7 +164,7 @@ export default function OnboardingUr() {
           ) : (
             <>
               <GraduationCap className="w-5 h-5" />
-              <span>Emeza UR Badge · Verify Student</span>
+              <span>Verify Student</span>
             </>
           )}
         </button>
@@ -176,7 +175,7 @@ export default function OnboardingUr() {
           onClick={() => setLocation('/onboarding/vouch')}
           className="py-2 text-xs font-medium text-[#A8A49E] hover:text-[#F0EDE6] transition-colors cursor-pointer text-center"
         >
-          Ntabwo ndi umunyeshuri wa UR · Skip / Not a UR student
+          Skip / Not a UR student
         </button>
       </div>
     </div>

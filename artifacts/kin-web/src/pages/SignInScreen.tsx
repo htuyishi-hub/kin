@@ -16,12 +16,12 @@ export default function SignInScreen() {
     const cleaned = email.trim().toLowerCase();
 
     if (!cleaned) {
-      setError('Injiza imeri yawe · Enter your email');
+      setError('Enter your email');
       return;
     }
 
     if (!isValidEmail(cleaned)) {
-      setError('Injiza imeri ifite ireme (urugero: izina@gmail.com) · Invalid email format');
+      setError('Invalid email format');
       return;
     }
 
@@ -32,14 +32,14 @@ export default function SignInScreen() {
     try {
       const res = await sendOtpForSignIn(cleaned);
       if (!res.success) {
-        setError(res.error || 'Ntibyashobotse kohereza kode yo kwinjira.');
+        setError(res.error || 'Failed to send login code.');
         setIsNotFound(Boolean(res.isNotFound));
         return;
       }
 
       setLocation(`/otp?email=${encodeURIComponent(cleaned)}&mode=signin`);
     } catch (err: any) {
-      setError(err?.message || 'Habaye ikibazo. Ongera ugerageze.');
+      setError(err?.message || 'An error occurred. Please try again.');
     } finally {
       setIsPending(false);
     }
@@ -53,26 +53,19 @@ export default function SignInScreen() {
           onClick={() => setLocation('/')}
           className="self-start py-1.5 text-sm font-medium text-[#FF6B6B] hover:opacity-80 transition-opacity cursor-pointer mb-2"
         >
-          ← Inyuma · Back
+          ← Back
         </button>
 
         <h1 className="font-serif text-2xl font-bold text-[#F0EDE6] leading-tight">
-          Injira muri Konti
+          Sign In
         </h1>
-        <h2 className="text-sm font-medium text-[#A8A49E] -mt-1">
-          Sign In to Kin
-        </h2>
-
-        <p className="text-xs text-[#A8A49E] leading-relaxed mt-1">
-          Injiza imeri yawe yakoreshejwe ufungura konti kugira ngo tukoherereze kode yo kwinjira.
-        </p>
       </div>
 
       {/* Form Area */}
       <form onSubmit={handleSubmit} className="flex flex-col gap-4 my-auto py-6">
         <div className="flex flex-col gap-1.5">
           <label className="text-xs font-semibold uppercase tracking-wider text-[#A8A49E]">
-            Imeri yawe · Email Address
+            Email Address
           </label>
           <div
             className={`flex items-center bg-[#1A1A2E] border-1.5 rounded-xl overflow-hidden transition-colors ${
@@ -105,7 +98,7 @@ export default function SignInScreen() {
                   onClick={() => setLocation('/signup')}
                   className="self-start bg-[#FF6B6B] text-[#0D1117] text-[11px] font-bold px-3 py-1.5 rounded-md hover:bg-[#FF6B6B]/90 transition-colors cursor-pointer"
                 >
-                  Fungura konti hano · Create an account
+                  Create an account
                 </button>
               )}
             </div>
@@ -120,7 +113,7 @@ export default function SignInScreen() {
           {isPending ? (
             <Loader2 className="w-5 h-5 animate-spin text-white" />
           ) : (
-            <span>Ohereza kode yo kwinjira · Send Code</span>
+            <span>Send Code</span>
           )}
         </button>
 
@@ -130,7 +123,7 @@ export default function SignInScreen() {
           onClick={() => setLocation('/forgot-account')}
           className="self-center py-2 text-xs font-medium text-[#FF6B6B] hover:underline cursor-pointer"
         >
-          Wibagiwe konti? · Forgot account?
+          Forgot account?
         </button>
       </form>
 
@@ -140,8 +133,8 @@ export default function SignInScreen() {
           onClick={() => setLocation('/')}
           className="flex items-center gap-1.5 text-sm cursor-pointer hover:opacity-90 transition-opacity"
         >
-          <span className="text-[#A8A49E]">Nta konti ufite?</span>
-          <span className="font-semibold text-[#2563EB]">Fungura konti · Create account</span>
+          <span className="text-[#A8A49E]">Don't have an account?</span>
+          <span className="font-semibold text-[#2563EB]">Create account</span>
         </button>
       </div>
     </div>

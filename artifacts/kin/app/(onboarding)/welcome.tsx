@@ -72,7 +72,6 @@ export default function WelcomeScreen() {
         style={[styles.taglineContainer, { top: height * 0.52 }, taglineStyle]}
         pointerEvents="none"
       >
-        <Text style={styles.taglineRW}>Umuntu uzabana nawe ari hano.</Text>
         <Text style={styles.taglineEN}>The person you will marry is here.</Text>
       </Animated.View>
 
@@ -90,13 +89,13 @@ export default function WelcomeScreen() {
           accessibilityRole="button"
         >
           <UrBadge />
-          <Text style={styles.socialButtonText}>Injira nk'Umunyeshuri · Student Sign Up</Text>
+          <Text style={styles.socialButtonText}>Student Sign Up</Text>
         </Pressable>
 
         {/* Divider */}
         <View style={styles.dividerRow}>
           <View style={styles.dividerLine} />
-          <Text style={styles.dividerText}>cyangwa · or</Text>
+          <Text style={styles.dividerText}>or</Text>
           <View style={styles.dividerLine} />
         </View>
 
@@ -111,7 +110,7 @@ export default function WelcomeScreen() {
           accessibilityRole="button"
         >
           <InviteBadge />
-          <Text style={styles.personalButtonText}>Konti Isanzwe · Personal Account (Invited)</Text>
+          <Text style={styles.personalButtonText}>Personal Account (Invited)</Text>
         </Pressable>
 
         <Pressable
@@ -120,8 +119,8 @@ export default function WelcomeScreen() {
           accessibilityLabel="Sign In"
           accessibilityRole="button"
         >
-          <Text style={styles.signInLabel}>Ufite konti?</Text>
-          <Text style={styles.signInAction}> Injira · Sign in</Text>
+          <Text style={styles.signInLabel}>Already have an account?</Text>
+          <Text style={styles.signInAction}> Sign in</Text>
         </Pressable>
       </Animated.View>
     </View>

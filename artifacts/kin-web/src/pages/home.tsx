@@ -54,7 +54,7 @@ export default function Home() {
               href="/"
               className="bg-gold text-night hover:bg-gold/90 font-bold px-8 py-4 text-base rounded-full inline-flex items-center justify-center transition-colors shadow-lg"
             >
-              Fungura Kin · Open App
+              Open App
             </Link>
             <PwaInstallButton className="px-8 py-4 text-base rounded-full" />
             <Button
@@ -126,8 +126,8 @@ export default function Home() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-12 max-w-5xl mx-auto">
             <div className="relative p-8 rounded-2xl bg-ink-raised border border-divider">
               <div className="absolute -top-6 left-8 w-12 h-12 rounded-full bg-trust flex items-center justify-center font-serif text-xl font-bold text-white shadow-lg">1</div>
-              <h3 className="font-serif text-xl font-bold text-bone mt-4 mb-3">Get Vouched</h3>
-              <p className="text-bone-dim">A current member must vouch for your character. This keeps our community safe and aligned.</p>
+              <h3 className="font-serif text-xl font-bold text-bone mt-4 mb-3">Get Invited</h3>
+              <p className="text-bone-dim">A current member must invite you. This keeps our community safe and aligned.</p>
             </div>
             <div className="relative p-8 rounded-2xl bg-ink-raised border border-divider">
               <div className="absolute -top-6 left-8 w-12 h-12 rounded-full bg-trust flex items-center justify-center font-serif text-xl font-bold text-white shadow-lg">2</div>

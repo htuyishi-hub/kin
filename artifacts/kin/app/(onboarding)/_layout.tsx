@@ -14,7 +14,6 @@ export default function OnboardingLayout() {
       <Stack.Screen name="ur-campus" />
       <Stack.Screen name="ur-registration" />
       <Stack.Screen name="vouch" />
-      <Stack.Screen name="prompts" />
       <Stack.Screen name="waiting" />
     </Stack>
   );

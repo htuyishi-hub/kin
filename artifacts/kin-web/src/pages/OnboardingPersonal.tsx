@@ -17,11 +17,11 @@ export default function OnboardingPersonal() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!fullName.trim()) {
-      setError('Injiza amazina yawe yose · Enter your full name');
+      setError('Enter your full name');
       return;
     }
     if (!dob) {
-      setError("Hitamo itariki y'amavuko · Select your birth date");
+      setError('Select your birth date');
       return;
     }
 
@@ -30,12 +30,12 @@ export default function OnboardingPersonal() {
     const today = new Date();
     const age = today.getFullYear() - birthDate.getFullYear();
     if (age < 18) {
-      setError('Ugomba kuba ufite nibura imyaka 18 · Must be 18 or older');
+      setError('Must be 18 or older');
       return;
     }
 
     if (!gender) {
-      setError('Hitamo igitsina cyawe · Select your gender');
+      setError('Select your gender');
       return;
     }
 
@@ -56,7 +56,7 @@ export default function OnboardingPersonal() {
       }
       setLocation('/onboarding/occupation');
     } catch (err: any) {
-      setError(err?.message || 'Habaye ikibazo cyo kubika amakuru.');
+      setError(err?.message || 'Failed to save. Please try again.');
     } finally {
       setIsPending(false);
     }
@@ -67,19 +67,16 @@ export default function OnboardingPersonal() {
       {/* Step Header */}
       <div className="flex flex-col gap-2">
         <div className="flex items-center justify-between text-xs text-[#A8A49E]">
-          <span className="font-semibold text-[#2563EB]">Intambwe ya 1/5</span>
-          <span className="font-mono">Amakuru yawe</span>
+          <span className="font-semibold text-[#2563EB]">Step 1 of 3</span>
+          <span className="font-mono">Personal info</span>
         </div>
         <div className="w-full h-1 bg-[#21262D] rounded-full overflow-hidden">
-          <div className="w-1/5 h-full bg-[#2563EB] rounded-full" />
+          <div className="w-1/3 h-full bg-[#2563EB] rounded-full" />
         </div>
 
         <h1 className="font-serif text-2xl font-bold text-[#F0EDE6] leading-tight mt-3">
-          Tukumenye neza
-        </h1>
-        <h2 className="text-sm font-medium text-[#A8A49E] -mt-1">
           Tell us about yourself
-        </h2>
+        </h1>
       </div>
 
       {/* Form */}
@@ -87,11 +84,11 @@ export default function OnboardingPersonal() {
         {/* Full Name */}
         <div className="flex flex-col gap-1.5">
           <label className="text-xs font-semibold uppercase tracking-wider text-[#A8A49E]">
-            Amazina yawe yose · Full Name
+            Full Name
           </label>
           <input
             type="text"
-            placeholder="Amazina asanzwe"
+            placeholder="Full Name"
             value={fullName}
             onChange={(e) => {
               setFullName(e.target.value);
@@ -104,7 +101,7 @@ export default function OnboardingPersonal() {
         {/* Date of Birth */}
         <div className="flex flex-col gap-1.5">
           <label className="text-xs font-semibold uppercase tracking-wider text-[#A8A49E]">
-            Itariki y'amavuko · Date of Birth
+            Date of Birth
           </label>
           <input
             type="date"
@@ -120,7 +117,7 @@ export default function OnboardingPersonal() {
         {/* Gender Selection */}
         <div className="flex flex-col gap-1.5 mt-1">
           <label className="text-xs font-semibold uppercase tracking-wider text-[#A8A49E]">
-            Igitsina · Gender
+            Gender
           </label>
           <div className="grid grid-cols-2 gap-3">
             <button
@@ -135,7 +132,7 @@ export default function OnboardingPersonal() {
                   : 'border-[#21262D] bg-[#1A1A2E] text-[#A8A49E] hover:border-[#A8A49E]/40'
               }`}
             >
-              Gore · Female
+              Female
             </button>
             <button
               type="button"
@@ -149,7 +146,7 @@ export default function OnboardingPersonal() {
                   : 'border-[#21262D] bg-[#1A1A2E] text-[#A8A49E] hover:border-[#A8A49E]/40'
               }`}
             >
-              Gabo · Male
+              Male
             </button>
           </div>
         </div>
@@ -167,7 +164,7 @@ export default function OnboardingPersonal() {
           {isPending ? (
             <Loader2 className="w-5 h-5 animate-spin text-white" />
           ) : (
-            <span>Komeza · Continue</span>
+            <span>Continue</span>
           )}
         </button>
       </div>

@@ -302,15 +302,6 @@ export function TeaserSwipeDeck({
             <View style={styles.nameRow}>
               <Text style={styles.candidateName}>{currentCandidate.firstName}</Text>
             </View>
-
-            {/* Approved Trust Badge */}
-            {approver ? (
-              <View style={styles.approvedPill}>
-                <Feather name="shield" size={12} color={Colors.trust} />
-                <Text style={styles.approvedPillText}>Approved by {approver.firstName}</Text>
-                {approver.isVerified && <Feather name="check" size={12} color={Colors.trust} />}
-              </View>
-            ) : null}
           </View>
         </Animated.View>
       </GestureDetector>

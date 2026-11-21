@@ -33,12 +33,12 @@ export default function EmailScreen() {
     const cleaned = email.trim().toLowerCase();
 
     if (!cleaned) {
-      setError("Injiza imeri yawe · Enter your email");
+      setError("Enter your email");
       return;
     }
 
     if (!isValidEmail(cleaned)) {
-      setError("Injiza imeri ifite ireme (urugero: izina@gmail.com) · Invalid email format");
+      setError("Invalid email format");
       return;
     }
 
@@ -48,7 +48,7 @@ export default function EmailScreen() {
     try {
       const res = await sendOtpForSignUp(cleaned);
       if (!res.success) {
-        setError(res.error || "Ntibyashobotse kohereza kode. Ongera ugerageze.");
+        setError(res.error || "Failed to send code. Please try again.");
         return;
       }
 
@@ -62,7 +62,7 @@ export default function EmailScreen() {
         },
       });
     } catch (err: any) {
-      setError(err?.message || "Habaye ikibazo. Ongera ugerageze.");
+      setError(err?.message || "An error occurred. Please try again.");
     } finally {
       setIsPending(false);
     }
@@ -90,7 +90,7 @@ export default function EmailScreen() {
             style={styles.backButton}
             accessibilityRole="button"
           >
-            <Text style={styles.backButtonText}>← Inyuma · Back</Text>
+            <Text style={styles.backButtonText}>← Back</Text>
           </TouchableOpacity>
 
           <View style={styles.badgeRow}>
@@ -106,23 +106,14 @@ export default function EmailScreen() {
           </View>
 
           <Text style={styles.title}>
-            {isStudent ? "Injira nk'Umunyeshuri" : "Fungura Konti Isanzwe"}
-          </Text>
-          <Text style={styles.titleEn}>
             {isStudent ? "Student Sign Up" : "Personal Account Sign Up"}
-          </Text>
-
-          <Text style={styles.subtitle}>
-            {isStudent
-              ? "Koresha imeri yawe. Icyemezo cy'umunyeshuri (UR Badge) kizakorwa mu ntambwe ikurikira ukoresheje registration number yawe."
-              : "Koresha imeri yawe. Kwinjira bisaba ubutumire bw'umunyamuryango (Invite code) cyangwa kwemeza n'abandi."}
           </Text>
         </View>
 
         {/* Action: Email OTP Sign Up */}
         <View style={styles.actionSection}>
           <View style={styles.inputContainer}>
-            <Text style={styles.inputLabel}>Imeri yawe · Email Address</Text>
+            <Text style={styles.inputLabel}>Email Address</Text>
             <View style={[styles.inputWrapper, !!error && styles.inputWrapperError]}>
               <TextInput
                 style={styles.textInput}
@@ -155,7 +146,7 @@ export default function EmailScreen() {
               {isPending ? (
                 <ActivityIndicator color={Colors.bone} />
               ) : (
-                <Text style={styles.primaryButtonText}>Ohereza kode · Send 6-Digit Code</Text>
+                <Text style={styles.primaryButtonText}>Send 6-Digit Code</Text>
               )}
             </TouchableOpacity>
           </View>
@@ -168,8 +159,8 @@ export default function EmailScreen() {
             style={styles.switchLink}
             accessibilityRole="button"
           >
-            <Text style={styles.switchLabel}>Ufite konti isanzwe?</Text>
-            <Text style={styles.switchAction}> Injira · Sign in</Text>
+            <Text style={styles.switchLabel}>Already have an account?</Text>
+            <Text style={styles.switchAction}> Sign in</Text>
           </Pressable>
         </View>
       </ScrollView>

@@ -30,12 +30,12 @@ export default function ForgotAccountScreen() {
     const cleaned = email.trim().toLowerCase();
 
     if (!cleaned) {
-      setError("Injiza imeri yawe · Enter your email");
+      setError("Enter your email");
       return;
     }
 
     if (!isValidEmail(cleaned)) {
-      setError("Injiza imeri ifite ireme (urugero: izina@gmail.com) · Invalid email format");
+      setError("Invalid email format");
       return;
     }
 
@@ -45,7 +45,7 @@ export default function ForgotAccountScreen() {
     try {
       const res = await sendOtpForRecovery(cleaned);
       if (!res.success) {
-        setError(res.error || "Ntibyashobotse kohereza kode yo kugarura konti.");
+        setError(res.error || "Failed to send recovery code. Please try again.");
         return;
       }
 
@@ -58,7 +58,7 @@ export default function ForgotAccountScreen() {
         },
       });
     } catch (err: any) {
-      setError(err?.message || "Habaye ikibazo. Ongera ugerageze.");
+      setError(err?.message || "An error occurred. Please try again.");
     } finally {
       setIsPending(false);
     }
@@ -87,20 +87,16 @@ export default function ForgotAccountScreen() {
             accessibilityLabel="Go back"
             accessibilityRole="button"
           >
-            <Text style={styles.backButtonText}>← Inyuma · Back</Text>
+            <Text style={styles.backButtonText}>← Back</Text>
           </TouchableOpacity>
 
-          <Text style={styles.title}>Kugarura Konti</Text>
-          <Text style={styles.titleEn}>Recover Your Account</Text>
-          <Text style={styles.subtitle}>
-            Injiza imeri wakoresheje ufungura konti kugira ngo tukoherereze kode y'imibare 6 yo kugarura konti yawe.
-          </Text>
+          <Text style={styles.title}>Recover Your Account</Text>
         </View>
 
         {/* Section: Email OTP Recovery */}
         <View style={styles.section}>
           <View style={styles.inputContainer}>
-            <Text style={styles.inputLabel}>Imeri yawe · Email Address</Text>
+            <Text style={styles.inputLabel}>Email Address</Text>
             <View style={[styles.inputWrapper, !!error && styles.inputWrapperError]}>
               <TextInput
                 style={styles.textInput}
@@ -134,7 +130,7 @@ export default function ForgotAccountScreen() {
                 <ActivityIndicator color={Colors.bone} />
               ) : (
                 <Text style={styles.primaryButtonText}>
-                  Ohereza kode yo kugarura · Send Recovery Code
+                  Send Recovery Code
                 </Text>
               )}
             </TouchableOpacity>
@@ -148,8 +144,8 @@ export default function ForgotAccountScreen() {
             style={styles.backLink}
             accessibilityRole="button"
           >
-            <Text style={styles.backLinkLabel}>Wibutse amakuru yawe?</Text>
-            <Text style={styles.backLinkAction}> Injira · Sign in</Text>
+            <Text style={styles.backLinkLabel}>Remember your account?</Text>
+            <Text style={styles.backLinkAction}> Sign in</Text>
           </Pressable>
         </View>
       </ScrollView>

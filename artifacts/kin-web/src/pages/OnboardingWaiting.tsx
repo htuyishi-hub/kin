@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useLocation } from 'wouter';
-import { Clock, Share2, Check, ShieldCheck, Users } from 'lucide-react';
+import { Clock, Share2, Check, ShieldCheck, Users, Copy } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 
 export default function OnboardingWaiting() {
@@ -8,10 +8,10 @@ export default function OnboardingWaiting() {
   const { user } = useAuth();
   const [copied, setCopied] = useState(false);
 
-  const vouchUrl = `https://kin.rw/vouch/${user?.id || 'candidate'}`;
+  const inviteUrl = `https://kin.rw/invite/${user?.id?.slice(0, 8) || 'member'}`;
 
   function handleCopy() {
-    navigator.clipboard.writeText(vouchUrl);
+    navigator.clipboard.writeText(inviteUrl);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   }
@@ -25,15 +25,8 @@ export default function OnboardingWaiting() {
         </div>
 
         <h1 className="font-serif text-2xl font-bold text-[#F0EDE6] leading-tight">
-          Icyumba cyo Gutegereza
+          The Waiting Room
         </h1>
-        <h2 className="text-sm font-medium text-[#C9A84C] -mt-1">
-          The Waiting Room · Velvet Rope
-        </h2>
-
-        <p className="text-xs text-[#A8A49E] leading-relaxed max-w-[280px] mt-1">
-          Konti yawe iri ku rutonde rwo gutegereza. Ugomba kwemezwa n'abanyamuryango 2 cyangwa kuzuza amanota 10 y'icyizere.
-        </p>
       </div>
 
       {/* Card Stats */}
@@ -43,53 +36,43 @@ export default function OnboardingWaiting() {
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-[#A8A49E] flex items-center gap-1.5">
               <Users className="w-3.5 h-3.5 text-[#2563EB]" />
-              Umwanya ku murongo
+              Waitlist Position
             </span>
             <span className="text-xs font-bold text-[#F0EDE6] bg-[#242438] px-2.5 py-0.5 rounded-full font-mono">
-              #42 ku murongo
+              #42 in line
             </span>
           </div>
 
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-[#A8A49E] flex items-center gap-1.5">
               <ShieldCheck className="w-3.5 h-3.5 text-[#3FB950]" />
-              Amanota y'Icyizere (Trust Score)
+              Trust Score
             </span>
             <span className="text-xs font-bold text-[#3FB950] font-mono">
               50 / 100
             </span>
           </div>
-
-          <div className="flex flex-col gap-1.5 pt-2 border-t border-[#21262D]">
-            <div className="flex justify-between text-[11px] text-[#A8A49E]">
-              <span>Kwemererwa (Quorum)</span>
-              <span className="font-mono text-[#C9A84C]">0 / 10 Points</span>
-            </div>
-            <div className="w-full h-1.5 bg-[#0D1117] rounded-full overflow-hidden">
-              <div className="w-[15%] h-full bg-[#C9A84C] rounded-full" />
-            </div>
-          </div>
         </div>
 
-        {/* Shareable Vouch Link Card */}
+        {/* Shareable Invite Link Card */}
         <div className="p-4 bg-[#1A1A2E]/70 border border-[#21262D] rounded-2xl flex flex-col gap-2">
           <label className="text-xs font-semibold uppercase tracking-wider text-[#A8A49E]">
-            Umurongo wo gusaba kwemezwa · Vouch Link
+            Your Invite Link
           </label>
           <div className="flex items-center gap-2 p-2.5 bg-[#0D1117] border border-[#21262D] rounded-xl">
             <span className="text-xs text-[#F0EDE6] font-mono truncate flex-1 select-all">
-              {vouchUrl}
+              {inviteUrl}
             </span>
             <button
               onClick={handleCopy}
               className="p-1.5 bg-[#2563EB] text-white rounded-lg hover:bg-[#1A4DB8] transition-colors cursor-pointer"
             >
-              {copied ? <Check className="w-3.5 h-3.5" /> : <Share2 className="w-3.5 h-3.5" />}
+              {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
             </button>
           </div>
           {copied && (
             <span className="text-[11px] text-[#3FB950] font-semibold text-center mt-0.5">
-              Umurongo wakoporowe! Yohereze inshuti zawe zikwemeze.
+              Invite link copied!
             </span>
           )}
         </div>
@@ -102,14 +85,14 @@ export default function OnboardingWaiting() {
           className="w-full h-13.5 bg-[#C9A84C] text-[#0D1117] rounded-full font-bold text-[15px] flex items-center justify-center gap-2 hover:bg-[#C9A84C]/90 active:scale-[0.98] transition-all cursor-pointer shadow-lg"
         >
           <Share2 className="w-4 h-4" />
-          <span>{copied ? 'Yakoporowe!' : 'Sangiza Umurongo · Share Approval Link'}</span>
+          <span>{copied ? 'Copied' : 'Share Invite Link'}</span>
         </button>
 
         <button
           onClick={() => setLocation('/app')}
           className="py-2 text-xs font-medium text-[#A8A49E] hover:text-[#F0EDE6] transition-colors text-center cursor-pointer"
         >
-          Komeza muri Demo View · Preview Discovery
+          Preview Discovery
         </button>
       </div>
     </div>

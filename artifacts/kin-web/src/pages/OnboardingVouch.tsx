@@ -17,7 +17,7 @@ export default function OnboardingVouch() {
     const cleanCode = inviteCode.trim().toUpperCase();
 
     if (!cleanCode) {
-      setError("Injiza kode y'ubutumire · Enter an invite code");
+      setError('Please enter an invite code');
       return;
     }
 
@@ -40,13 +40,19 @@ export default function OnboardingVouch() {
               invited_by_profile: inviter.id,
               is_verified: true,
               account_status: 'active',
+              onboarding_complete: true,
             })
             .eq('id', user.id);
+          setLocation('/app');
+          return;
+        } else {
+          setError('Invalid invite code. Please check and try again.');
+          return;
         }
       }
-      setLocation('/onboarding/prompts');
+      setLocation('/app');
     } catch (err: any) {
-      setError(err?.message || "Kode ntabwo yemewe cyangwa yarangiye.");
+      setError(err?.message || 'Invalid or expired invite code.');
     } finally {
       setIsPending(false);
     }
@@ -57,29 +63,23 @@ export default function OnboardingVouch() {
       {/* Step Header */}
       <div className="flex flex-col gap-2">
         <div className="flex items-center justify-between text-xs text-[#A8A49E]">
-          <span className="font-semibold text-[#2563EB]">Intambwe ya 4/5</span>
-          <span className="font-mono">Ubutumire</span>
+          <span className="font-semibold text-[#2563EB]">Step 3 of 3</span>
+          <span className="font-mono">Invite</span>
         </div>
         <div className="w-full h-1 bg-[#21262D] rounded-full overflow-hidden">
-          <div className="w-4/5 h-full bg-[#2563EB] rounded-full" />
+          <div className="w-full h-full bg-[#2563EB] rounded-full" />
         </div>
 
         <h1 className="font-serif text-2xl font-bold text-[#F0EDE6] leading-tight mt-3">
-          Ufite ubutumire?
+          Have an invite code?
         </h1>
-        <h2 className="text-sm font-medium text-[#A8A49E] -mt-1">
-          Velvet Rope · Member Invite
-        </h2>
-        <p className="text-xs text-[#A8A49E] leading-relaxed">
-          Kin ni umuryango w'abantu bizewe. Niba ufite kode y'umunyamuryango wayiguhaye, yinjize hano winjire ako kanya.
-        </p>
       </div>
 
       {/* Form */}
       <form onSubmit={handleApplyCode} className="flex flex-col gap-4 my-auto py-4">
         <div className="flex flex-col gap-1.5">
           <label className="text-xs font-semibold uppercase tracking-wider text-[#A8A49E]">
-            Kode y'ubutumire · Invite Code
+            Invite Code
           </label>
           <div
             className={`flex items-center bg-[#1A1A2E] border-1.5 rounded-xl overflow-hidden transition-colors ${
@@ -88,7 +88,7 @@ export default function OnboardingVouch() {
           >
             <input
               type="text"
-              placeholder="Urugero: KIN-A1B2C3"
+              placeholder="e.g. KIN-A1B2C3"
               value={inviteCode}
               onChange={(e) => {
                 setInviteCode(e.target.value.toUpperCase());
@@ -110,7 +110,7 @@ export default function OnboardingVouch() {
           ) : (
             <>
               <KeyRound className="w-5 h-5" />
-              <span>Emeza Kode · Apply Code</span>
+              <span>Apply Code</span>
             </>
           )}
         </button>
@@ -120,11 +120,11 @@ export default function OnboardingVouch() {
       <div className="flex flex-col items-center gap-2 pb-2">
         <button
           type="button"
-          onClick={() => setLocation('/onboarding/prompts')}
+          onClick={() => setLocation('/onboarding/waiting')}
           className="w-full py-3 px-4 border border-[#21262D] rounded-full text-xs font-semibold text-[#A8A49E] hover:text-[#F0EDE6] hover:border-[#A8A49E]/40 transition-all flex items-center justify-center gap-2 cursor-pointer"
         >
           <Clock className="w-4 h-4 text-[#C9A84C]" />
-          <span>Nta kode mfite · Continue to Waiting Room</span>
+          <span>Continue to Waiting Room</span>
         </button>
       </div>
     </div>

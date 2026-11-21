@@ -31,12 +31,12 @@ export default function SignInScreen() {
     const cleaned = email.trim().toLowerCase();
 
     if (!cleaned) {
-      setError("Injiza imeri yawe · Enter your email");
+      setError("Enter your email");
       return;
     }
 
     if (!isValidEmail(cleaned)) {
-      setError("Injiza imeri ifite ireme (urugero: izina@gmail.com) · Invalid email format");
+      setError("Invalid email format");
       return;
     }
 
@@ -47,7 +47,7 @@ export default function SignInScreen() {
     try {
       const res = await sendOtpForSignIn(cleaned);
       if (!res.success) {
-        setError(res.error || "Ntibyashobotse kohereza kode yo kwinjira.");
+        setError(res.error || "Failed to send login code. Please try again.");
         setIsNotFound(Boolean(res.isNotFound));
         return;
       }
@@ -61,7 +61,7 @@ export default function SignInScreen() {
         },
       });
     } catch (err: any) {
-      setError(err?.message || "Habaye ikibazo. Ongera ugerageze.");
+      setError(err?.message || "An error occurred. Please try again.");
     } finally {
       setIsPending(false);
     }
@@ -89,20 +89,16 @@ export default function SignInScreen() {
             style={styles.backButton}
             accessibilityRole="button"
           >
-            <Text style={styles.backButtonText}>← Inyuma · Back</Text>
+            <Text style={styles.backButtonText}>← Back</Text>
           </TouchableOpacity>
 
-          <Text style={styles.title}>Injira muri Konti</Text>
-          <Text style={styles.titleEn}>Sign In to Kin</Text>
-          <Text style={styles.subtitle}>
-            Injiza imeri yawe yakoreshejwe ufungura konti kugira ngo tukoherereze kode yo kwinjira.
-          </Text>
+          <Text style={styles.title}>Sign In</Text>
         </View>
 
         {/* Action: Email OTP Sign In */}
         <View style={styles.actionSection}>
           <View style={styles.inputContainer}>
-            <Text style={styles.inputLabel}>Imeri yawe · Email Address</Text>
+            <Text style={styles.inputLabel}>Email Address</Text>
             <View style={[styles.inputWrapper, !!error && styles.inputWrapperError]}>
               <TextInput
                 style={styles.textInput}
@@ -133,7 +129,7 @@ export default function SignInScreen() {
                     activeOpacity={0.85}
                   >
                     <Text style={styles.createAccountCtaText}>
-                      Fungura konti hano · Create an account
+                      Create an account
                     </Text>
                   </TouchableOpacity>
                 )}
@@ -151,7 +147,7 @@ export default function SignInScreen() {
               {isPending ? (
                 <ActivityIndicator color={Colors.bone} />
               ) : (
-                <Text style={styles.primaryButtonText}>Ohereza kode yo kwinjira · Send Code</Text>
+                <Text style={styles.primaryButtonText}>Send Code</Text>
               )}
             </TouchableOpacity>
           </View>
@@ -162,7 +158,7 @@ export default function SignInScreen() {
             style={styles.forgotLink}
             accessibilityRole="button"
           >
-            <Text style={styles.forgotText}>Wibagiwe konti? · Forgot account?</Text>
+            <Text style={styles.forgotText}>Forgot account?</Text>
           </Pressable>
         </View>
 
@@ -173,8 +169,8 @@ export default function SignInScreen() {
             style={styles.switchLink}
             accessibilityRole="button"
           >
-            <Text style={styles.switchLabel}>Nta konti ufite?</Text>
-            <Text style={styles.switchAction}> Fungura konti · Create account</Text>
+            <Text style={styles.switchLabel}>Don't have an account?</Text>
+            <Text style={styles.switchAction}> Create account</Text>
           </Pressable>
         </View>
       </ScrollView>

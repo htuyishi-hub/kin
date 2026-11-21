@@ -119,11 +119,8 @@ export default function InviteVerificationScreen() {
       ]}
       keyboardShouldPersistTaps="handled"
     >
-      <Text style={[styles.step, { color: colors.mutedForeground }]}>Step 3 of 4</Text>
+      <Text style={[styles.step, { color: colors.mutedForeground }]}>Step 3 of 3</Text>
       <Text style={[styles.title, { color: colors.foreground }]}>Community Invite</Text>
-      <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>
-        Kin is an introduction network built on trust. Members join by personal invitation or University of Rwanda verification.
-      </Text>
 
       {/* VERIFIED BANNER */}
       {isVerified ? (
@@ -136,7 +133,7 @@ export default function InviteVerificationScreen() {
             <Text style={[styles.verifiedSub, { color: colors.mutedForeground }]}>
               {p?.institution_verified
                 ? `Verified via University of Rwanda (${p?.campus ?? "Campus"})`
-                : claimSuccess ?? "You have been verified by a community invite."}
+                : claimSuccess ?? "Verified by community invite."}
             </Text>
           </View>
         </View>
@@ -147,9 +144,6 @@ export default function InviteVerificationScreen() {
             <Feather name="key" size={18} color={colors.accent} />
             <Text style={[styles.cardTitle, { color: colors.foreground }]}>Have an invite code?</Text>
           </View>
-          <Text style={[styles.cardSub, { color: colors.mutedForeground }]}>
-            If a friend or member shared an invite code with you, enter it below for instant verification.
-          </Text>
 
           <View style={styles.inputRow}>
             <TextInput
@@ -194,9 +188,6 @@ export default function InviteVerificationScreen() {
           <Feather name="share-2" size={18} color={colors.primary} />
           <Text style={[styles.cardTitle, { color: colors.foreground }]}>Your Invite Link</Text>
         </View>
-        <Text style={[styles.cardSub, { color: colors.mutedForeground }]}>
-          Share your permanent link with people you trust. Anyone who signs up through your link gets verified automatically.
-        </Text>
 
         <View style={[styles.linkBox, { backgroundColor: colors.secondary, borderColor: colors.border }]}>
           <Text style={[styles.linkText, { color: colors.foreground }]} numberOfLines={1}>
@@ -239,9 +230,6 @@ export default function InviteVerificationScreen() {
             <Text style={[styles.urOptionTitle, { color: colors.foreground }]}>
               University of Rwanda Student?
             </Text>
-            <Text style={[styles.urOptionSub, { color: colors.mutedForeground }]}>
-              Verify instantly using your 9-digit registration number
-            </Text>
           </View>
           <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
         </TouchableOpacity>
@@ -255,7 +243,7 @@ export default function InviteVerificationScreen() {
             backgroundColor: isVerified ? colors.primary : colors.muted,
           },
         ]}
-        onPress={() => router.push("/(onboarding)/prompts")}
+        onPress={() => router.replace(isVerified ? "/(tabs)" : "/(onboarding)/waiting")}
         activeOpacity={0.85}
       >
         <Text
@@ -264,7 +252,7 @@ export default function InviteVerificationScreen() {
             { color: isVerified ? colors.primaryForeground : colors.mutedForeground },
           ]}
         >
-          {isVerified ? "Komeza (Continue)" : "Set up prompts while waiting"}
+          {isVerified ? "Continue" : "Continue to Waiting Room"}
         </Text>
       </TouchableOpacity>
     </ScrollView>

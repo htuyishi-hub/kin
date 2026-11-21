@@ -26,8 +26,6 @@ interface Candidate {
   intent: string;
   trustScore: number;
   photoUrl: string;
-  promptQuestion: string;
-  promptAnswer: string;
 }
 
 const SAMPLE_PROFILES: Candidate[] = [
@@ -38,11 +36,9 @@ const SAMPLE_PROFILES: Candidate[] = [
     location: 'Kigali, Nyarugenge',
     occupation: 'Software Engineer & UR Alum',
     isUrStudent: true,
-    intent: 'Gushyingirwa · Marriage',
+    intent: 'Serious Marriage',
     trustScore: 85,
     photoUrl: '/images/couple1.jpg',
-    promptQuestion: 'Ni ikihe gitekerezo cyagufasha kubana neza n\'abandi?',
-    promptAnswer: 'Kubaha umwanya w\'undi, kumva mbere yo gusubiza, no gukorera mu kuri iteka.',
   },
   {
     id: '2',
@@ -51,11 +47,9 @@ const SAMPLE_PROFILES: Candidate[] = [
     location: 'Huye Campus',
     occupation: 'UR Medicine Student (Year 4)',
     isUrStudent: true,
-    intent: 'Umubano w\'Igihe Kirekire · Long-term',
+    intent: 'Long-term Relationship',
     trustScore: 92,
     photoUrl: '/images/couple2.jpg',
-    promptQuestion: 'Wikend y\'amahoro uyimara gute?',
-    promptAnswer: 'Gusura umuryango, gusoma ibitabo by\'amateka y\'u Rwanda, no gutembera ku kiyaga cya Kivu.',
   },
   {
     id: '3',
@@ -64,11 +58,9 @@ const SAMPLE_PROFILES: Candidate[] = [
     location: 'Kigali, Remera',
     occupation: 'Architect & Designer',
     isUrStudent: false,
-    intent: 'Gushyingirwa · Marriage',
+    intent: 'Serious Marriage',
     trustScore: 78,
     photoUrl: '/images/couple3.jpg',
-    promptQuestion: 'Sobanura inshuti y\'ubuzima mu magambo 3',
-    promptAnswer: 'Ukwizera, Ubwitonzi, no Gushyigikirana mu bishya.',
   },
 ];
 
@@ -87,9 +79,9 @@ export default function AppScreen() {
     if (action === 'bid') {
       if (goldenBids <= 0) return;
       setGoldenBids((prev) => prev - 1);
-      setMatchAlert(`Watanze Golden Bid kuri ${currentProfile.name}!`);
+      setMatchAlert(`Golden Bid sent to ${currentProfile.name}!`);
     } else if (action === 'like') {
-      setMatchAlert(`Wakunze ${currentProfile.name}! (It's a Match)`);
+      setMatchAlert(`You liked ${currentProfile.name}! (It's a Match)`);
     }
 
     setTimeout(() => {
@@ -169,7 +161,7 @@ export default function AppScreen() {
                 </div>
               </div>
 
-              {/* Card Details & Prompt Answer */}
+              {/* Card Details */}
               <div className="p-4 flex flex-col gap-3 flex-1 justify-between bg-[#1A1A2E]">
                 <div className="flex flex-col gap-2">
                   <div className="flex items-center gap-2 text-xs text-[#C9A84C] font-semibold">
@@ -178,16 +170,6 @@ export default function AppScreen() {
                   </div>
                   <p className="text-xs text-[#F0EDE6]/90 font-medium">
                     {currentProfile.occupation}
-                  </p>
-                </div>
-
-                {/* Micro Prompt Quote Box */}
-                <div className="p-3 bg-[#0D1117] rounded-xl border border-[#21262D]">
-                  <p className="text-[11px] font-semibold text-[#A8A49E] mb-1">
-                    "{currentProfile.promptQuestion}"
-                  </p>
-                  <p className="text-xs text-[#F0EDE6] font-medium leading-relaxed italic">
-                    "{currentProfile.promptAnswer}"
                   </p>
                 </div>
               </div>
@@ -228,7 +210,7 @@ export default function AppScreen() {
         {activeTab === 'matches' && (
           <div className="flex-1 flex flex-col p-4 gap-4">
             <h2 className="font-serif text-lg font-bold text-[#F0EDE6]">
-              Ibiganiro Byatangiye · Guided Chat
+              Guided Chat
             </h2>
 
             {/* Active Match Card */}
@@ -284,11 +266,11 @@ export default function AppScreen() {
             <div className="flex items-center gap-2">
               <Sparkles className="w-5 h-5 text-[#C9A84C]" />
               <h2 className="font-serif text-lg font-bold text-[#F0EDE6]">
-                Umurongo w'Abiyemeje · Serious Queue
+                Serious Queue
               </h2>
             </div>
             <p className="text-xs text-[#A8A49E] leading-relaxed">
-              Aha hagenewe gusa abantu bafite intego yo gushyingirwa. Abari muri uyu murongo bahuzwa hashingiwe ku gaciro n'icyizere cy'umuryango.
+              Reserved for members with marriage intent. Matched based on mutual trust and values.
             </p>
 
             <div className="p-4 bg-[#1A1A2E] border border-[#C9A84C]/30 rounded-2xl flex flex-col gap-3 mt-2">
@@ -297,10 +279,10 @@ export default function AppScreen() {
               </span>
               <div className="flex items-baseline gap-2">
                 <span className="text-3xl font-mono font-bold text-[#F0EDE6]">3</span>
-                <span className="text-xs text-[#A8A49E]">amatike asigaye</span>
+                <span className="text-xs text-[#A8A49E]">tokens remaining</span>
               </div>
               <p className="text-[11px] text-[#A8A49E]">
-                Buri guhura kwizewe muri uyu murongo kuguha amahirwe y'umubano urambye.
+                Each trusted connection gives you an opportunity for a long-term relationship.
               </p>
             </div>
           </div>
@@ -311,7 +293,7 @@ export default function AppScreen() {
           <div className="flex-1 flex flex-col p-5 gap-4 justify-between">
             <div className="flex flex-col gap-4">
               <h2 className="font-serif text-lg font-bold text-[#F0EDE6]">
-                Konti Yange · My Profile
+                My Profile
               </h2>
 
               <div className="p-4 bg-[#1A1A2E] border border-[#21262D] rounded-2xl flex items-center gap-3.5">
@@ -340,7 +322,7 @@ export default function AppScreen() {
               className="w-full py-3.5 px-4 bg-[#E5534B]/15 border border-[#FF6B6B] rounded-full text-xs font-bold text-[#FF6B6B] flex items-center justify-center gap-2 hover:bg-[#E5534B]/25 transition-colors cursor-pointer mb-2"
             >
               <LogOut className="w-4 h-4" />
-              <span>Sohoka muri Konti · Sign Out</span>
+              <span>Sign Out</span>
             </button>
           </div>
         )}

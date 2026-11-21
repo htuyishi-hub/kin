@@ -19,12 +19,12 @@ export default function EmailScreen() {
     const cleaned = email.trim().toLowerCase();
 
     if (!cleaned) {
-      setError('Injiza imeri yawe · Enter your email');
+      setError('Enter your email');
       return;
     }
 
     if (!isValidEmail(cleaned)) {
-      setError('Injiza imeri ifite ireme (urugero: izina@gmail.com) · Invalid email format');
+      setError('Invalid email format');
       return;
     }
 
@@ -34,13 +34,13 @@ export default function EmailScreen() {
     try {
       const res = await sendOtpForSignUp(cleaned);
       if (!res.success) {
-        setError(res.error || 'Ntibyashobotse kohereza kode. Ongera ugerageze.');
+        setError(res.error || 'Failed to send code. Please try again.');
         return;
       }
 
       setLocation(`/otp?email=${encodeURIComponent(cleaned)}&role=${role}&mode=signup`);
     } catch (err: any) {
-      setError(err?.message || 'Habaye ikibazo. Ongera ugerageze.');
+      setError(err?.message || 'An error occurred. Please try again.');
     } finally {
       setIsPending(false);
     }
@@ -54,7 +54,7 @@ export default function EmailScreen() {
           onClick={() => setLocation('/')}
           className="self-start py-1.5 text-sm font-medium text-[#FF6B6B] hover:opacity-80 transition-opacity cursor-pointer mb-2"
         >
-          ← Inyuma · Back
+          ← Back
         </button>
 
         <div className="flex items-center mb-1">
@@ -70,24 +70,15 @@ export default function EmailScreen() {
         </div>
 
         <h1 className="font-serif text-2xl font-bold text-[#F0EDE6] leading-tight">
-          {isStudent ? "Injira nk'Umunyeshuri" : 'Fungura Konti Isanzwe'}
-        </h1>
-        <h2 className="text-sm font-medium text-[#A8A49E] -mt-1">
           {isStudent ? 'Student Sign Up' : 'Personal Account Sign Up'}
-        </h2>
-
-        <p className="text-xs text-[#A8A49E] leading-relaxed mt-1">
-          {isStudent
-            ? "Koresha imeri yawe. Icyemezo cy'umunyeshuri (UR Badge) kizakorwa mu ntambwe ikurikira ukoresheje registration number yawe."
-            : "Koresha imeri yawe. Kwinjira bisaba ubutumire bw'umunyamuryango (Invite code) cyangwa kwemeza n'abandi."}
-        </p>
+        </h1>
       </div>
 
       {/* Form Area */}
       <form onSubmit={handleSubmit} className="flex flex-col gap-4 my-auto py-6">
         <div className="flex flex-col gap-1.5">
           <label className="text-xs font-semibold uppercase tracking-wider text-[#A8A49E]">
-            Imeri yawe · Email Address
+            Email Address
           </label>
           <div
             className={`flex items-center bg-[#1A1A2E] border-1.5 rounded-xl overflow-hidden transition-colors ${
@@ -117,7 +108,7 @@ export default function EmailScreen() {
           {isPending ? (
             <Loader2 className="w-5 h-5 animate-spin text-white" />
           ) : (
-            <span>Ohereza kode · Send 6-Digit Code</span>
+            <span>Send 6-Digit Code</span>
           )}
         </button>
       </form>
@@ -128,8 +119,8 @@ export default function EmailScreen() {
           onClick={() => setLocation('/signin')}
           className="flex items-center gap-1.5 text-sm cursor-pointer hover:opacity-90 transition-opacity"
         >
-          <span className="text-[#A8A49E]">Ufite konti isanzwe?</span>
-          <span className="font-semibold text-[#2563EB]">Injira · Sign in</span>
+          <span className="text-[#A8A49E]">Already have an account?</span>
+          <span className="font-semibold text-[#2563EB]">Sign in</span>
         </button>
       </div>
     </div>

@@ -29,9 +29,9 @@ const OCCUPATIONS: { value: OnboardingRequestOccupation; label: string }[] = [
 ];
 
 const INTENTS: { value: OnboardingRequestPrimaryGoal; label: string }[] = [
-  { value: "Serious Marriage", label: "Gukundana kugeza mu gushyingiranwa" },
-  { value: "Long-term Relationship", label: "Gukundana byigihe kirekire" },
-  { value: "Casual Dating", label: "Gusabana no kuganira" },
+  { value: "Serious Marriage", label: "Serious Marriage" },
+  { value: "Long-term Relationship", label: "Long-term Relationship" },
+  { value: "Casual Dating", label: "Casual Dating" },
 ];
 
 export default function OccupationScreen() {
@@ -109,11 +109,8 @@ export default function OccupationScreen() {
       ]}
       keyboardShouldPersistTaps="handled"
     >
-      <Text style={[styles.step, { color: colors.mutedForeground }]}>Step 2 of 4</Text>
+      <Text style={[styles.step, { color: colors.mutedForeground }]}>Step 2 of 3</Text>
       <Text style={[styles.title, { color: colors.foreground }]}>Your situation</Text>
-      <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>
-        This helps us connect you with the right people.
-      </Text>
 
       <View style={styles.section}>
         <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>OCCUPATION</Text>

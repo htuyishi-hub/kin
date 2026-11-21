@@ -48,8 +48,6 @@ export default function WaitingScreen() {
   const isWaitlisted = accountStatus === "waitlisted";
   const myInviteCode = p?.invite_code ?? p?.inviteCode ?? "KIN-MEMBER";
   const myInviteLink = p?.invite_link ?? `https://kin.rw/invite/${myInviteCode}`;
-  const myVouchLink = p?.id ? `https://kin.rw/vouch/${p.id}` : "";
-  const [vouchCopied, setVouchCopied] = useState(false);
 
   const apiBaseUrl =
     process.env.EXPO_PUBLIC_API_URL ??
@@ -120,24 +118,6 @@ export default function WaitingScreen() {
     setTimeout(() => setCopied(false), 2500);
   }
 
-  async function handleShareVouch() {
-    if (!myVouchLink) return;
-    try {
-      await Share.share({
-        message: `I'm on the Kin waitlist! Can you publicly approve my profile so I can join? ${myVouchLink}`,
-        url: myVouchLink,
-        title: "Approve my request on Kin",
-      });
-    } catch {
-      // Fallback
-    }
-  }
-
-  function handleCopyVouch() {
-    setVouchCopied(true);
-    setTimeout(() => setVouchCopied(false), 2500);
-  }
-
   if (earlyAccess) {
     return (
       <View
@@ -191,55 +171,7 @@ export default function WaitingScreen() {
 
         <View style={styles.textBlock}>
           <Text style={[styles.title, { color: colors.foreground }]}>Almost there</Text>
-          <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>
-            Kin is an invite-only introduction network. Claim an invite code or share your link to activate your discovery access.
-          </Text>
         </View>
-
-        {/* PEER-TO-PEER PUBLIC APPROVAL LINK */}
-        {isWaitlisted && (
-          <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
-            <View style={styles.cardHeader}>
-              <Feather name="shield" size={18} color={colors.accent} />
-              <Text style={[styles.cardTitle, { color: colors.foreground }]}>Peer-to-Peer Approval</Text>
-            </View>
-            <Text style={[styles.cardSub, { color: colors.mutedForeground }]}>
-              Know an active member on Kin? Share your personal approval link. Once they verify your character, your account is approved instantly.
-            </Text>
-
-            <View style={[styles.linkBox, { backgroundColor: colors.secondary, borderColor: colors.border }]}>
-              <Text style={[styles.linkText, { color: colors.foreground }]} numberOfLines={1}>
-                {myVouchLink || "Generating your approval link..."}
-              </Text>
-            </View>
-
-            <View style={styles.buttonRow}>
-              <TouchableOpacity
-                style={[styles.shareBtn, { backgroundColor: colors.primary }]}
-                onPress={handleShareVouch}
-                activeOpacity={0.85}
-              >
-                <Feather name="send" size={16} color={colors.primaryForeground} />
-                <Text style={[styles.shareBtnText, { color: colors.primaryForeground }]}>Share My Approval Link</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[styles.copyBtn, { borderColor: colors.border, backgroundColor: colors.secondary }]}
-                onPress={handleCopyVouch}
-                activeOpacity={0.85}
-              >
-                <Feather
-                  name={vouchCopied ? "check" : "copy"}
-                  size={16}
-                  color={vouchCopied ? colors.accent : colors.foreground}
-                />
-                <Text style={[styles.copyBtnText, { color: vouchCopied ? colors.accent : colors.foreground }]}>
-                  {vouchCopied ? "Copied" : "Copy"}
-                </Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        )}
 
         {/* CLAIM CODE */}
         <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
@@ -290,9 +222,6 @@ export default function WaitingScreen() {
             <Feather name="share-2" size={18} color={colors.primary} />
             <Text style={[styles.cardTitle, { color: colors.foreground }]}>Your Invite Link</Text>
           </View>
-          <Text style={[styles.cardSub, { color: colors.mutedForeground }]}>
-            Share your link with a friend. When they join, both of you become verified members.
-          </Text>
 
           <View style={[styles.linkBox, { backgroundColor: colors.secondary, borderColor: colors.border }]}>
             <Text style={[styles.linkText, { color: colors.foreground }]} numberOfLines={1}>

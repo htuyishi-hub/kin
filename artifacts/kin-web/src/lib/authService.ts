@@ -34,7 +34,7 @@ export async function sendOtpForSignUp(email: string): Promise<SendOtpResult> {
   if (!isValidEmail(normalized)) {
     return {
       success: false,
-      error: 'Injiza imeri ifite ireme (urugero: izina@gmail.com) · Invalid email format',
+      error: 'Invalid email format',
     };
   }
 
@@ -50,30 +50,30 @@ export async function sendOtpForSignUp(email: string): Promise<SendOtpResult> {
       if (error.message?.toLowerCase().includes('rate limit')) {
         return {
           success: false,
-          error: 'Wagerageje kenshi. Tegereza gato mbere yo kongera · Too many attempts. Please wait.',
+          error: 'Too many attempts. Please wait.',
         };
       }
       return {
         success: false,
-        error: error.message || 'Ntibyashobotse kohereza kode. Ongera ugerageze.',
+        error: error.message || 'Failed to send code. Please try again.',
       };
     }
 
     return {
       success: true,
-      message: `Kode y'imibare 6 yoherejwe kuri ${normalized} · 6-digit code sent`,
+      message: `6-digit code sent to ${normalized}`,
     };
   } catch (err: any) {
     return {
       success: false,
-      error: err?.message || 'Habaye ikibazo cy\'itumanaho.',
+      error: err?.message || 'Network error.',
     };
   }
 }
 
 /**
  * Send 6-digit OTP for existing User Sign In (shouldCreateUser: false).
- * If email does not exist, returns clear bilingual error instead of creating an account.
+ * If email does not exist, returns clear error instead of creating an account.
  */
 export async function sendOtpForSignIn(email: string): Promise<SendOtpResult> {
   const normalized = email.trim().toLowerCase();
@@ -81,7 +81,7 @@ export async function sendOtpForSignIn(email: string): Promise<SendOtpResult> {
   if (!isValidEmail(normalized)) {
     return {
       success: false,
-      error: 'Injiza imeri ifite ireme (urugero: izina@gmail.com) · Invalid email format',
+      error: 'Invalid email format',
     };
   }
 
@@ -104,32 +104,31 @@ export async function sendOtpForSignIn(email: string): Promise<SendOtpResult> {
         return {
           success: false,
           isNotFound: true,
-          error:
-            'Konti ntiyabonetse. Fungura konti nshya · Account not found. Please create an account.',
+          error: 'Account not found. Please create an account.',
         };
       }
 
       if (msg.includes('rate limit')) {
         return {
           success: false,
-          error: 'Wagerageje kenshi. Tegereza gato mbere yo kongera · Too many attempts. Please wait.',
+          error: 'Too many attempts. Please wait.',
         };
       }
 
       return {
         success: false,
-        error: error.message || 'Ntibyashobotse kohereza kode yo kwinjira.',
+        error: error.message || 'Failed to send login code.',
       };
     }
 
     return {
       success: true,
-      message: `Kode yo kwinjira yoherejwe kuri ${normalized} · Login code sent`,
+      message: `Login code sent to ${normalized}`,
     };
   } catch (err: any) {
     return {
       success: false,
-      error: err?.message || 'Habaye ikibazo cy\'itumanaho.',
+      error: err?.message || 'Network error.',
     };
   }
 }
@@ -143,7 +142,7 @@ export async function sendOtpForRecovery(email: string): Promise<SendOtpResult> 
   if (!isValidEmail(normalized)) {
     return {
       success: false,
-      error: 'Injiza imeri ifite ireme (urugero: izina@gmail.com) · Invalid email format',
+      error: 'Invalid email format',
     };
   }
 
@@ -166,25 +165,24 @@ export async function sendOtpForRecovery(email: string): Promise<SendOtpResult> 
           return {
             success: false,
             isNotFound: true,
-            error:
-              'Konti ntiyabonetse kuri iyi meri · No account associated with this email address.',
+            error: 'No account associated with this email address.',
           };
         }
         return {
           success: false,
-          error: otpErr.message || 'Ntibyashobotse kohereza kode yo kugarura konti.',
+          error: otpErr.message || 'Failed to send recovery code.',
         };
       }
     }
 
     return {
       success: true,
-      message: `Kode yo kugarura konti yoherejwe kuri ${normalized} · Recovery code sent`,
+      message: `Recovery code sent to ${normalized}`,
     };
   } catch (err: any) {
     return {
       success: false,
-      error: err?.message || 'Habaye ikibazo cy\'itumanaho.',
+      error: err?.message || 'Network error.',
     };
   }
 }
@@ -204,7 +202,7 @@ export async function verifyEmailOtp(
   if (!cleanToken || cleanToken.length !== 6) {
     return {
       success: false,
-      error: 'Injiza kode y\'imibare 6 yuzuye · Enter complete 6-digit code',
+      error: 'Enter complete 6-digit code',
     };
   }
 
@@ -232,18 +230,18 @@ export async function verifyEmailOtp(
       if (msg.includes('expired') || msg.includes('invalid') || msg.includes('wrong')) {
         return {
           success: false,
-          error: 'Kode ntabwo ari yo cyangwa yarangiye · Code is invalid or has expired',
+          error: 'Code is invalid or has expired',
         };
       }
       if (msg.includes('rate limit')) {
         return {
           success: false,
-          error: 'Wagerageje kenshi. Tegereza gato · Too many attempts. Please wait.',
+          error: 'Too many attempts. Please wait.',
         };
       }
       return {
         success: false,
-        error: error.message || 'Ntibyashobotse kwemeza kode.',
+        error: error.message || 'Failed to verify code.',
       };
     }
 
@@ -255,7 +253,7 @@ export async function verifyEmailOtp(
   } catch (err: any) {
     return {
       success: false,
-      error: err?.message || 'Ntibyashobotse kwemeza kode.',
+      error: err?.message || 'Failed to verify code. Please try again.',
     };
   }
 }

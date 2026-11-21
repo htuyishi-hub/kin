@@ -58,7 +58,6 @@ export default function DiscoverScreen() {
     incoming_reaction: item.incoming_reaction ?? null,
     intent_class: item.intent_class ?? item.primaryIntent,
     trustScore: item.trustScore ?? 1,
-    approvedBy: item.approvedBy ?? item.vouchedBy ?? null,
   }));
 
   const goldenBidsRemaining = (myProfile as any)?.goldenBidsRemaining ?? (myProfile as any)?.golden_bids_remaining ?? 3;

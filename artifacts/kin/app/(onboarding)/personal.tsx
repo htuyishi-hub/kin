@@ -16,8 +16,8 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 
 const GENDERS = [
-  { value: "Male", label: "Gabo (Male)" },
-  { value: "Female", label: "Gore (Female)" },
+  { value: "Male", label: "Male" },
+  { value: "Female", label: "Female" },
 ];
 
 export default function PersonalScreen() {
@@ -61,7 +61,7 @@ export default function PersonalScreen() {
       ]}
       keyboardShouldPersistTaps="handled"
     >
-      <Text style={[styles.step, { color: colors.mutedForeground }]}>Step 1 of 4</Text>
+      <Text style={[styles.step, { color: colors.mutedForeground }]}>Step 1 of 3</Text>
       <Text style={[styles.title, { color: colors.foreground }]}>Tell us about yourself</Text>
 
       <View style={styles.fields}>

@@ -43,7 +43,7 @@ export default function UrRegistrationScreen() {
     mutation: {
       onSuccess: () => {
         // Deterministic routing: use the sync ref set immediately after verification.
-        if (urVerifiedRef.current) router.replace("/(onboarding)/prompts");
+        if (urVerifiedRef.current) router.replace("/(tabs)");
         else router.replace("/(onboarding)/vouch");
       },
       onError: (err: any) => {
@@ -171,11 +171,8 @@ export default function UrRegistrationScreen() {
       ]}
       keyboardShouldPersistTaps="handled"
     >
-      <Text style={[styles.step, { color: colors.mutedForeground }]}>Step 2 of 4</Text>
+      <Text style={[styles.step, { color: colors.mutedForeground }]}>Step 2 of 3</Text>
       <Text style={[styles.title, { color: colors.foreground }]}>Registration Number</Text>
-      <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>
-        Used to verify that you are a University of Rwanda student.
-      </Text>
 
       <View style={styles.section}>
         <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>REGISTRATION NUMBER</Text>
@@ -204,7 +201,7 @@ export default function UrRegistrationScreen() {
         {isPending ? (
           <ActivityIndicator color={colors.primaryForeground} />
         ) : (
-          <Text style={[styles.buttonText, { color: colors.primaryForeground }]}>Komeza</Text>
+          <Text style={[styles.buttonText, { color: colors.primaryForeground }]}>Continue</Text>
         )}
       </TouchableOpacity>
     </ScrollView>
