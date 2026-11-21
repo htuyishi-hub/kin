@@ -52,8 +52,8 @@
       "resendCountdown": "Ongera wohereze kode nyuma y'amasegonda:",
       "resendCode": "Ongera wohereze kode",
       "newCodeSent": "Kode nshya yoherejwe.",
-      "invalidCode": "Kode ntabwo ari yo cyangwa yarangiye.",
-      "verifyFailed": "Kwemeza kode byanze. Ongera ugerageze.",
+      "invalidCode": "Kode si yo cyangwa yarangiye",
+      "verifyFailed": "Kode ntiyemejwe. Ongera ugerageze.",
       "resendFailed": "Ntibyashobotse kongera kohereza kode."
     }
   },
@@ -160,7 +160,7 @@
     "phase1": "Icyiciro cya 1: Kumenyana",
     "phase2": "Icyiciro cya 2: Ibibazo By'Intego",
     "phase3": "Icyiciro cya 3: Ikiganiro Cyisanzuye",
-    "timeRemaining": "hasigaye amasaha {{hours}} n'iminota {{minutes}}",
+    "timeRemaining": "Hasigaye amasaha {{hours}} n'iminota {{minutes}}",
     "typeMessage": "Andika ubutumwa...",
     "send": "Ohereza"
   },
@@ -200,26 +200,26 @@
   "common": {
     "back": "Subira inyuma",
     "continue": "Komeza",
-    "cancel": "Reka",
+    "cancel": "Hagarika",
     "save": "Bika",
     "close": "Funga",
     "networkError": "Ikibazo cy'itumanaho. Ongera ugerageze.",
-    "tooManyAttempts": "Wagerageje kenshi. Tegereza gato.",
-    "notFoundTitle": "Ipaji Ntiyabonetse",
-    "notFoundAction": "Subira Ahabanza"
+    "tooManyAttempts": "Wagerageje inshuro nyinshi. Tegereza gato.",
+    "notFoundTitle": "Urupapuro ntirubonetse",
+    "notFoundAction": "Subira ahabanza"
   },
   "notification": {
-    "newMessageTitle": "Ubutumwa bushya buvuye kuri {{name}}",
+    "newMessageTitle": "Ubutumwa bushya kuva kuri {{name}}",
     "newMatchTitle": "Mwahujwe!",
     "newMatchBody": "Wowe na {{name}} mwahujwe kuri Kin.",
     "smsVerification": "Kode yawe yo kwemeza Kin ni {{otp}}. Irangira mu minota 10. Ntuyisangize undi muntu.",
     "smsFailed": "Ntibyashobotse kohereza ubutumwa bugufi. Ongera ugerageze."
   },
   "landing": {
-    "openApp": "Fungura Porogaramu",
-    "installApp": "Shyira kuri Telefoni",
+    "openApp": "Fungura app",
+    "installApp": "Tangiza app",
     "learnHow": "Reba uko bikora",
-    "getInvited": "Habwa Ubutumire",
+    "getInvited": "Saba ubutumire",
     "getInvitedDesc": "Umunyamuryango agomba kugutumira. Ibi bituma umuryango wacu ukomeza gutuza no kwizerana.",
     "shareIntentions": "Sangiza Intego Zawe",
     "curatedMatches": "Guhuzwa Kwizewe"

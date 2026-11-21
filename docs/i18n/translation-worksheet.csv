@@ -7,8 +7,8 @@ welcome.alreadyHaveAccount,welcome,button,Already have an account?,Ufite konti?,
 welcome.signInAction,welcome,button,Sign in,Injira,,,30,welcome action button,needs_review
 welcome.urBadge,welcome,label,UR,UR,,,35,welcome field label / tag,needs_review
 welcome.inviteBadge,welcome,label,INVITE,UBUTUMIRE,,,35,welcome field label / tag,needs_review
-welcome.selectLanguage,welcome,label,Language,Ururimi,,,35,welcome field label / tag,needs_review
-auth.email.back,auth.email,label,Back,Subira inyuma,,,35,auth.email field label / tag,needs_review
+welcome.selectLanguage,welcome,label,Language,Ururimi,Ururimi,,35,welcome field label / tag,approved
+auth.email.back,auth.email,label,Back,Subira inyuma,Subira inyuma,,35,auth.email field label / tag,approved
 auth.email.studentTitle,auth.email,title,Student Sign Up,Konti y'Umunyeshuri,,,40,auth.email header title,needs_review
 auth.email.personalTitle,auth.email,title,Personal Account Sign Up,Konti Bisanzwe,,,40,auth.email header title,needs_review
 auth.email.inputLabel,auth.email,label,Email Address,Aderesi ya Imeri,,,35,auth.email field label / tag,needs_review
@@ -42,8 +42,8 @@ auth.otp.verify,auth.otp,button,Verify,Emeza,,,30,auth.otp action button,needs_r
 auth.otp.resendCountdown,auth.otp,button,Resend code in:,Ongera wohereze kode nyuma y'amasegonda:,,,30,auth.otp action button,needs_review
 auth.otp.resendCode,auth.otp,button,Resend code,Ongera wohereze kode,,,30,auth.otp action button,needs_review
 auth.otp.newCodeSent,auth.otp,status,New code sent.,Kode nshya yoherejwe.,,,30,auth.otp status text,needs_review
-auth.otp.invalidCode,auth.otp,error,Invalid or expired code.,Kode ntabwo ari yo cyangwa yarangiye.,,,70,auth.otp validation/error message,needs_review
-auth.otp.verifyFailed,auth.otp,error,Failed to verify code. Please try again.,Kwemeza kode byanze. Ongera ugerageze.,,,70,auth.otp validation/error message,needs_review
+auth.otp.invalidCode,auth.otp,error,Invalid or expired code.,Kode ntabwo ari yo cyangwa yarangiye.,Kode si yo cyangwa yarangiye,,70,auth.otp validation/error message,approved
+auth.otp.verifyFailed,auth.otp,error,Failed to verify code. Please try again.,Kwemeza kode byanze. Ongera ugerageze.,Kode ntiyemejwe. Ongera ugerageze.,,70,auth.otp validation/error message,approved
 auth.otp.resendFailed,auth.otp,error,Failed to resend code.,Ntibyashobotse kongera kohereza kode.,,,70,auth.otp validation/error message,needs_review
 onboarding.personal.step,onboarding.personal,label,Step 1 of 3,Intambwe ya 1 kuri 3,,,35,onboarding.personal field label / tag,needs_review
 onboarding.personal.title,onboarding.personal,title,Tell us about yourself,Tukumenye neza,,,40,onboarding.personal header title,needs_review
@@ -54,7 +54,7 @@ onboarding.personal.dobPlaceholder,onboarding.personal,placeholder,YYYY-MM-DD,YY
 onboarding.personal.genderLabel,onboarding.personal,label,Gender,Igitsina,,,35,onboarding.personal field label / tag,needs_review
 onboarding.personal.genderMale,onboarding.personal,button,Male,Gabo,,,30,onboarding.personal action button,needs_review
 onboarding.personal.genderFemale,onboarding.personal,button,Female,Gore,,,30,onboarding.personal action button,needs_review
-onboarding.personal.continue,onboarding.personal,button,Continue,Komeza,,,30,onboarding.personal action button,needs_review
+onboarding.personal.continue,onboarding.personal,button,Continue,Komeza,Komeza,,30,onboarding.personal action button,approved
 onboarding.personal.enterFullName,onboarding.personal,label,Enter your full name,Injiza amazina yawe yose,,,35,onboarding.personal field label / tag,needs_review
 onboarding.personal.selectDob,onboarding.personal,label,Select your birth date,Hitamo itariki y'amavuko,,,35,onboarding.personal field label / tag,needs_review
 onboarding.personal.enterDateFormat,onboarding.personal,label,Enter date as YYYY-MM-DD,Andika itariki muri ubu buryo: YYYY-MM-DD,,,35,onboarding.personal field label / tag,needs_review
@@ -73,7 +73,7 @@ onboarding.occupation.tier1Badge,onboarding.occupation,label,Tier 1,Tier 1,,,35,
 onboarding.occupation.selectOccupation,onboarding.occupation,label,Select your occupation,Hitamo ibyo ukora,,,35,onboarding.occupation field label / tag,needs_review
 onboarding.occupation.selectIntent,onboarding.occupation,label,Select your primary intent,Hitamo intego yawe nyamukuru,,,36,onboarding.occupation field label / tag,needs_review
 onboarding.occupation.chooseCampus,onboarding.occupation,label,Choose where you study,Hitamo aho wiga,,,35,onboarding.occupation field label / tag,needs_review
-onboarding.occupation.continue,onboarding.occupation,button,Continue,Komeza,,,30,onboarding.occupation action button,needs_review
+onboarding.occupation.continue,onboarding.occupation,button,Continue,Komeza,Komeza,,30,onboarding.occupation action button,approved
 onboarding.occupation.occStudent,onboarding.occupation,button,Student,Umunyeshuri,,,30,onboarding.occupation action button,needs_review
 onboarding.occupation.occEmployed,onboarding.occupation,button,Employed,Umukozi,,,30,onboarding.occupation action button,needs_review
 onboarding.occupation.occBusiness,onboarding.occupation,button,Business,Ubucuruzi,,,30,onboarding.occupation action button,needs_review
@@ -133,9 +133,9 @@ matches.keepSwiping,matches,label,Keep discovering people with matching intentio
 matches.phase1,matches,label,Phase 1: Icebreakers,Icyiciro cya 1: Kumenyana,,,35,matches field label / tag,needs_review
 matches.phase2,matches,label,Phase 2: Mutual Prompts,Icyiciro cya 2: Ibibazo By'Intego,,,35,matches field label / tag,needs_review
 matches.phase3,matches,label,Phase 3: Open Chat,Icyiciro cya 3: Ikiganiro Cyisanzuye,,,35,matches field label / tag,needs_review
-matches.timeRemaining,matches,status,{{hours}}h {{minutes}}m left,hasigaye amasaha {{hours}} n'iminota {{minutes}},,"{{hours}}, {{minutes}}",39,matches dynamic string with {{hours}},needs_review
+matches.timeRemaining,matches,status,{{hours}}h {{minutes}}m left,hasigaye amasaha {{hours}} n'iminota {{minutes}},Hasigaye amasaha {{hours}} n'iminota {{minutes}},"{{hours}}, {{minutes}}",39,matches dynamic string with {{hours}},approved
 matches.typeMessage,matches,label,Type a message...,Andika ubutumwa...,,,35,matches field label / tag,needs_review
-matches.send,matches,button,Send,Ohereza,,,30,matches action button,needs_review
+matches.send,matches,button,Send,Ohereza,Ohereza,,30,matches action button,approved
 serious.tabTitle,serious,title,Serious,Abiyemeje,,,40,serious header title,needs_review
 serious.queueTitle,serious,title,Serious Queue,Umurongo w'Abiyemeje,,,40,serious header title,needs_review
 serious.description,serious,label,Reserved for members with marriage intent. Matched based on mutual trust and values.,Hagenewe gusa abafite intego yo gushyingirwa. Abari hano bahuzwa hashingiwe ku cyizere n'indangagaciro z'umuryango.,,,117,serious field label / tag,needs_review
@@ -150,7 +150,7 @@ profile.languageRw,profile,button,Kinyarwanda,Ikinyarwanda,,,30,profile action b
 profile.signOut,profile,button,Sign Out,Sohoka muri Konti,,,30,profile action button,needs_review
 profile.trustScore,profile,label,Trust {{score}},Icyizere {{score}},,{{score}},35,profile dynamic string with {{score}},needs_review
 profile.urBadge,profile,label,UR Badge,Ikirango cya UR,,,35,profile field label / tag,needs_review
-profile.invitedMember,profile,label,Invited Member,Umunyamuryango watumiwe,,,35,profile field label / tag,needs_review
+profile.invitedMember,profile,label,Invited Member,Umunyamuryango watumiwe,Umunyamuryango watumiwe,,35,profile field label / tag,approved
 profile.version,profile,label,Version 1.0.0,Verisiyo 1.0.0,,,35,profile field label / tag,needs_review
 profile.photos,profile,label,PHOTOS,AMAFOTO,,,35,profile field label / tag,needs_review
 profile.settings,profile,label,SETTINGS,IHETURIRO,,,35,profile field label / tag,needs_review
@@ -164,25 +164,25 @@ profile.statsInvites,profile,label,Invites,Abatumiwe,,,35,profile field label / 
 profile.statsTokens,profile,label,Tokens,Amatike,,,35,profile field label / tag,needs_review
 profile.statsIntent,profile,label,Intent,Intego,,,35,profile field label / tag,needs_review
 profile.urStudentVerified,profile,button,UR Student Verified,Umunyeshuri wa UR wemejwe,,,30,profile action button,needs_review
-profile.verifiedMember,profile,label,Verified Member,Umunyamuryango wemejwe,,,35,profile field label / tag,needs_review
-common.back,common,label,Back,Subira inyuma,,,35,common field label / tag,needs_review
-common.continue,common,button,Continue,Komeza,,,30,common action button,needs_review
-common.cancel,common,button,Cancel,Reka,,,30,common action button,needs_review
-common.save,common,button,Save,Bika,,,30,common action button,needs_review
-common.close,common,button,Close,Funga,,,30,common action button,needs_review
+profile.verifiedMember,profile,label,Verified Member,Umunyamuryango wemejwe,Umunyamuryango wemejwe,,35,profile field label / tag,approved
+common.back,common,label,Back,Subira inyuma,Subira inyuma,,35,common field label / tag,approved
+common.continue,common,button,Continue,Komeza,Komeza,,30,common action button,approved
+common.cancel,common,button,Cancel,Reka,Hagarika,,30,common action button,approved
+common.save,common,button,Save,Bika,Bika,,30,common action button,approved
+common.close,common,button,Close,Funga,Funga,,30,common action button,approved
 common.networkError,common,error,Network error. Please try again.,Ikibazo cy'itumanaho. Ongera ugerageze.,,,70,common validation/error message,needs_review
-common.tooManyAttempts,common,error,Too many attempts. Please wait.,Wagerageje kenshi. Tegereza gato.,,,70,common validation/error message,needs_review
-common.notFoundTitle,common,title,Page Not Found,Ipaji Ntiyabonetse,,,40,common header title,needs_review
-common.notFoundAction,common,button,Go to Home,Subira Ahabanza,,,30,common action button,needs_review
-notification.newMessageTitle,notification,notification,New message from {{name}},Ubutumwa bushya buvuye kuri {{name}},,{{name}},80,notification dynamic string with {{name}},needs_review
-notification.newMatchTitle,notification,notification,New Match!,Mwahujwe!,,,80,Push notification string,needs_review
-notification.newMatchBody,notification,notification,You and {{name}} matched on Kin.,Wowe na {{name}} mwahujwe kuri Kin.,,{{name}},80,notification dynamic string with {{name}},needs_review
+common.tooManyAttempts,common,error,Too many attempts. Please wait.,Wagerageje kenshi. Tegereza gato.,Wagerageje inshuro nyinshi. Tegereza gato.,,70,common validation/error message,approved
+common.notFoundTitle,common,title,Page Not Found,Ipaji Ntiyabonetse,Urupapuro ntirubonetse,,40,common header title,approved
+common.notFoundAction,common,button,Go to Home,Subira Ahabanza,Subira ahabanza,,30,common action button,approved
+notification.newMessageTitle,notification,notification,New message from {{name}},Ubutumwa bushya buvuye kuri {{name}},Ubutumwa bushya kuva kuri {{name}},{{name}},80,notification dynamic string with {{name}},approved
+notification.newMatchTitle,notification,notification,New Match!,Mwahujwe!,Mwahujwe!,,80,Push notification string,approved
+notification.newMatchBody,notification,notification,You and {{name}} matched on Kin.,Wowe na {{name}} mwahujwe kuri Kin.,Wowe na {{name}} mwahujwe kuri Kin.,{{name}},80,notification dynamic string with {{name}},approved
 notification.smsVerification,notification,sms,Your Kin verification code is {{otp}}. It expires in 10 minutes. Do not share it.,Kode yawe yo kwemeza Kin ni {{otp}}. Irangira mu minota 10. Ntuyisangize undi muntu.,,{{otp}},160,notification dynamic string with {{otp}},needs_review
 notification.smsFailed,notification,sms,Could not send verification SMS. Please try again.,Ntibyashobotse kohereza ubutumwa bugufi. Ongera ugerageze.,,,160,Backend SMS text message,needs_review
-landing.openApp,landing,label,Open App,Fungura Porogaramu,,,35,landing field label / tag,needs_review
-landing.installApp,landing,label,Install App,Shyira kuri Telefoni,,,35,landing field label / tag,needs_review
+landing.openApp,landing,label,Open App,Fungura Porogaramu,Fungura app,,35,landing field label / tag,approved
+landing.installApp,landing,label,Install App,Shyira kuri Telefoni,Tangiza app,,35,landing field label / tag,approved
 landing.learnHow,landing,label,Learn how it works,Reba uko bikora,,,35,landing field label / tag,needs_review
-landing.getInvited,landing,label,Get Invited,Habwa Ubutumire,,,35,landing field label / tag,needs_review
+landing.getInvited,landing,label,Get Invited,Habwa Ubutumire,Saba ubutumire,,35,landing field label / tag,approved
 landing.getInvitedDesc,landing,label,A current member must invite you. This keeps our community safe and aligned.,Umunyamuryango agomba kugutumira. Ibi bituma umuryango wacu ukomeza gutuza no kwizerana.,,,106,landing field label / tag,needs_review
 landing.shareIntentions,landing,button,Share Intentions,Sangiza Intego Zawe,,,30,landing action button,needs_review
 landing.curatedMatches,landing,label,Curated Matches,Guhuzwa Kwizewe,,,35,landing field label / tag,needs_review
