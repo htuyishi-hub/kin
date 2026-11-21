@@ -195,7 +195,7 @@ export default function ProfileScreen() {
                 const link = (profile as any)?.invite_link ?? `https://kin.rw/invite/${(profile as any)?.invite_code ?? "KIN"}`;
                 try {
                   await Share.share({
-                    message: `Join me on Kin — Rwanda's trusted introduction network: ${link}`,
+                    message: t("profile.shareInviteMessage", { link }),
                     url: link,
                   });
                 } catch {}

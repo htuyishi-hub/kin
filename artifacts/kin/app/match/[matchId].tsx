@@ -26,8 +26,6 @@ import { useTranslation } from "@workspace/i18n";
 import { useAuth } from "@/contexts/AuthContext";
 import { useColors } from "@/hooks/useColors";
 
-const PHASE_LABELS = ["", "Values", "Vision", "Free"];
-
 type MessageItem = {
   id: string;
   matchId: string;
@@ -124,6 +122,12 @@ export default function MatchScreen() {
   const { userId, token } = useAuth();
   const { t } = useTranslation();
 
+  const phaseLabels: Record<number, string> = {
+    1: t("matches.phaseValues"),
+    2: t("matches.phaseVision"),
+    3: t("matches.phaseFreeTalk"),
+  };
+
   const [content, setContent] = useState("");
   const flatRef = useRef<FlatList>(null);
 
@@ -192,7 +196,7 @@ export default function MatchScreen() {
           </Text>
           <View style={[styles.phasePill, { backgroundColor: colors.secondary }]}>
             <Text style={[styles.phaseText, { color: colors.primary }]}>
-              Phase {phase}: {PHASE_LABELS[phase]}
+              Phase {phase}: {phaseLabels[phase] ?? ""}
             </Text>
           </View>
         </View>

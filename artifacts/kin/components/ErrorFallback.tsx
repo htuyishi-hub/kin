@@ -12,6 +12,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { useTranslation } from "@workspace/i18n";
 import { useColors } from "@/hooks/useColors";
 
 export type ErrorFallbackProps = {
@@ -20,6 +21,7 @@ export type ErrorFallbackProps = {
 };
 
 export function ErrorFallback({ error, resetError }: ErrorFallbackProps) {
+  const { t } = useTranslation();
   const colors = useColors();
   const insets = useSafeAreaInsets();
 
@@ -70,11 +72,7 @@ export function ErrorFallback({ error, resetError }: ErrorFallbackProps) {
 
       <View style={styles.content}>
         <Text style={[styles.title, { color: colors.foreground }]}>
-          Something went wrong
-        </Text>
-
-        <Text style={[styles.message, { color: colors.mutedForeground }]}>
-          Please reload the app to continue.
+          {t("errors.generic")}
         </Text>
 
         <Pressable

@@ -48,7 +48,11 @@ export default function UrRegistrationScreen() {
         else router.replace("/(onboarding)/vouch");
       },
       onError: (err: any) => {
-        setError(err?.data?.message ?? t("common.networkError"));
+        if (err?.data?.code === "UR_REGISTRATION_INVALID") {
+          setError(t("errors.urRegistrationInvalid"));
+        } else {
+          setError(t("errors.generic"));
+        }
       },
     },
   });
@@ -83,64 +87,78 @@ export default function UrRegistrationScreen() {
         : "https://kin-x81d.onrender.com");
 
     if (!apiBaseUrl || typeof apiBaseUrl !== "string" || !apiBaseUrl.trim()) {
-      setError(t("common.networkError"));
+      setError(t("errors.generic"));
       return;
     }
 
-    const verifyRes = await fetch(`${apiBaseUrl}/api/me/ur/verify-registration`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        ...(authHeader ? { Authorization: authHeader } : {}),
-      },
-      body: JSON.stringify({ registration_number: digitsOnly, campus: campus.trim() }),
-    });
-
-    if (!verifyRes.ok) {
-      setError(t("common.networkError"));
-      return;
-    }
-
-    const verifyJson = (await verifyRes.json()) as any;
-
-    const verifiedFromApi =
-      verifyJson?.verified === true ||
-      verifyJson?.status === "verified";
-
-    if (verifiedFromApi) {
-      urVerifiedRef.current = true;
-
-      const locationType: OnboardingRequestLocationType = "Campus";
-      complete({
-        data: {
-          occupation: occupation ?? "Student",
-          locationType,
-          primaryGoal: (intent ?? "Serious Marriage") as OnboardingRequestPrimaryGoal,
-          campusName: campus ?? "University of Rwanda",
-          fullName: fullName ?? "",
-          gender: (gender ?? "Male") as OnboardingRequestGender,
-          dateOfBirth: dateOfBirth ?? "2000-01-01",
+    try {
+      const verifyRes = await fetch(`${apiBaseUrl}/api/me/ur/verify-registration`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(authHeader ? { Authorization: authHeader } : {}),
         },
+        body: JSON.stringify({ registration_number: digitsOnly, campus: campus.trim() }),
       });
+
+      const verifyJson = (await verifyRes.json()) as any;
+
+      if (!verifyRes.ok) {
+        if (verifyJson?.code === "UR_REGISTRATION_INVALID") {
+          setError(t("errors.urRegistrationInvalid"));
+        } else {
+          setError(t("errors.generic"));
+        }
+        return;
+      }
+
+      const verifiedFromApi =
+        verifyJson?.verified === true ||
+        verifyJson?.status === "verified";
+
+      if (verifiedFromApi) {
+        urVerifiedRef.current = true;
+
+        const locationType: OnboardingRequestLocationType = "Campus";
+        complete({
+          data: {
+            occupation: occupation ?? "Student",
+            locationType,
+            primaryGoal: (intent ?? "Serious Marriage") as OnboardingRequestPrimaryGoal,
+            campusName: campus ?? "University of Rwanda",
+            fullName: fullName ?? "",
+            gender: (gender ?? "Male") as OnboardingRequestGender,
+            dateOfBirth: dateOfBirth ?? "2000-01-01",
+          },
+        });
+        return;
+      }
+
+      urVerifiedRef.current = false;
+
+      if (verifyJson?.code === "UR_REGISTRATION_INVALID") {
+        setError(t("errors.urRegistrationInvalid"));
+        return;
+      }
+
+      const status = verifyJson?.status as
+        | "already_claimed"
+        | "invalid_format"
+        | "not_found"
+        | string
+        | undefined;
+
+      if (status === "already_claimed") {
+        setError(t("onboarding.ur.alreadyClaimed"));
+        return;
+      }
+
+      setError(t("errors.generic"));
+      return;
+    } catch {
+      setError(t("errors.generic"));
       return;
     }
-
-    urVerifiedRef.current = false;
-
-    const status = verifyJson?.status as
-      | "already_claimed"
-      | "invalid_format"
-      | "not_found"
-      | string
-      | undefined;
-
-    if (status === "already_claimed") {
-      setError(t("onboarding.ur.alreadyClaimed"));
-      return;
-    }
-
-    setError(t("common.networkError"));
-    return;
   }
 
   return (

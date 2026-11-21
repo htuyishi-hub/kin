@@ -78,14 +78,17 @@ export default function InviteVerificationScreen() {
 
       const data = await res.json();
       if (!res.ok) {
-        throw new Error(data.message || t("onboarding.invite.invalidCode"));
+        if (data?.code === "INVITE_ALREADY_CLAIMED") {
+          throw new Error(t("errors.inviteAlreadyClaimed"));
+        }
+        throw new Error(data?.message || t("onboarding.invite.invalidCode"));
       }
 
       setClaimSuccess(t("onboarding.invite.verifiedByMember"));
       Haptics.notificationAsync?.(Haptics.NotificationFeedbackType.Success);
       await refetchProfile();
     } catch (err: any) {
-      setError(err?.message || t("onboarding.invite.invalidCode"));
+      setError(err?.message || t("errors.generic"));
       Haptics.notificationAsync?.(Haptics.NotificationFeedbackType.Error);
     } finally {
       setClaiming(false);
@@ -95,9 +98,9 @@ export default function InviteVerificationScreen() {
   async function handleShare() {
     try {
       await Share.share({
-        message: `Join me on Kin — Rwanda's trusted introduction network: ${myInviteLink}`,
+        message: t("profile.shareInviteMessage", { link: myInviteLink }),
         url: myInviteLink,
-        title: "Join me on Kin",
+        title: "Kin",
       });
     } catch {
       // Fallback
