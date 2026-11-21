@@ -163,6 +163,8 @@ router.get("/matches/:matchId", requireAuth, async (req, res) => {
       primaryIntent: other[0].primaryIntent ?? null,
       vouchCount: other[0].vouchCount ?? 0,
       primaryPhotoPath: photo[0]?.storagePath ?? null,
+      bio: other[0].bio ?? null,
+      tags: (other[0].tags as string[]) ?? [],
       milieuScore: 0,
       vouchOverlap: 0,
       milieuCards,

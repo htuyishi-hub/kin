@@ -56,6 +56,8 @@ function mapProfile(p: typeof profilesTable.$inferSelect) {
     idVerified: p.idVerified ?? false,
     proximityConsent: p.proximityConsent ?? false,
     language: (p as any).language ?? "en",
+    bio: p.bio ?? null,
+    tags: (p.tags as string[]) ?? [],
     createdAt: p.createdAt?.toISOString() ?? new Date().toISOString(),
     lastActive: p.lastActive?.toISOString() ?? new Date().toISOString(),
   };
@@ -314,5 +316,187 @@ router.post("/me/exit", requireAuth, async (req, res) => {
 function camelToSnake(str: string): string {
   return str.replace(/[A-Z]/g, (letter) => `_${letter.toLowerCase()}`);
 }
+
+const ALLOWED_TAGS = new Set([
+  "faith",
+  "family",
+  "career",
+  "education",
+  "business",
+  "travel",
+  "music",
+  "football",
+  "humor",
+  "kindness",
+  "honesty",
+  "ambition",
+  "nature",
+  "cooking",
+  "reading",
+  "art",
+  "fitness",
+  "technology",
+  "community",
+  "culture",
+]);
+
+// 10 edits / 24 hours per user
+const profileExtrasRateLimit = new Map<string, { count: number; resetAt: number }>();
+
+function checkAndIncrementRateLimit(userId: string): boolean {
+  const now = Date.now();
+  const entry = profileExtrasRateLimit.get(userId);
+  if (!entry || now > entry.resetAt) {
+    profileExtrasRateLimit.set(userId, { count: 1, resetAt: now + 24 * 60 * 60 * 1000 });
+    return true;
+  }
+  if (entry.count >= 10) {
+    return false;
+  }
+  entry.count += 1;
+  return true;
+}
+
+function containsContactInfo(text: string): boolean {
+  if (!text) return false;
+
+  // 1. Phone numbers:
+  // Rwandan patterns (07..., +250..., 250...) or 9+ digits with optional spaces/dots/dashes
+  const phonePattern = /(?:\+?250[\s.-]*)?0?7[2389][\s.-]*(?:\d[\s.-]*){7}/;
+  const genericDigitsPattern = /(?:\d[\s.-]*){9,}/;
+  if (phonePattern.test(text) || genericDigitsPattern.test(text)) {
+    return true;
+  }
+
+  // 2. Email addresses
+  const emailPattern = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/;
+  if (emailPattern.test(text)) {
+    return true;
+  }
+
+  // 3. URLs, protocols or common domain extensions
+  const urlPattern = /(?:https?:\/\/|www\.|\b\S+\.(?:com|rw|org|net|io|me|app|info|co|xyz|gov|edu)\b)/i;
+  if (urlPattern.test(text)) {
+    return true;
+  }
+
+  // 4. Social handles: @username
+  const handlePattern = /@[\w.]{2,}/;
+  if (handlePattern.test(text)) {
+    return true;
+  }
+
+  // 5. Social / chat app keywords
+  const socialKeywordsPattern = /\b(?:whatsapp|telegram|instagram|insta|snapchat|snap|tiktok|facebook|fb|ig)\b/i;
+  if (socialKeywordsPattern.test(text)) {
+    return true;
+  }
+
+  return false;
+}
+
+// PATCH /me/profile-extras
+router.patch("/me/profile-extras", requireAuth, async (req, res) => {
+  const userId = (req as AuthedRequest).userId;
+  const body = req.body as { bio?: string | null; tags?: string[] | null };
+
+  // Check rate limit: 10 edits / 24 hours
+  if (!checkAndIncrementRateLimit(userId)) {
+    res.status(429).json({
+      code: "TOO_MANY_EDITS",
+      error: "too_many_requests",
+      message: "Daily edit limit reached. Try again tomorrow.",
+    });
+    return;
+  }
+
+  const updates: { bio?: string | null; tags?: string[] | null } = {};
+
+  if (body.bio !== undefined) {
+    if (body.bio === null || body.bio.trim() === "") {
+      updates.bio = null;
+    } else {
+      const trimmedBio = body.bio.trim();
+      if (trimmedBio.length > 140) {
+        res.status(400).json({
+          code: "BIO_TOO_LONG",
+          error: "bad_request",
+          message: "Bio must be 140 characters or fewer.",
+        });
+        return;
+      }
+      if (containsContactInfo(trimmedBio)) {
+        res.status(400).json({
+          code: "BIO_CONTACT_INFO",
+          error: "bad_request",
+          message: "Contact information is not allowed in bio.",
+        });
+        return;
+      }
+      updates.bio = trimmedBio;
+    }
+  }
+
+  if (body.tags !== undefined) {
+    if (body.tags === null) {
+      updates.tags = [];
+    } else if (Array.isArray(body.tags)) {
+      // Deduplicate tags while preserving order
+      const uniqueTags = Array.from(new Set(body.tags.map((t) => String(t).trim().toLowerCase())));
+      if (uniqueTags.length > 5) {
+        res.status(400).json({
+          code: "TAGS_LIMIT_EXCEEDED",
+          error: "bad_request",
+          message: "You can select up to 5 tags.",
+        });
+        return;
+      }
+      for (const tag of uniqueTags) {
+        if (!ALLOWED_TAGS.has(tag)) {
+          res.status(400).json({
+            code: "INVALID_TAG",
+            error: "bad_request",
+            message: `Invalid tag: ${tag}`,
+          });
+          return;
+        }
+      }
+      updates.tags = uniqueTags;
+    } else {
+      res.status(400).json({
+        code: "INVALID_TAGS",
+        error: "bad_request",
+        message: "Tags must be an array of strings.",
+      });
+      return;
+    }
+  }
+
+  if (Object.keys(updates).length === 0) {
+    res.status(400).json({
+      error: "bad_request",
+      message: "No valid profile extras to update",
+    });
+    return;
+  }
+
+  try {
+    const [updated] = await db
+      .update(profilesTable)
+      .set(updates as any)
+      .where(eq(profilesTable.id, userId))
+      .returning();
+
+    if (!updated) {
+      res.status(404).json({ error: "not_found", message: "Profile not found" });
+      return;
+    }
+
+    res.json(mapProfile(updated));
+  } catch (err) {
+    console.error("[PATCH /me/profile-extras] update failed", err);
+    res.status(500).json({ error: "server_error", message: "Failed to update profile extras" });
+  }
+});
 
 export default router;
