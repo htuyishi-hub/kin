@@ -1,3 +1,4 @@
+import { Link } from "wouter";
 import { PwaInstallButton } from "@/components/pwa-install-button";
 import { RwandaMapAnimation } from "@/components/rwanda-map";
 import { Button } from "@/components/ui/button";
@@ -49,10 +50,16 @@ export default function Home() {
             For serious people ready to find their person.
           </p>
           <div className="flex flex-col sm:flex-row items-center gap-4">
-            <PwaInstallButton className="px-8 py-6 text-lg rounded-full" />
+            <Link
+              href="/"
+              className="bg-gold text-night hover:bg-gold/90 font-bold px-8 py-4 text-base rounded-full inline-flex items-center justify-center transition-colors shadow-lg"
+            >
+              Fungura Kin · Open App
+            </Link>
+            <PwaInstallButton className="px-8 py-4 text-base rounded-full" />
             <Button
               variant="outline"
-              className="px-8 py-6 text-lg rounded-full border-bone-ghost/60 text-bone hover:bg-bone hover:text-night transition-colors backdrop-blur-sm"
+              className="px-8 py-4 text-base rounded-full border-bone-ghost/60 text-bone hover:bg-bone hover:text-night transition-colors backdrop-blur-sm"
               onClick={() => document.getElementById("how")?.scrollIntoView({ behavior: "smooth" })}
             >
               Learn how it works
