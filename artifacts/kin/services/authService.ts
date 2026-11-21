@@ -2,6 +2,7 @@ import * as Linking from 'expo-linking';
 import * as WebBrowser from 'expo-web-browser';
 import { Platform } from 'react-native';
 import { supabase } from '@/lib/supabase';
+import { getCurrentLanguage } from '@workspace/i18n';
 import type { Session, User } from '@supabase/supabase-js';
 
 // Complete any pending auth session if on web or resumed
@@ -191,6 +192,9 @@ export async function sendOtpForSignUp(email: string): Promise<SendOtpResult> {
       email: normalized,
       options: {
         shouldCreateUser: true,
+        data: {
+          lang: getCurrentLanguage(),
+        },
       },
     });
 
@@ -238,6 +242,9 @@ export async function sendOtpForSignIn(email: string): Promise<SendOtpResult> {
       email: normalized,
       options: {
         shouldCreateUser: false,
+        data: {
+          lang: getCurrentLanguage(),
+        },
       },
     });
 
@@ -303,7 +310,12 @@ export async function sendOtpForRecovery(email: string): Promise<SendOtpResult> 
       // If password reset not enabled or fails, fall back to non-signup OTP
       const { error: otpErr } = await supabase.auth.signInWithOtp({
         email: normalized,
-        options: { shouldCreateUser: false },
+        options: {
+          shouldCreateUser: false,
+          data: {
+            lang: getCurrentLanguage(),
+          },
+        },
       });
 
       if (otpErr) {
@@ -396,6 +408,16 @@ export async function verifyEmailOtp(
         success: false,
         error: error.message || 'Failed to verify code.',
       };
+    }
+
+    if (data.user) {
+      try {
+        const lang = getCurrentLanguage();
+        await supabase.auth.updateUser({ data: { lang } });
+        await supabase.from('profiles').update({ language: lang }).eq('id', data.user.id);
+      } catch {
+        // non-fatal
+      }
     }
 
     return {

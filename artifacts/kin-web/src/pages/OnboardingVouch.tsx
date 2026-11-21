@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
 import { useLocation } from 'wouter';
 import { Loader2, KeyRound, Clock } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
 
 export default function OnboardingVouch() {
   const [, setLocation] = useLocation();
+  const { t } = useTranslation();
   const { user } = useAuth();
 
   const [inviteCode, setInviteCode] = useState('');
@@ -17,7 +19,7 @@ export default function OnboardingVouch() {
     const cleanCode = inviteCode.trim().toUpperCase();
 
     if (!cleanCode) {
-      setError('Please enter an invite code');
+      setError(t('onboarding.invite.enterCodeError'));
       return;
     }
 
@@ -46,13 +48,13 @@ export default function OnboardingVouch() {
           setLocation('/app');
           return;
         } else {
-          setError('Invalid invite code. Please check and try again.');
+          setError(t('onboarding.invite.invalidCode'));
           return;
         }
       }
       setLocation('/app');
     } catch (err: any) {
-      setError(err?.message || 'Invalid or expired invite code.');
+      setError(err?.message || t('onboarding.invite.invalidCode'));
     } finally {
       setIsPending(false);
     }
@@ -63,15 +65,14 @@ export default function OnboardingVouch() {
       {/* Step Header */}
       <div className="flex flex-col gap-2">
         <div className="flex items-center justify-between text-xs text-[#A8A49E]">
-          <span className="font-semibold text-[#2563EB]">Step 3 of 3</span>
-          <span className="font-mono">Invite</span>
+          <span className="font-semibold text-[#2563EB]">{t('onboarding.invite.step')}</span>
         </div>
         <div className="w-full h-1 bg-[#21262D] rounded-full overflow-hidden">
           <div className="w-full h-full bg-[#2563EB] rounded-full" />
         </div>
 
         <h1 className="font-serif text-2xl font-bold text-[#F0EDE6] leading-tight mt-3">
-          Have an invite code?
+          {t('onboarding.invite.title')}
         </h1>
       </div>
 
@@ -79,7 +80,7 @@ export default function OnboardingVouch() {
       <form onSubmit={handleApplyCode} className="flex flex-col gap-4 my-auto py-4">
         <div className="flex flex-col gap-1.5">
           <label className="text-xs font-semibold uppercase tracking-wider text-[#A8A49E]">
-            Invite Code
+            {t('onboarding.invite.codeLabel')}
           </label>
           <div
             className={`flex items-center bg-[#1A1A2E] border-1.5 rounded-xl overflow-hidden transition-colors ${
@@ -88,7 +89,7 @@ export default function OnboardingVouch() {
           >
             <input
               type="text"
-              placeholder="e.g. KIN-A1B2C3"
+              placeholder={t('onboarding.invite.placeholder')}
               value={inviteCode}
               onChange={(e) => {
                 setInviteCode(e.target.value.toUpperCase());
@@ -110,7 +111,7 @@ export default function OnboardingVouch() {
           ) : (
             <>
               <KeyRound className="w-5 h-5" />
-              <span>Apply Code</span>
+              <span>{t('onboarding.invite.applyCode')}</span>
             </>
           )}
         </button>
@@ -124,7 +125,7 @@ export default function OnboardingVouch() {
           className="w-full py-3 px-4 border border-[#21262D] rounded-full text-xs font-semibold text-[#A8A49E] hover:text-[#F0EDE6] hover:border-[#A8A49E]/40 transition-all flex items-center justify-center gap-2 cursor-pointer"
         >
           <Clock className="w-4 h-4 text-[#C9A84C]" />
-          <span>Continue to Waiting Room</span>
+          <span>{t('onboarding.invite.continueToWaiting')}</span>
         </button>
       </div>
     </div>

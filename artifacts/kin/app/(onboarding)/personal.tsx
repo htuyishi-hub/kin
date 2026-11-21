@@ -12,23 +12,25 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useTranslation } from "@workspace/i18n";
 
 import { useColors } from "@/hooks/useColors";
-
-const GENDERS = [
-  { value: "Male", label: "Male" },
-  { value: "Female", label: "Female" },
-];
 
 export default function PersonalScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const isWeb = Platform.OS === "web";
+  const { t } = useTranslation();
 
   const [fullName, setFullName] = useState("");
   const [dateOfBirth, setDateOfBirth] = useState("");
   const [gender, setGender] = useState("");
   const [error, setError] = useState("");
+
+  const genders = [
+    { value: "Male", label: t("onboarding.personal.genderMale") },
+    { value: "Female", label: t("onboarding.personal.genderFemale") },
+  ];
 
   const { mutate: updateMe, isPending } = useUpdateMe({
     mutation: {
@@ -36,15 +38,15 @@ export default function PersonalScreen() {
         router.push({ pathname: "/(onboarding)/occupation", params: { dateOfBirth, gender, fullName: fullName.trim() } });
       },
       onError: (err: any) => {
-        setError(err?.data?.message ?? "Failed to save. Please try again.");
+        setError(err?.data?.message ?? t("onboarding.personal.saveFailed"));
       },
     },
   });
 
   function handleNext() {
-    if (!fullName.trim()) { setError("Enter your full name"); return; }
-    if (!dateOfBirth.match(/^\d{4}-\d{2}-\d{2}$/)) { setError("Enter date as YYYY-MM-DD"); return; }
-    if (!gender) { setError("Select your gender"); return; }
+    if (!fullName.trim()) { setError(t("onboarding.personal.enterFullName")); return; }
+    if (!dateOfBirth.match(/^\d{4}-\d{2}-\d{2}$/)) { setError(t("onboarding.personal.enterDateFormat")); return; }
+    if (!gender) { setError(t("onboarding.personal.selectGender")); return; }
     setError("");
     updateMe({ data: { fullName: fullName.trim(), dateOfBirth, gender: gender as UpdateProfileRequestGender } });
   }
@@ -61,14 +63,14 @@ export default function PersonalScreen() {
       ]}
       keyboardShouldPersistTaps="handled"
     >
-      <Text style={[styles.step, { color: colors.mutedForeground }]}>Step 1 of 3</Text>
-      <Text style={[styles.title, { color: colors.foreground }]}>Tell us about yourself</Text>
+      <Text style={[styles.step, { color: colors.mutedForeground }]}>{t("onboarding.personal.step")}</Text>
+      <Text style={[styles.title, { color: colors.foreground }]}>{t("onboarding.personal.title")}</Text>
 
       <View style={styles.fields}>
-        <Field label="Full name" colors={colors}>
+        <Field label={t("onboarding.personal.fullNameLabel")} colors={colors}>
           <TextInput
             style={[styles.input, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.card }]}
-            placeholder="e.g. Amina Uwase"
+            placeholder={t("onboarding.personal.fullNamePlaceholder")}
             placeholderTextColor={colors.mutedForeground}
             value={fullName}
             onChangeText={(t) => { setFullName(t); setError(""); }}
@@ -77,10 +79,10 @@ export default function PersonalScreen() {
           />
         </Field>
 
-        <Field label="Date of birth (YYYY-MM-DD)" colors={colors}>
+        <Field label={t("onboarding.personal.dobLabel")} colors={colors}>
           <TextInput
             style={[styles.input, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.card }]}
-            placeholder="1999-06-15"
+            placeholder={t("onboarding.personal.dobPlaceholder")}
             placeholderTextColor={colors.mutedForeground}
             value={dateOfBirth}
             onChangeText={(t) => { setDateOfBirth(t); setError(""); }}
@@ -90,9 +92,9 @@ export default function PersonalScreen() {
           />
         </Field>
 
-        <Field label="Gender" colors={colors}>
+        <Field label={t("onboarding.personal.genderLabel")} colors={colors}>
           <View style={styles.genderRow}>
-            {GENDERS.map((g) => (
+            {genders.map((g) => (
               <TouchableOpacity
                 key={g.value}
                 style={[
@@ -130,7 +132,7 @@ export default function PersonalScreen() {
         {isPending ? (
           <ActivityIndicator color={colors.primaryForeground} />
         ) : (
-          <Text style={[styles.buttonText, { color: colors.primaryForeground }]}>Komeza</Text>
+          <Text style={[styles.buttonText, { color: colors.primaryForeground }]}>{t("onboarding.personal.continue")}</Text>
         )}
       </TouchableOpacity>
     </ScrollView>

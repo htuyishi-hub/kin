@@ -23,6 +23,8 @@
     "typescript": "~5.9.3"
   },
   "dependencies": {
+    "i18next": "^27.2.2",
+    "react-i18next": "^18.0.3",
     "serve": "^14.2.6"
   }
 }

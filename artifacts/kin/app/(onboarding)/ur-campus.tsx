@@ -17,6 +17,7 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useTranslation } from "@workspace/i18n";
 
 import { useColors } from "@/hooks/useColors";
 
@@ -37,6 +38,7 @@ export default function UrCampusScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const isWeb = Platform.OS === "web";
+  const { t } = useTranslation();
 
   const {
     dateOfBirth,
@@ -60,7 +62,7 @@ export default function UrCampusScreen() {
 
   function handleNext() {
     if (!selectedCampus) {
-      setError("Select your campus");
+      setError(t("onboarding.ur.selectCampusError"));
       return;
     }
     setError("");
@@ -89,11 +91,11 @@ export default function UrCampusScreen() {
       ]}
       keyboardShouldPersistTaps="handled"
     >
-      <Text style={[styles.step, { color: colors.mutedForeground }]}>Step 2 of 3</Text>
-      <Text style={[styles.title, { color: colors.foreground }]}>Choose your campus</Text>
+      <Text style={[styles.step, { color: colors.mutedForeground }]}>{t("onboarding.ur.step")}</Text>
+      <Text style={[styles.title, { color: colors.foreground }]}>{t("onboarding.ur.campusTitle")}</Text>
 
       <View style={styles.section}>
-        <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>CAMPUSES</Text>
+        <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>{t("onboarding.ur.campusLabel").toUpperCase()}</Text>
         <View style={styles.optionGrid}>
           {UR_CAMPUSES.map((c) => (
             <TouchableOpacity
@@ -133,7 +135,7 @@ export default function UrCampusScreen() {
         onPress={handleNext}
         activeOpacity={0.85}
       >
-        <Text style={[styles.buttonText, { color: colors.primaryForeground }]}>Next</Text>
+        <Text style={[styles.buttonText, { color: colors.primaryForeground }]}>{t("common.continue")}</Text>
       </TouchableOpacity>
     </ScrollView>
   );

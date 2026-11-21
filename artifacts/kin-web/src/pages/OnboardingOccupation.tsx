@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
 import { useLocation } from 'wouter';
 import { Loader2, Heart, Sparkles, Coffee } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
 
 export default function OnboardingOccupation() {
   const [, setLocation] = useLocation();
+  const { t } = useTranslation();
   const { user } = useAuth();
 
   const [occupation, setOccupation] = useState('');
@@ -16,7 +18,7 @@ export default function OnboardingOccupation() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!occupation.trim()) {
-      setError('Enter your occupation');
+      setError(t('onboarding.occupation.selectOccupation'));
       return;
     }
 
@@ -35,7 +37,7 @@ export default function OnboardingOccupation() {
       }
       setLocation('/onboarding/ur');
     } catch (err: any) {
-      setError(err?.message || 'Failed to save. Please try again.');
+      setError(err?.message || t('onboarding.personal.saveFailed'));
     } finally {
       setIsPending(false);
     }
@@ -46,15 +48,14 @@ export default function OnboardingOccupation() {
       {/* Step Header */}
       <div className="flex flex-col gap-2">
         <div className="flex items-center justify-between text-xs text-[#A8A49E]">
-          <span className="font-semibold text-[#2563EB]">Step 2 of 3</span>
-          <span className="font-mono">Career & Intent</span>
+          <span className="font-semibold text-[#2563EB]">{t('onboarding.occupation.step')}</span>
         </div>
         <div className="w-full h-1 bg-[#21262D] rounded-full overflow-hidden">
           <div className="w-2/3 h-full bg-[#2563EB] rounded-full" />
         </div>
 
         <h1 className="font-serif text-2xl font-bold text-[#F0EDE6] leading-tight mt-3">
-          Career & Relationship Intent
+          {t('onboarding.occupation.title')}
         </h1>
       </div>
 
@@ -63,11 +64,11 @@ export default function OnboardingOccupation() {
         {/* Occupation input */}
         <div className="flex flex-col gap-1.5">
           <label className="text-xs font-semibold uppercase tracking-wider text-[#A8A49E]">
-            Career / Occupation
+            {t('onboarding.occupation.careerLabel')}
           </label>
           <input
             type="text"
-            placeholder="e.g. Software Engineer, Doctor, Student..."
+            placeholder={t('onboarding.occupation.careerPlaceholder')}
             value={occupation}
             onChange={(e) => {
               setOccupation(e.target.value);
@@ -80,7 +81,7 @@ export default function OnboardingOccupation() {
         {/* Intent Cards */}
         <div className="flex flex-col gap-2">
           <label className="text-xs font-semibold uppercase tracking-wider text-[#A8A49E]">
-            Your Intent
+            {t('onboarding.occupation.intentLabel')}
           </label>
 
           {/* Option 1: Marriage */}
@@ -96,8 +97,8 @@ export default function OnboardingOccupation() {
               <Heart className="w-4 h-4 fill-current" />
             </div>
             <div className="flex-1 flex items-center justify-between">
-              <span className="font-semibold text-sm text-[#F0EDE6]">Serious Marriage</span>
-              <span className="text-[10px] font-bold text-[#C9A84C] bg-[#C9A84C]/20 px-2 py-0.5 rounded">Tier 1</span>
+              <span className="font-semibold text-sm text-[#F0EDE6]">{t('onboarding.occupation.seriousMarriage')}</span>
+              <span className="text-[10px] font-bold text-[#C9A84C] bg-[#C9A84C]/20 px-2 py-0.5 rounded">{t('onboarding.occupation.tier1Badge')}</span>
             </div>
           </div>
 
@@ -114,7 +115,7 @@ export default function OnboardingOccupation() {
               <Sparkles className="w-4 h-4" />
             </div>
             <div className="flex-1">
-              <span className="font-semibold text-sm text-[#F0EDE6]">Long-term Relationship</span>
+              <span className="font-semibold text-sm text-[#F0EDE6]">{t('onboarding.occupation.longTerm')}</span>
             </div>
           </div>
 
@@ -131,7 +132,7 @@ export default function OnboardingOccupation() {
               <Coffee className="w-4 h-4" />
             </div>
             <div className="flex-1">
-              <span className="font-semibold text-sm text-[#F0EDE6]">Casual Dating</span>
+              <span className="font-semibold text-sm text-[#F0EDE6]">{t('onboarding.occupation.casualDating')}</span>
             </div>
           </div>
         </div>
@@ -149,7 +150,7 @@ export default function OnboardingOccupation() {
           {isPending ? (
             <Loader2 className="w-5 h-5 animate-spin text-white" />
           ) : (
-            <span>Continue</span>
+            <span>{t('onboarding.occupation.continue')}</span>
           )}
         </button>
       </div>

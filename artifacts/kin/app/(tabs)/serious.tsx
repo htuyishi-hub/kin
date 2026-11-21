@@ -10,12 +10,14 @@ import { Platform } from "react-native";
 import { KLogo } from "@/components/KLogo";
 import { Colors } from "@/constants/colors";
 import { useGetMe } from "@workspace/api-client-react";
+import { useTranslation } from "@workspace/i18n";
 
 import { useAuth } from "@/contexts/AuthContext";
 
 export default function SeriousScreen() {
   const insets   = useSafeAreaInsets();
   const { token, isLoading: authLoading } = useAuth();
+  const { t } = useTranslation();
 
   const { data: profile } = useGetMe({
     query: { enabled: !authLoading && !!token },
@@ -30,7 +32,7 @@ export default function SeriousScreen() {
     <View style={[styles.container, { paddingTop: paddingT, paddingBottom: paddingB }]}>
       <View style={styles.header}>
         <KLogo size={24} color={Colors.gold} />
-        <Text style={styles.headerTitle}>Serious</Text>
+        <Text style={styles.headerTitle}>{t("serious.tabTitle")}</Text>
         {tokens > 0 && (
           <View style={styles.tokenBadge}>
             <Text style={styles.tokenCount}>{tokens}</Text>
@@ -54,11 +56,11 @@ export default function SeriousScreen() {
           </View>
 
           <Text style={styles.gateTitle}>
-            Serious, marriage-minded people are waiting here.
+            {t("serious.description")}
           </Text>
 
           <Text style={styles.gateSubtitle}>
-            3 Connection Tokens = 1,000 RWF
+            3 {t("serious.connectionTokens")} = 1,000 RWF
           </Text>
 
           <TouchableOpacity style={styles.tokenBtn} activeOpacity={0.85}>
@@ -67,7 +69,7 @@ export default function SeriousScreen() {
           </TouchableOpacity>
 
           <Text style={styles.gateFooter}>
-            Tokens give you 3 respectful introductions.{"\n"}Not a subscription.
+            {t("serious.tokenExplainer")}
           </Text>
         </View>
       ) : (

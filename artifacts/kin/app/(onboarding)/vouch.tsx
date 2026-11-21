@@ -16,6 +16,7 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useTranslation } from "@workspace/i18n";
 
 import { useAuth } from "@/contexts/AuthContext";
 import { useColors } from "@/hooks/useColors";
@@ -25,6 +26,7 @@ export default function InviteVerificationScreen() {
   const insets = useSafeAreaInsets();
   const isWeb = Platform.OS === "web";
   const { token } = useAuth();
+  const { t } = useTranslation();
 
   const [inviteCodeInput, setInviteCodeInput] = useState("");
   const [claiming, setClaiming] = useState(false);
@@ -57,7 +59,7 @@ export default function InviteVerificationScreen() {
   async function handleClaimCode() {
     const code = inviteCodeInput.trim().toUpperCase();
     if (!code) {
-      setError("Please enter an invite code");
+      setError(t("onboarding.invite.enterCodeError"));
       return;
     }
 
@@ -76,14 +78,14 @@ export default function InviteVerificationScreen() {
 
       const data = await res.json();
       if (!res.ok) {
-        throw new Error(data.message || "Failed to claim invite code");
+        throw new Error(data.message || t("onboarding.invite.invalidCode"));
       }
 
-      setClaimSuccess(`Verified by ${data.inviterName || "a community member"}!`);
+      setClaimSuccess(t("onboarding.invite.verifiedByMember"));
       Haptics.notificationAsync?.(Haptics.NotificationFeedbackType.Success);
       await refetchProfile();
     } catch (err: any) {
-      setError(err?.message || "Invalid invite code. Please check and try again.");
+      setError(err?.message || t("onboarding.invite.invalidCode"));
       Haptics.notificationAsync?.(Haptics.NotificationFeedbackType.Error);
     } finally {
       setClaiming(false);
@@ -119,8 +121,8 @@ export default function InviteVerificationScreen() {
       ]}
       keyboardShouldPersistTaps="handled"
     >
-      <Text style={[styles.step, { color: colors.mutedForeground }]}>Step 3 of 3</Text>
-      <Text style={[styles.title, { color: colors.foreground }]}>Community Invite</Text>
+      <Text style={[styles.step, { color: colors.mutedForeground }]}>{t("onboarding.invite.step")}</Text>
+      <Text style={[styles.title, { color: colors.foreground }]}>{t("onboarding.invite.title")}</Text>
 
       {/* VERIFIED BANNER */}
       {isVerified ? (
@@ -128,12 +130,12 @@ export default function InviteVerificationScreen() {
           <Feather name="check-circle" size={24} color={colors.accent} />
           <View style={{ flex: 1 }}>
             <Text style={[styles.verifiedTitle, { color: colors.foreground }]}>
-              {p?.institution_verified ? "Verified UR Student" : "Verified Member"}
+              {p?.institution_verified ? t("profile.urStudentVerified") : t("profile.verifiedMember")}
             </Text>
             <Text style={[styles.verifiedSub, { color: colors.mutedForeground }]}>
               {p?.institution_verified
-                ? `Verified via University of Rwanda (${p?.campus ?? "Campus"})`
-                : claimSuccess ?? "Verified by community invite."}
+                ? `University of Rwanda (${p?.campus ?? "Campus"})`
+                : claimSuccess ?? t("onboarding.invite.verifiedByMember")}
             </Text>
           </View>
         </View>
@@ -142,7 +144,7 @@ export default function InviteVerificationScreen() {
         <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
           <View style={styles.cardHeader}>
             <Feather name="key" size={18} color={colors.accent} />
-            <Text style={[styles.cardTitle, { color: colors.foreground }]}>Have an invite code?</Text>
+            <Text style={[styles.cardTitle, { color: colors.foreground }]}>{t("onboarding.invite.title")}</Text>
           </View>
 
           <View style={styles.inputRow}>
@@ -151,7 +153,7 @@ export default function InviteVerificationScreen() {
                 styles.input,
                 { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.secondary },
               ]}
-              placeholder="e.g. KIN-9X42A7"
+              placeholder={t("onboarding.invite.placeholder")}
               placeholderTextColor={colors.mutedForeground}
               value={inviteCodeInput}
               onChangeText={(t) => {
@@ -170,7 +172,7 @@ export default function InviteVerificationScreen() {
               {claiming ? (
                 <ActivityIndicator color={colors.primaryForeground} size="small" />
               ) : (
-                <Text style={[styles.claimBtnText, { color: colors.primaryForeground }]}>Apply</Text>
+                <Text style={[styles.claimBtnText, { color: colors.primaryForeground }]}>{t("onboarding.invite.applyCode")}</Text>
               )}
             </TouchableOpacity>
           </View>
@@ -186,7 +188,7 @@ export default function InviteVerificationScreen() {
       <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
         <View style={styles.cardHeader}>
           <Feather name="share-2" size={18} color={colors.primary} />
-          <Text style={[styles.cardTitle, { color: colors.foreground }]}>Your Invite Link</Text>
+          <Text style={[styles.cardTitle, { color: colors.foreground }]}>{t("waiting.inviteLinkTitle")}</Text>
         </View>
 
         <View style={[styles.linkBox, { backgroundColor: colors.secondary, borderColor: colors.border }]}>
@@ -202,7 +204,7 @@ export default function InviteVerificationScreen() {
             activeOpacity={0.85}
           >
             <Feather name="send" size={16} color={colors.primaryForeground} />
-            <Text style={[styles.shareBtnText, { color: colors.primaryForeground }]}>Share Invite</Text>
+            <Text style={[styles.shareBtnText, { color: colors.primaryForeground }]}>{t("waiting.share")}</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -212,7 +214,7 @@ export default function InviteVerificationScreen() {
           >
             <Feather name={copied ? "check" : "copy"} size={16} color={copied ? colors.accent : colors.foreground} />
             <Text style={[styles.copyBtnText, { color: copied ? colors.accent : colors.foreground }]}>
-              {copied ? "Copied" : "Copy"}
+              {copied ? t("waiting.copied") : t("waiting.copy")}
             </Text>
           </TouchableOpacity>
         </View>
@@ -228,7 +230,7 @@ export default function InviteVerificationScreen() {
           <Feather name="award" size={20} color={colors.accent} />
           <View style={{ flex: 1 }}>
             <Text style={[styles.urOptionTitle, { color: colors.foreground }]}>
-              University of Rwanda Student?
+              {t("onboarding.ur.campusTitle")}
             </Text>
           </View>
           <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
@@ -252,7 +254,7 @@ export default function InviteVerificationScreen() {
             { color: isVerified ? colors.primaryForeground : colors.mutedForeground },
           ]}
         >
-          {isVerified ? "Continue" : "Continue to Waiting Room"}
+          {isVerified ? t("common.continue") : t("onboarding.invite.continueToWaiting")}
         </Text>
       </TouchableOpacity>
     </ScrollView>

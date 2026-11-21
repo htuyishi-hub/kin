@@ -21,6 +21,7 @@ import {
 import { KeyboardAvoidingView } from "react-native-keyboard-controller";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useQueryClient } from "@tanstack/react-query";
+import { useTranslation } from "@workspace/i18n";
 
 import { useAuth } from "@/contexts/AuthContext";
 import { useColors } from "@/hooks/useColors";
@@ -127,6 +128,7 @@ export default function MatchScreen() {
   const insets = useSafeAreaInsets();
   const isWeb = Platform.OS === "web";
   const { userId, token } = useAuth();
+  const { t } = useTranslation();
 
   const [content, setContent] = useState("");
   const flatRef = useRef<FlatList>(null);
@@ -300,7 +302,7 @@ export default function MatchScreen() {
             <>
               <TextInput
                 style={[styles.input, { backgroundColor: colors.background, color: colors.foreground, borderColor: colors.border }]}
-                placeholder="Write something sincere..."
+                placeholder={t("matches.typeMessage")}
                 placeholderTextColor={colors.mutedForeground}
                 value={content}
                 onChangeText={setContent}

@@ -146,15 +146,16 @@ router.post("/matches/:matchId/messages", requireAuth, async (req, res) => {
   try {
     const [sender, recipient] = await Promise.all([
       db.select({ fullName: profilesTable.fullName }).from(profilesTable).where(eq(profilesTable.id, userId)).limit(1),
-      db.select({ pushNotificationToken: profilesTable.pushNotificationToken }).from(profilesTable).where(eq(profilesTable.id, recipientId)).limit(1),
+      db.select({ pushNotificationToken: profilesTable.pushNotificationToken, language: profilesTable.language }).from(profilesTable).where(eq(profilesTable.id, recipientId)).limit(1),
     ]);
 
-    const senderName = sender[0]?.fullName ?? "Your match";
+    const recipientLang = recipient[0]?.language ?? "en";
+    const senderName = sender[0]?.fullName ?? (recipientLang === "rw" ? "Uwo mwahujwe" : "Your match");
     const token = recipient[0]?.pushNotificationToken;
 
     await sendPushNotification({
       to: token,
-      title: senderName,
+      title: recipientLang === "rw" ? `Ubutumwa bushya buturuka kuri ${senderName}` : `New message from ${senderName}`,
       body: content.trim().length > 80 ? content.trim().slice(0, 80) + "…" : content.trim(),
       data: { matchId: String(matchId), screen: "chat" },
     });

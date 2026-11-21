@@ -16,6 +16,9 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useTranslation, changeLanguage, getCurrentLanguage, type SupportedLanguage } from "@workspace/i18n";
+import { supabase } from "@/lib/supabase";
 
 import { useAuth } from "@/contexts/AuthContext";
 import { Colors } from "@/constants/colors";
@@ -53,6 +56,22 @@ export default function ProfileScreen() {
   const { mutate: pauseProfile, isPending: isPausing } = usePauseProfile({
     mutation: { onSuccess: () => refetch() },
   });
+
+  const { t } = useTranslation();
+  const [currentLang, setCurrentLang] = useState<SupportedLanguage>(getCurrentLanguage());
+
+  const handleLanguageChange = async (lang: SupportedLanguage) => {
+    await changeLanguage(lang);
+    setCurrentLang(lang);
+    try {
+      await AsyncStorage.setItem('@kin_language', lang);
+    } catch {}
+    if (profile?.id) {
+      try {
+        await supabase.from('profiles').update({ language: lang }).eq('id', profile.id);
+      } catch {}
+    }
+  };
 
   const [primaryPhotoUrl, setPrimaryPhotoUrl] = useState<string | null>(null);
   const [photoSlots, setPhotoSlots] = useState<PhotoSlot[]>([
@@ -108,7 +127,7 @@ export default function ProfileScreen() {
     >
       {/* Header */}
       <View style={[styles.header, { paddingTop: paddingT }]}>
-        <Text style={styles.headerTitle}>Profile</Text>
+        <Text style={styles.headerTitle}>{t('profile.tabTitle')}</Text>
       </View>
 
       <View style={styles.content}>
@@ -128,7 +147,7 @@ export default function ProfileScreen() {
               {isURVerified ? (
                 <>
                   <View style={[styles.goldDot, { backgroundColor: Colors.trust }]} />
-                  <Text style={styles.vouchText}>UR Student Verified</Text>
+                  <Text style={styles.vouchText}>{t('profile.urStudentVerified')}</Text>
                   {profile?.campusName && (
                     <Text style={styles.vouchDim}> · {profile.campusName}</Text>
                   )}
@@ -136,7 +155,7 @@ export default function ProfileScreen() {
               ) : (
                 <>
                   <View style={styles.goldDot} />
-                  <Text style={styles.vouchText}>Verified Member</Text>
+                  <Text style={styles.vouchText}>{t('profile.verifiedMember')}</Text>
                   {profile?.campusName && (
                     <Text style={styles.vouchDim}> · {profile.campusName}</Text>
                   )}
@@ -148,20 +167,20 @@ export default function ProfileScreen() {
 
         {/* Photo grid */}
         <View style={styles.section}>
-          <Text style={styles.sectionLabel}>PHOTOS</Text>
+          <Text style={styles.sectionLabel}>{t('profile.photos')}</Text>
           <PhotoGrid slots={photoSlots} onChange={handlePhotoGridChange} />
         </View>
 
         {/* Invite link card */}
         <View style={styles.trustCard}>
           <View style={styles.trustHeaderRow}>
-            <Text style={styles.trustLabel}>Invite Link</Text>
+            <Text style={styles.trustLabel}>{t('profile.inviteLink')}</Text>
             <Text style={styles.trustBadge}>
-              {String((profile as any)?.invite_count ?? profile?.vouchCount ?? 0)} invited
+              {t('profile.invitedCount', { count: String((profile as any)?.invite_count ?? profile?.vouchCount ?? 0) })}
             </Text>
           </View>
           <Text style={{ fontFamily: "Inter_400Regular", fontSize: 13, color: Colors.boneDim, marginVertical: 6, lineHeight: 18 }}>
-            Share your personal link to invite trusted people. They get verified immediately upon joining.
+            {t('profile.inviteLinkDesc')}
           </Text>
           <View style={{ flexDirection: "row", gap: 8, marginTop: 4 }}>
             <TouchableOpacity
@@ -187,23 +206,49 @@ export default function ProfileScreen() {
               activeOpacity={0.85}
             >
               <Feather name="share-2" size={15} color={Colors.bone} />
-              <Text style={{ fontFamily: "Inter_600SemiBold", fontSize: 13, color: Colors.bone }}>Share Invite Link</Text>
+              <Text style={{ fontFamily: "Inter_600SemiBold", fontSize: 13, color: Colors.bone }}>{t('profile.shareInvite')}</Text>
             </TouchableOpacity>
           </View>
         </View>
 
         {/* Stats */}
         <View style={styles.statsRow}>
-          <StatBox label="Invites" value={String((profile as any)?.invite_count ?? profile?.vouchCount ?? 0)} />
+          <StatBox label={t('profile.statsInvites')} value={String((profile as any)?.invite_count ?? profile?.vouchCount ?? 0)} />
           <View style={styles.statDivider} />
-          <StatBox label="Tokens" value={String(profile?.tokensRemaining ?? 0)} gold />
+          <StatBox label={t('profile.statsTokens')} value={String(profile?.tokensRemaining ?? 0)} gold />
           <View style={styles.statDivider} />
-          <StatBox label="Intent" value={profile?.primaryIntent ?? "—"} />
+          <StatBox label={t('profile.statsIntent')} value={profile?.primaryIntent ?? "—"} />
         </View>
 
         {/* Actions */}
         <View style={styles.section}>
-          <Text style={styles.sectionLabel}>SETTINGS</Text>
+          <Text style={styles.sectionLabel}>{t('profile.settings')}</Text>
+
+          {/* Language Switch */}
+          <View style={styles.actionRow}>
+            <Feather name="globe" size={18} color={Colors.bone} />
+            <Text style={styles.actionText}>{t('profile.language')}</Text>
+            <View style={styles.langToggleContainer}>
+              <TouchableOpacity
+                onPress={() => handleLanguageChange('en')}
+                style={[styles.langToggleBtn, currentLang === 'en' && styles.langToggleBtnActive]}
+                activeOpacity={0.8}
+              >
+                <Text style={[styles.langToggleText, currentLang === 'en' && styles.langToggleTextActive]}>
+                  {t('profile.languageEn')}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => handleLanguageChange('rw')}
+                style={[styles.langToggleBtn, currentLang === 'rw' && styles.langToggleBtnActive]}
+                activeOpacity={0.8}
+              >
+                <Text style={[styles.langToggleText, currentLang === 'rw' && styles.langToggleTextActive]}>
+                  {t('profile.languageRw')}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
 
           <TouchableOpacity
             style={styles.actionRow}
@@ -212,7 +257,7 @@ export default function ProfileScreen() {
             activeOpacity={0.8}
           >
             <Feather name={isPaused ? "play" : "pause"} size={18} color={Colors.bone} />
-            <Text style={styles.actionText}>{isPaused ? "Resume profile" : "Pause profile"}</Text>
+            <Text style={styles.actionText}>{isPaused ? t('profile.resumeProfile') : t('profile.pauseProfile')}</Text>
             {isPausing && <ActivityIndicator size="small" color={Colors.boneDim} />}
           </TouchableOpacity>
 
@@ -222,7 +267,7 @@ export default function ProfileScreen() {
             activeOpacity={0.8}
           >
             <Feather name="user-plus" size={18} color={Colors.bone} />
-            <Text style={styles.actionText}>Invite friends & verify</Text>
+            <Text style={styles.actionText}>{t('profile.inviteFriends')}</Text>
             <Feather name="chevron-right" size={16} color={Colors.boneGhost} />
           </TouchableOpacity>
 
@@ -232,7 +277,7 @@ export default function ProfileScreen() {
             activeOpacity={0.8}
           >
             <Feather name="log-out" size={18} color={Colors.danger} />
-            <Text style={[styles.actionText, { color: Colors.danger }]}>Sign out</Text>
+            <Text style={[styles.actionText, { color: Colors.danger }]}>{t('profile.signOut')}</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -431,6 +476,31 @@ const styles = StyleSheet.create({
     flex:       1,
     fontFamily: "Inter_500Medium",
     fontSize:   15,
+    color:      Colors.bone,
+  },
+  langToggleContainer: {
+    flexDirection:   "row",
+    backgroundColor: Colors.night,
+    borderRadius:    20,
+    padding:         3,
+    borderWidth:     1,
+    borderColor:     Colors.divider,
+    gap:             2,
+  },
+  langToggleBtn: {
+    paddingHorizontal: 12,
+    paddingVertical:   6,
+    borderRadius:      16,
+  },
+  langToggleBtnActive: {
+    backgroundColor: Colors.trust,
+  },
+  langToggleText: {
+    fontFamily: "Inter_600SemiBold",
+    fontSize:   12,
+    color:      Colors.boneDim,
+  },
+  langToggleTextActive: {
     color:      Colors.bone,
   },
 });

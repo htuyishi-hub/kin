@@ -57,7 +57,7 @@ export const profilesTable = pgTable("profiles", {
   profilePaused: boolean("profile_paused").default(false),
 
   onboardingComplete: boolean("onboarding_complete").default(false),
-
+  language: text("language").$type<"en" | "rw">().default("en"),
 
   pushNotificationToken: text("push_notification_token"),
 

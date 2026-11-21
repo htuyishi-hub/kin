@@ -17,10 +17,12 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Colors } from "@/constants/colors";
 import { Radius, Space } from "@/constants/spacing";
 import { isValidEmail, sendOtpForSignIn } from "@/services/authService";
+import { useTranslation } from "@workspace/i18n";
 
 export default function SignInScreen() {
   const insets = useSafeAreaInsets();
   const isWeb = Platform.OS === "web";
+  const { t } = useTranslation();
 
   const [email, setEmail] = useState("");
   const [error, setError] = useState("");
@@ -31,12 +33,12 @@ export default function SignInScreen() {
     const cleaned = email.trim().toLowerCase();
 
     if (!cleaned) {
-      setError("Enter your email");
+      setError(t("auth.email.enterEmail"));
       return;
     }
 
     if (!isValidEmail(cleaned)) {
-      setError("Invalid email format");
+      setError(t("auth.email.invalidFormat"));
       return;
     }
 
@@ -47,7 +49,7 @@ export default function SignInScreen() {
     try {
       const res = await sendOtpForSignIn(cleaned);
       if (!res.success) {
-        setError(res.error || "Failed to send login code. Please try again.");
+        setError(res.error || t("auth.email.sendFailed"));
         setIsNotFound(Boolean(res.isNotFound));
         return;
       }
@@ -61,7 +63,7 @@ export default function SignInScreen() {
         },
       });
     } catch (err: any) {
-      setError(err?.message || "An error occurred. Please try again.");
+      setError(err?.message || t("auth.email.sendFailed"));
     } finally {
       setIsPending(false);
     }
@@ -89,20 +91,20 @@ export default function SignInScreen() {
             style={styles.backButton}
             accessibilityRole="button"
           >
-            <Text style={styles.backButtonText}>← Back</Text>
+            <Text style={styles.backButtonText}>← {t("common.back")}</Text>
           </TouchableOpacity>
 
-          <Text style={styles.title}>Sign In</Text>
+          <Text style={styles.title}>{t("auth.signIn.title")}</Text>
         </View>
 
         {/* Action: Email OTP Sign In */}
         <View style={styles.actionSection}>
           <View style={styles.inputContainer}>
-            <Text style={styles.inputLabel}>Email Address</Text>
+            <Text style={styles.inputLabel}>{t("auth.signIn.emailLabel")}</Text>
             <View style={[styles.inputWrapper, !!error && styles.inputWrapperError]}>
               <TextInput
                 style={styles.textInput}
-                placeholder="izina@gmail.com"
+                placeholder={t("auth.signIn.emailPlaceholder")}
                 placeholderTextColor={Colors.boneGhost}
                 keyboardType="email-address"
                 autoCapitalize="none"
@@ -129,7 +131,7 @@ export default function SignInScreen() {
                     activeOpacity={0.85}
                   >
                     <Text style={styles.createAccountCtaText}>
-                      Create an account
+                      {t("auth.signIn.createAccount")}
                     </Text>
                   </TouchableOpacity>
                 )}
@@ -141,13 +143,13 @@ export default function SignInScreen() {
               onPress={handleSubmit}
               disabled={isPending}
               activeOpacity={0.88}
-              accessibilityLabel="Send login code"
+              accessibilityLabel={t("auth.signIn.sendCode")}
               accessibilityRole="button"
             >
               {isPending ? (
                 <ActivityIndicator color={Colors.bone} />
               ) : (
-                <Text style={styles.primaryButtonText}>Send Code</Text>
+                <Text style={styles.primaryButtonText}>{t("auth.signIn.sendCode")}</Text>
               )}
             </TouchableOpacity>
           </View>
@@ -158,7 +160,7 @@ export default function SignInScreen() {
             style={styles.forgotLink}
             accessibilityRole="button"
           >
-            <Text style={styles.forgotText}>Forgot account?</Text>
+            <Text style={styles.forgotText}>{t("auth.signIn.forgotAccount")}</Text>
           </Pressable>
         </View>
 
@@ -169,8 +171,8 @@ export default function SignInScreen() {
             style={styles.switchLink}
             accessibilityRole="button"
           >
-            <Text style={styles.switchLabel}>Don't have an account?</Text>
-            <Text style={styles.switchAction}> Create account</Text>
+            <Text style={styles.switchLabel}>{t("auth.signIn.noAccount")}</Text>
+            <Text style={styles.switchAction}> {t("auth.signIn.createAccount")}</Text>
           </Pressable>
         </View>
       </ScrollView>

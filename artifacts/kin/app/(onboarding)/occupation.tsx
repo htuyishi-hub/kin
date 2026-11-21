@@ -18,26 +18,28 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useTranslation } from "@workspace/i18n";
 
 import { useColors } from "@/hooks/useColors";
-
-const OCCUPATIONS: { value: OnboardingRequestOccupation; label: string }[] = [
-  { value: "Student", label: "Student" },
-  { value: "Employed", label: "Employed" },
-  { value: "Business", label: "Business" },
-  { value: "Searching", label: "Other" },
-];
-
-const INTENTS: { value: OnboardingRequestPrimaryGoal; label: string }[] = [
-  { value: "Serious Marriage", label: "Serious Marriage" },
-  { value: "Long-term Relationship", label: "Long-term Relationship" },
-  { value: "Casual Dating", label: "Casual Dating" },
-];
 
 export default function OccupationScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const isWeb = Platform.OS === "web";
+  const { t } = useTranslation();
+
+  const occupations: { value: OnboardingRequestOccupation; label: string }[] = [
+    { value: "Student", label: t("onboarding.occupation.occStudent") },
+    { value: "Employed", label: t("onboarding.occupation.occEmployed") },
+    { value: "Business", label: t("onboarding.occupation.occBusiness") },
+    { value: "Searching", label: t("onboarding.occupation.occOther") },
+  ];
+
+  const intents: { value: OnboardingRequestPrimaryGoal; label: string }[] = [
+    { value: "Serious Marriage", label: t("onboarding.occupation.seriousMarriage") },
+    { value: "Long-term Relationship", label: t("onboarding.occupation.longTerm") },
+    { value: "Casual Dating", label: t("onboarding.occupation.casualDating") },
+  ];
 
   const { dateOfBirth, gender, fullName } = useLocalSearchParams<{ dateOfBirth: string; gender: string; fullName: string }>();
 
@@ -53,18 +55,18 @@ export default function OccupationScreen() {
         router.push("/(onboarding)/vouch");
       },
       onError: (err: any) => {
-        setError(err?.data?.message ?? "Failed to save. Please try again.");
+        setError(err?.data?.message ?? t("common.networkError"));
       },
     },
   });
 
   function handleNext() {
-    if (!occupation) { setError("Select your occupation"); return; }
-    if (!intent) { setError("Select your primary intent"); return; }
-    if (occupation === "Student" && !campusName.trim()) { setError("Choose where you study"); return; }
+    if (!occupation) { setError(t("onboarding.occupation.selectOccupation")); return; }
+    if (!intent) { setError(t("onboarding.occupation.selectIntent")); return; }
+    if (occupation === "Student" && !campusName.trim()) { setError(t("onboarding.occupation.chooseCampus")); return; }
 
     // Phase 1: UR branch navigation (no verification logic yet)
-    if (occupation === "Student" && campusName === "University of Rwanda") {
+    if (occupation === "Student" && (campusName === "University of Rwanda" || campusName === t("onboarding.occupation.urUniversity"))) {
       setError("");
       router.push({
         pathname: "/(onboarding)/ur-campus",
@@ -109,13 +111,13 @@ export default function OccupationScreen() {
       ]}
       keyboardShouldPersistTaps="handled"
     >
-      <Text style={[styles.step, { color: colors.mutedForeground }]}>Step 2 of 3</Text>
-      <Text style={[styles.title, { color: colors.foreground }]}>Your situation</Text>
+      <Text style={[styles.step, { color: colors.mutedForeground }]}>{t("onboarding.occupation.step")}</Text>
+      <Text style={[styles.title, { color: colors.foreground }]}>{t("onboarding.occupation.title")}</Text>
 
       <View style={styles.section}>
-        <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>OCCUPATION</Text>
+        <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>{t("onboarding.occupation.careerLabel").toUpperCase()}</Text>
         <View style={styles.optionGrid}>
-          {OCCUPATIONS.map((o) => (
+          {occupations.map((o) => (
             <TouchableOpacity
               key={o.value}
               style={[
@@ -138,7 +140,7 @@ export default function OccupationScreen() {
 
       {occupation === "Student" && (
         <View style={styles.section}>
-          <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>WHERE DO YOU STUDY?</Text>
+          <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>{t("onboarding.occupation.whereDoYouStudy")}</Text>
 
           <View style={styles.optionGrid}>
             <TouchableOpacity
@@ -166,7 +168,7 @@ export default function OccupationScreen() {
                   },
                 ]}
               >
-                University of Rwanda
+                {t("onboarding.occupation.urUniversity")}
               </Text>
             </TouchableOpacity>
 
@@ -193,7 +195,7 @@ export default function OccupationScreen() {
                   },
                 ]}
               >
-                Other university
+                {t("onboarding.occupation.otherUniversity")}
               </Text>
             </TouchableOpacity>
           </View>
@@ -202,10 +204,10 @@ export default function OccupationScreen() {
 
       {occupation && occupation !== "Student" && (
         <View style={styles.section}>
-          <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>CITY</Text>
+          <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>{t("onboarding.occupation.city")}</Text>
           <TextInput
             style={[styles.input, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.card }]}
-            placeholder="e.g. Kigali"
+            placeholder={t("onboarding.occupation.cityPlaceholder")}
             placeholderTextColor={colors.mutedForeground}
             value={city}
             onChangeText={(t) => { setCity(t); setError(""); }}
@@ -214,9 +216,9 @@ export default function OccupationScreen() {
       )}
 
       <View style={styles.section}>
-        <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>WHAT ARE YOU LOOKING FOR?</Text>
+        <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>{t("onboarding.occupation.lookingFor")}</Text>
         <View style={styles.intentList}>
-          {INTENTS.map((it) => (
+          {intents.map((it) => (
             <TouchableOpacity
               key={it.value}
               style={[
@@ -236,8 +238,7 @@ export default function OccupationScreen() {
                 ]}
               />
               <View style={{ flex: 1 }}>
-                <Text style={[styles.intentValue, { color: colors.foreground }]}>{it.value}</Text>
-                <Text style={[styles.intentLabel, { color: colors.mutedForeground }]}>{it.label}</Text>
+                <Text style={[styles.intentValue, { color: colors.foreground }]}>{it.label}</Text>
               </View>
             </TouchableOpacity>
           ))}
@@ -255,7 +256,7 @@ export default function OccupationScreen() {
         {isPending ? (
           <ActivityIndicator color={colors.primaryForeground} />
         ) : (
-          <Text style={[styles.buttonText, { color: colors.primaryForeground }]}>Komeza</Text>
+          <Text style={[styles.buttonText, { color: colors.primaryForeground }]}>{t("onboarding.occupation.continue")}</Text>
         )}
       </TouchableOpacity>
     </ScrollView>

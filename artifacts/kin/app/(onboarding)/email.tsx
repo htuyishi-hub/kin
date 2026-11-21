@@ -17,10 +17,12 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Colors } from "@/constants/colors";
 import { Radius, Space } from "@/constants/spacing";
 import { isValidEmail, sendOtpForSignUp } from "@/services/authService";
+import { useTranslation } from "@workspace/i18n";
 
 export default function EmailScreen() {
   const insets = useSafeAreaInsets();
   const isWeb = Platform.OS === "web";
+  const { t } = useTranslation();
 
   const { role } = useLocalSearchParams<{ role?: "student" | "personal" }>();
   const isStudent = role === "student";
@@ -33,12 +35,12 @@ export default function EmailScreen() {
     const cleaned = email.trim().toLowerCase();
 
     if (!cleaned) {
-      setError("Enter your email");
+      setError(t("auth.email.enterEmail"));
       return;
     }
 
     if (!isValidEmail(cleaned)) {
-      setError("Invalid email format");
+      setError(t("auth.email.invalidFormat"));
       return;
     }
 
@@ -48,7 +50,7 @@ export default function EmailScreen() {
     try {
       const res = await sendOtpForSignUp(cleaned);
       if (!res.success) {
-        setError(res.error || "Failed to send code. Please try again.");
+        setError(res.error || t("auth.email.sendFailed"));
         return;
       }
 
@@ -62,7 +64,7 @@ export default function EmailScreen() {
         },
       });
     } catch (err: any) {
-      setError(err?.message || "An error occurred. Please try again.");
+      setError(err?.message || t("auth.email.sendFailed"));
     } finally {
       setIsPending(false);
     }
@@ -90,34 +92,34 @@ export default function EmailScreen() {
             style={styles.backButton}
             accessibilityRole="button"
           >
-            <Text style={styles.backButtonText}>← Back</Text>
+            <Text style={styles.backButtonText}>← {t("common.back")}</Text>
           </TouchableOpacity>
 
           <View style={styles.badgeRow}>
             {isStudent ? (
               <View style={styles.urBadge}>
-                <Text style={styles.urBadgeText}>UR STUDENT</Text>
+                <Text style={styles.urBadgeText}>{t("discover.urStudentBadge")}</Text>
               </View>
             ) : (
               <View style={styles.inviteBadge}>
-                <Text style={styles.inviteBadgeText}>INVITE ONLY</Text>
+                <Text style={styles.inviteBadgeText}>{t("welcome.inviteBadge")}</Text>
               </View>
             )}
           </View>
 
           <Text style={styles.title}>
-            {isStudent ? "Student Sign Up" : "Personal Account Sign Up"}
+            {isStudent ? t("auth.email.studentTitle") : t("auth.email.personalTitle")}
           </Text>
         </View>
 
         {/* Action: Email OTP Sign Up */}
         <View style={styles.actionSection}>
           <View style={styles.inputContainer}>
-            <Text style={styles.inputLabel}>Email Address</Text>
+            <Text style={styles.inputLabel}>{t("auth.email.inputLabel")}</Text>
             <View style={[styles.inputWrapper, !!error && styles.inputWrapperError]}>
               <TextInput
                 style={styles.textInput}
-                placeholder="izina@gmail.com"
+                placeholder={t("auth.email.placeholder")}
                 placeholderTextColor={Colors.boneGhost}
                 keyboardType="email-address"
                 autoCapitalize="none"
@@ -140,13 +142,13 @@ export default function EmailScreen() {
               onPress={handleSubmit}
               disabled={isPending}
               activeOpacity={0.88}
-              accessibilityLabel="Send verification code"
+              accessibilityLabel={t("auth.email.sendCode")}
               accessibilityRole="button"
             >
               {isPending ? (
                 <ActivityIndicator color={Colors.bone} />
               ) : (
-                <Text style={styles.primaryButtonText}>Send 6-Digit Code</Text>
+                <Text style={styles.primaryButtonText}>{t("auth.email.sendCode")}</Text>
               )}
             </TouchableOpacity>
           </View>
@@ -159,8 +161,8 @@ export default function EmailScreen() {
             style={styles.switchLink}
             accessibilityRole="button"
           >
-            <Text style={styles.switchLabel}>Already have an account?</Text>
-            <Text style={styles.switchAction}> Sign in</Text>
+            <Text style={styles.switchLabel}>{t("auth.email.alreadyHaveAccount")}</Text>
+            <Text style={styles.switchAction}> {t("auth.email.signInAction")}</Text>
           </Pressable>
         </View>
       </ScrollView>

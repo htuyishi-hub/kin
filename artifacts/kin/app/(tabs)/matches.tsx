@@ -12,6 +12,7 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useTranslation } from "@workspace/i18n";
 
 import { useColors } from "@/hooks/useColors";
 
@@ -19,6 +20,7 @@ export default function MatchesScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const isWeb = Platform.OS === "web";
+  const { t } = useTranslation();
 
   const { data: matches = [], isLoading } = useGetMatches({ query: { refetchInterval: 15000 } as any });
   const { data: incoming = [] } = useGetIncomingVouches({ query: { refetchInterval: 15000 } as any });
@@ -40,7 +42,7 @@ export default function MatchesScreen() {
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={[styles.header, { paddingTop, paddingHorizontal: 24 }]}>
-        <Text style={[styles.headerTitle, { color: colors.foreground }]}>Matches</Text>
+        <Text style={[styles.headerTitle, { color: colors.foreground }]}>{t("matches.tabTitle")}</Text>
       </View>
 
       <FlatList
@@ -76,9 +78,9 @@ export default function MatchesScreen() {
         ListEmptyComponent={
           <View style={[styles.empty, { paddingTop: 60 }]}>
             <Feather name="message-circle" size={48} color={colors.muted} />
-            <Text style={[styles.emptyTitle, { color: colors.foreground }]}>No matches yet</Text>
+            <Text style={[styles.emptyTitle, { color: colors.foreground }]}>{t("matches.noMatches")}</Text>
             <Text style={[styles.emptyBody, { color: colors.mutedForeground }]}>
-              Express interest in someone from Discover. When they reciprocate, you will be introduced.
+              {t("matches.keepSwiping")}
             </Text>
           </View>
         }

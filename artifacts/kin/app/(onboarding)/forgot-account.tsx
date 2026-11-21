@@ -17,10 +17,12 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Colors } from "@/constants/colors";
 import { Radius, Space } from "@/constants/spacing";
 import { isValidEmail, sendOtpForRecovery } from "@/services/authService";
+import { useTranslation } from "@workspace/i18n";
 
 export default function ForgotAccountScreen() {
   const insets = useSafeAreaInsets();
   const isWeb = Platform.OS === "web";
+  const { t } = useTranslation();
 
   const [email, setEmail] = useState("");
   const [error, setError] = useState("");
@@ -30,12 +32,12 @@ export default function ForgotAccountScreen() {
     const cleaned = email.trim().toLowerCase();
 
     if (!cleaned) {
-      setError("Enter your email");
+      setError(t("auth.email.enterEmail"));
       return;
     }
 
     if (!isValidEmail(cleaned)) {
-      setError("Invalid email format");
+      setError(t("auth.email.invalidFormat"));
       return;
     }
 
@@ -45,7 +47,7 @@ export default function ForgotAccountScreen() {
     try {
       const res = await sendOtpForRecovery(cleaned);
       if (!res.success) {
-        setError(res.error || "Failed to send recovery code. Please try again.");
+        setError(res.error || t("auth.email.sendFailed"));
         return;
       }
 
@@ -58,7 +60,7 @@ export default function ForgotAccountScreen() {
         },
       });
     } catch (err: any) {
-      setError(err?.message || "An error occurred. Please try again.");
+      setError(err?.message || t("auth.email.sendFailed"));
     } finally {
       setIsPending(false);
     }
@@ -84,23 +86,23 @@ export default function ForgotAccountScreen() {
           <TouchableOpacity
             onPress={() => router.back()}
             style={styles.backButton}
-            accessibilityLabel="Go back"
+            accessibilityLabel={t("common.back")}
             accessibilityRole="button"
           >
-            <Text style={styles.backButtonText}>← Back</Text>
+            <Text style={styles.backButtonText}>← {t("common.back")}</Text>
           </TouchableOpacity>
 
-          <Text style={styles.title}>Recover Your Account</Text>
+          <Text style={styles.title}>{t("auth.forgot.title")}</Text>
         </View>
 
         {/* Section: Email OTP Recovery */}
         <View style={styles.section}>
           <View style={styles.inputContainer}>
-            <Text style={styles.inputLabel}>Email Address</Text>
+            <Text style={styles.inputLabel}>{t("auth.forgot.emailLabel")}</Text>
             <View style={[styles.inputWrapper, !!error && styles.inputWrapperError]}>
               <TextInput
                 style={styles.textInput}
-                placeholder="izina@gmail.com"
+                placeholder={t("auth.forgot.emailPlaceholder")}
                 placeholderTextColor={Colors.boneGhost}
                 keyboardType="email-address"
                 autoCapitalize="none"
@@ -123,14 +125,14 @@ export default function ForgotAccountScreen() {
               onPress={handleRecoverySubmit}
               disabled={isPending}
               activeOpacity={0.88}
-              accessibilityLabel="Send recovery code"
+              accessibilityLabel={t("auth.forgot.sendRecoveryCode")}
               accessibilityRole="button"
             >
               {isPending ? (
                 <ActivityIndicator color={Colors.bone} />
               ) : (
                 <Text style={styles.primaryButtonText}>
-                  Send Recovery Code
+                  {t("auth.forgot.sendRecoveryCode")}
                 </Text>
               )}
             </TouchableOpacity>
@@ -144,8 +146,8 @@ export default function ForgotAccountScreen() {
             style={styles.backLink}
             accessibilityRole="button"
           >
-            <Text style={styles.backLinkLabel}>Remember your account?</Text>
-            <Text style={styles.backLinkAction}> Sign in</Text>
+            <Text style={styles.backLinkLabel}>{t("auth.forgot.rememberAccount")}</Text>
+            <Text style={styles.backLinkAction}> {t("auth.forgot.signInAction")}</Text>
           </Pressable>
         </View>
       </ScrollView>

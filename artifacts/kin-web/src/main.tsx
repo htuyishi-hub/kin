@@ -1,6 +1,16 @@
 import { createRoot } from "react-dom/client";
+import { initI18n, type SupportedLanguage } from "@workspace/i18n";
 import App from "./App";
 import "./index.css";
+
+// Initialize language from localStorage or browser locale
+const savedLang = localStorage.getItem("kin_language");
+if (savedLang === "en" || savedLang === "rw") {
+  initI18n(savedLang as SupportedLanguage);
+} else {
+  const browserLang = navigator.language?.slice(0, 2);
+  initI18n(browserLang === "rw" ? "rw" : "en");
+}
 
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {

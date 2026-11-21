@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
 import { useLocation } from 'wouter';
 import { Clock, Share2, Check, ShieldCheck, Users, Copy } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/contexts/AuthContext';
 
 export default function OnboardingWaiting() {
   const [, setLocation] = useLocation();
+  const { t } = useTranslation();
   const { user } = useAuth();
   const [copied, setCopied] = useState(false);
 
@@ -25,7 +27,7 @@ export default function OnboardingWaiting() {
         </div>
 
         <h1 className="font-serif text-2xl font-bold text-[#F0EDE6] leading-tight">
-          The Waiting Room
+          {t('waiting.title')}
         </h1>
       </div>
 
@@ -36,17 +38,17 @@ export default function OnboardingWaiting() {
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-[#A8A49E] flex items-center gap-1.5">
               <Users className="w-3.5 h-3.5 text-[#2563EB]" />
-              Waitlist Position
+              {t('waiting.queuePosition')}
             </span>
             <span className="text-xs font-bold text-[#F0EDE6] bg-[#242438] px-2.5 py-0.5 rounded-full font-mono">
-              #42 in line
+              {t('waiting.positionNumber')}
             </span>
           </div>
 
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-[#A8A49E] flex items-center gap-1.5">
               <ShieldCheck className="w-3.5 h-3.5 text-[#3FB950]" />
-              Trust Score
+              {t('waiting.trustScore')}
             </span>
             <span className="text-xs font-bold text-[#3FB950] font-mono">
               50 / 100
@@ -57,7 +59,7 @@ export default function OnboardingWaiting() {
         {/* Shareable Invite Link Card */}
         <div className="p-4 bg-[#1A1A2E]/70 border border-[#21262D] rounded-2xl flex flex-col gap-2">
           <label className="text-xs font-semibold uppercase tracking-wider text-[#A8A49E]">
-            Your Invite Link
+            {t('waiting.inviteLinkTitle')}
           </label>
           <div className="flex items-center gap-2 p-2.5 bg-[#0D1117] border border-[#21262D] rounded-xl">
             <span className="text-xs text-[#F0EDE6] font-mono truncate flex-1 select-all">
@@ -72,7 +74,7 @@ export default function OnboardingWaiting() {
           </div>
           {copied && (
             <span className="text-[11px] text-[#3FB950] font-semibold text-center mt-0.5">
-              Invite link copied!
+              {t('waiting.copied')}
             </span>
           )}
         </div>
@@ -85,14 +87,14 @@ export default function OnboardingWaiting() {
           className="w-full h-13.5 bg-[#C9A84C] text-[#0D1117] rounded-full font-bold text-[15px] flex items-center justify-center gap-2 hover:bg-[#C9A84C]/90 active:scale-[0.98] transition-all cursor-pointer shadow-lg"
         >
           <Share2 className="w-4 h-4" />
-          <span>{copied ? 'Copied' : 'Share Invite Link'}</span>
+          <span>{copied ? t('waiting.copied') : t('waiting.share')}</span>
         </button>
 
         <button
           onClick={() => setLocation('/app')}
           className="py-2 text-xs font-medium text-[#A8A49E] hover:text-[#F0EDE6] transition-colors text-center cursor-pointer"
         >
-          Preview Discovery
+          {t('waiting.previewDiscovery')}
         </button>
       </div>
     </div>

@@ -16,6 +16,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Colors } from "@/constants/colors";
 import { Radius, Space } from "@/constants/spacing";
 import { useAuth } from "@/contexts/AuthContext";
+import { useTranslation } from "@workspace/i18n";
 import {
   fetchProfileRouting,
   sendOtpForRecovery,
@@ -41,6 +42,7 @@ export default function OtpScreen() {
   const insets = useSafeAreaInsets();
   const isWeb = Platform.OS === "web";
   const { signIn, setSession } = useAuth();
+  const { t } = useTranslation();
 
   const [otp, setOtp] = useState(["", "", "", "", "", ""]);
   const [error, setError] = useState("");
@@ -78,7 +80,7 @@ export default function OtpScreen() {
         const res = await verifyEmailOtp(email, code, otpType);
 
         if (!res.success || !res.session || !res.user) {
-          setError(res.error || "Invalid or expired code.");
+          setError(res.error || t("auth.otp.invalidCode"));
           setOtp(["", "", "", "", "", ""]);
           inputs.current[0]?.focus();
           return;
@@ -115,12 +117,12 @@ export default function OtpScreen() {
           return;
         }
 
-        setError(res.error || "Kode ntabwo ari yo cyangwa yarangiye.");
+        setError(res.error || t("auth.otp.invalidCode"));
         setOtp(["", "", "", "", "", ""]);
         inputs.current[0]?.focus();
       }
     } catch (err: any) {
-      setError(err?.message || "Failed to verify code. Please try again.");
+      setError(err?.message || t("auth.otp.verifyFailed"));
     } finally {
       setVerifying(false);
     }
@@ -145,11 +147,11 @@ export default function OtpScreen() {
         }
 
         if (!res.success) {
-          setError(res.error || "Failed to resend code.");
+          setError(res.error || t("auth.otp.resendFailed"));
           return;
         }
 
-        setInfoMessage("New code sent.");
+        setInfoMessage(t("auth.otp.newCodeSent"));
         setCountdown(60);
         setOtp(["", "", "", "", "", ""]);
         inputs.current[0]?.focus();
@@ -159,16 +161,16 @@ export default function OtpScreen() {
       if (phone) {
         const res = await sendPhoneOtp(phone);
         if (!res.success) {
-          setError(res.error || "Failed to resend SMS.");
+          setError(res.error || t("auth.otp.resendFailed"));
           return;
         }
-        setInfoMessage("New SMS sent.");
+        setInfoMessage(t("auth.otp.newCodeSent"));
         setCountdown(60);
         setOtp(["", "", "", "", "", ""]);
         inputs.current[0]?.focus();
       }
     } catch (err: any) {
-      setError(err?.message || "Failed to resend code.");
+      setError(err?.message || t("auth.otp.resendFailed"));
     } finally {
       setResending(false);
     }
@@ -247,12 +249,12 @@ export default function OtpScreen() {
             style={styles.backButton}
             accessibilityRole="button"
           >
-            <Text style={styles.backButtonText}>← {isEmail ? "Change email" : "Change phone"}</Text>
+            <Text style={styles.backButtonText}>← {isEmail ? t("auth.otp.changeEmail") : t("auth.otp.changePhone")}</Text>
           </TouchableOpacity>
 
-          <Text style={styles.title}>Enter 6-Digit Code</Text>
+          <Text style={styles.title}>{t("auth.otp.title")}</Text>
           <Text style={styles.subtitle}>
-            Code sent to:{"\n"}
+            {t("auth.otp.codeSentTo")}{"\n"}
             <Text style={styles.recipientHighlight}>{targetRecipient}</Text>
           </Text>
         </View>
@@ -297,13 +299,13 @@ export default function OtpScreen() {
             onPress={() => handleVerify(code)}
             disabled={isPending || code.length < 6}
             activeOpacity={0.85}
-            accessibilityLabel="Verify code"
+            accessibilityLabel={t("auth.otp.verify")}
             accessibilityRole="button"
           >
             {isPending ? (
               <ActivityIndicator color={Colors.bone} />
             ) : (
-              <Text style={styles.verifyButtonText}>Verify</Text>
+              <Text style={styles.verifyButtonText}>{t("auth.otp.verify")}</Text>
             )}
           </TouchableOpacity>
 
@@ -311,7 +313,7 @@ export default function OtpScreen() {
           <View style={styles.resendContainer}>
             {countdown > 0 ? (
               <Text style={styles.countdownText}>
-                Resend code in:{" "}
+                {t("auth.otp.resendCountdown")}{" "}
                 <Text style={styles.countdownNumber}>{countdown}s</Text>
               </Text>
             ) : (
@@ -326,7 +328,7 @@ export default function OtpScreen() {
                   <ActivityIndicator size="small" color={Colors.trust} />
                 ) : (
                   <Text style={styles.resendButtonText}>
-                    Resend code
+                    {t("auth.otp.resendCode")}
                   </Text>
                 )}
               </TouchableOpacity>

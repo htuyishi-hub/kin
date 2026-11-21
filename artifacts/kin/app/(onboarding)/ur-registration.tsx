@@ -11,6 +11,7 @@ import { router, useLocalSearchParams } from "expo-router";
 import React, { useState } from "react";
 import { ActivityIndicator, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useTranslation } from "@workspace/i18n";
 
 import { useColors } from "@/hooks/useColors";
 
@@ -20,6 +21,7 @@ export default function UrRegistrationScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const isWeb = Platform.OS === "web";
+  const { t } = useTranslation();
 
   const { dateOfBirth, gender, fullName, occupation, intent, campus } = useLocalSearchParams<{
     dateOfBirth?: string;
@@ -38,7 +40,6 @@ export default function UrRegistrationScreen() {
 
   const urVerifiedRef = React.useRef(false);
 
-
   const { mutate: complete, isPending } = useCompleteOnboarding({
     mutation: {
       onSuccess: () => {
@@ -47,7 +48,7 @@ export default function UrRegistrationScreen() {
         else router.replace("/(onboarding)/vouch");
       },
       onError: (err: any) => {
-        setError(err?.data?.message ?? "Failed to save. Please try again.");
+        setError(err?.data?.message ?? t("common.networkError"));
       },
     },
   });
@@ -56,23 +57,22 @@ export default function UrRegistrationScreen() {
     const digitsOnly = registrationNumber.replace(/\s+/g, "");
 
     if (!digitsOnly) {
-      setError("Enter your registration number");
+      setError(t("onboarding.ur.enterRegNumber"));
       return;
     }
     if (!/^\d{9}$/.test(digitsOnly)) {
-      setError("Registration number must be exactly 9 digits");
+      setError(t("onboarding.ur.mustBe9Digits"));
       return;
     }
 
     if (!campus || typeof campus !== "string" || !campus.trim()) {
-      setError("Select your campus");
+      setError(t("onboarding.ur.selectCampusError"));
       return;
     }
 
     setError("");
 
     // 1) Verify against UR registry and atomically claim the registration.
-    // IMPORTANT: include Authorization so backend can bind claim to this profile.
     const authHeader = token ? `Bearer ${token}` : undefined;
 
     const apiBaseUrl =
@@ -83,34 +83,26 @@ export default function UrRegistrationScreen() {
         : "https://kin-x81d.onrender.com");
 
     if (!apiBaseUrl || typeof apiBaseUrl !== "string" || !apiBaseUrl.trim()) {
-      setError("Server is not configured. Please try again later.");
+      setError(t("common.networkError"));
       return;
     }
 
-
     const verifyRes = await fetch(`${apiBaseUrl}/api/me/ur/verify-registration`, {
-
-
-
-
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         ...(authHeader ? { Authorization: authHeader } : {}),
       },
-
       body: JSON.stringify({ registration_number: digitsOnly, campus: campus.trim() }),
     });
 
     if (!verifyRes.ok) {
-      setError("Could not verify your UR registration. Please try again.");
+      setError(t("common.networkError"));
       return;
     }
 
     const verifyJson = (await verifyRes.json()) as any;
-    console.log("UR verify response", verifyJson);
 
-    // 2) Proactively route using the verification response to avoid cached /api/me.
     const verifiedFromApi =
       verifyJson?.verified === true ||
       verifyJson?.status === "verified";
@@ -118,7 +110,6 @@ export default function UrRegistrationScreen() {
     if (verifiedFromApi) {
       urVerifiedRef.current = true;
 
-      // Only complete onboarding after the backend confirms the atomic claim.
       const locationType: OnboardingRequestLocationType = "Campus";
       complete({
         data: {
@@ -134,7 +125,6 @@ export default function UrRegistrationScreen() {
       return;
     }
 
-    // Block onboarding progression for any non-verified state.
     urVerifiedRef.current = false;
 
     const status = verifyJson?.status as
@@ -145,17 +135,11 @@ export default function UrRegistrationScreen() {
       | undefined;
 
     if (status === "already_claimed") {
-      setError("This registration number is already linked to another Kin account.");
+      setError(t("onboarding.ur.alreadyClaimed"));
       return;
     }
 
-    if (status === "not_found") {
-      setError("Registration number not found. Please double-check or use community verification.");
-      return;
-    }
-
-    // invalid_format or any unexpected status
-    setError("Verification failed. Please check your format or try again.");
+    setError(t("common.networkError"));
     return;
   }
 
@@ -171,14 +155,14 @@ export default function UrRegistrationScreen() {
       ]}
       keyboardShouldPersistTaps="handled"
     >
-      <Text style={[styles.step, { color: colors.mutedForeground }]}>Step 2 of 3</Text>
-      <Text style={[styles.title, { color: colors.foreground }]}>Registration Number</Text>
+      <Text style={[styles.step, { color: colors.mutedForeground }]}>{t("onboarding.ur.step")}</Text>
+      <Text style={[styles.title, { color: colors.foreground }]}>{t("onboarding.ur.registrationTitle")}</Text>
 
       <View style={styles.section}>
-        <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>REGISTRATION NUMBER</Text>
+        <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>{t("onboarding.ur.registrationLabel").toUpperCase()}</Text>
         <TextInput
           style={[styles.input, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.card }]}
-          placeholder="e.g. 225028190"
+          placeholder={t("onboarding.ur.registrationPlaceholder")}
           placeholderTextColor={colors.mutedForeground}
           keyboardType="number-pad"
           value={registrationNumber}
@@ -201,7 +185,7 @@ export default function UrRegistrationScreen() {
         {isPending ? (
           <ActivityIndicator color={colors.primaryForeground} />
         ) : (
-          <Text style={[styles.buttonText, { color: colors.primaryForeground }]}>Continue</Text>
+          <Text style={[styles.buttonText, { color: colors.primaryForeground }]}>{t("common.continue")}</Text>
         )}
       </TouchableOpacity>
     </ScrollView>

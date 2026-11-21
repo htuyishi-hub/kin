@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
 import { useLocation } from 'wouter';
 import { Loader2 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { isValidEmail, sendOtpForRecovery } from '@/lib/authService';
 
 export default function ForgotAccountScreen() {
   const [, setLocation] = useLocation();
+  const { t } = useTranslation();
 
   const [email, setEmail] = useState('');
   const [error, setError] = useState('');
@@ -15,12 +17,12 @@ export default function ForgotAccountScreen() {
     const cleaned = email.trim().toLowerCase();
 
     if (!cleaned) {
-      setError('Enter your email');
+      setError(t('auth.email.enterEmail'));
       return;
     }
 
     if (!isValidEmail(cleaned)) {
-      setError('Invalid email format');
+      setError(t('auth.email.invalidFormat'));
       return;
     }
 
@@ -30,13 +32,13 @@ export default function ForgotAccountScreen() {
     try {
       const res = await sendOtpForRecovery(cleaned);
       if (!res.success) {
-        setError(res.error || 'Failed to send recovery code.');
+        setError(res.error || t('auth.email.sendFailed'));
         return;
       }
 
       setLocation(`/otp?email=${encodeURIComponent(cleaned)}&mode=recovery`);
     } catch (err: any) {
-      setError(err?.message || 'An error occurred. Please try again.');
+      setError(err?.message || t('common.networkError'));
     } finally {
       setIsPending(false);
     }
@@ -50,11 +52,11 @@ export default function ForgotAccountScreen() {
           onClick={() => setLocation('/signin')}
           className="self-start py-1.5 text-sm font-medium text-[#FF6B6B] hover:opacity-80 transition-opacity cursor-pointer mb-2"
         >
-          ← Back
+          ← {t('common.back')}
         </button>
 
         <h1 className="font-serif text-2xl font-bold text-[#F0EDE6] leading-tight">
-          Recover Your Account
+          {t('auth.forgot.title')}
         </h1>
       </div>
 
@@ -62,7 +64,7 @@ export default function ForgotAccountScreen() {
       <form onSubmit={handleRecoverySubmit} className="flex flex-col gap-4 my-auto py-6">
         <div className="flex flex-col gap-1.5">
           <label className="text-xs font-semibold uppercase tracking-wider text-[#A8A49E]">
-            Email Address
+            {t('auth.forgot.emailLabel')}
           </label>
           <div
             className={`flex items-center bg-[#1A1A2E] border-1.5 rounded-xl overflow-hidden transition-colors ${
@@ -71,7 +73,7 @@ export default function ForgotAccountScreen() {
           >
             <input
               type="email"
-              placeholder="izina@gmail.com"
+              placeholder={t('auth.forgot.emailPlaceholder')}
               value={email}
               onChange={(e) => {
                 setEmail(e.target.value);
@@ -92,7 +94,7 @@ export default function ForgotAccountScreen() {
           {isPending ? (
             <Loader2 className="w-5 h-5 animate-spin text-white" />
           ) : (
-            <span>Send Recovery Code</span>
+            <span>{t('auth.forgot.sendRecoveryCode')}</span>
           )}
         </button>
       </form>
@@ -103,8 +105,8 @@ export default function ForgotAccountScreen() {
           onClick={() => setLocation('/signin')}
           className="flex items-center gap-1.5 text-sm cursor-pointer hover:opacity-90 transition-opacity"
         >
-          <span className="text-[#A8A49E]">Remember your account?</span>
-          <span className="font-semibold text-[#2563EB]">Sign in</span>
+          <span className="text-[#A8A49E]">{t('auth.forgot.rememberAccount')}</span>
+          <span className="font-semibold text-[#2563EB]">{t('auth.forgot.signInAction')}</span>
         </button>
       </div>
     </div>

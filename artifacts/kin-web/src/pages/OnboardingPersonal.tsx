@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
 import { useLocation } from 'wouter';
 import { Loader2 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
 
 export default function OnboardingPersonal() {
   const [, setLocation] = useLocation();
+  const { t } = useTranslation();
   const { user } = useAuth();
 
   const [fullName, setFullName] = useState('');
@@ -17,11 +19,11 @@ export default function OnboardingPersonal() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!fullName.trim()) {
-      setError('Enter your full name');
+      setError(t('onboarding.personal.enterFullName'));
       return;
     }
     if (!dob) {
-      setError('Select your birth date');
+      setError(t('onboarding.personal.selectDob'));
       return;
     }
 
@@ -30,12 +32,12 @@ export default function OnboardingPersonal() {
     const today = new Date();
     const age = today.getFullYear() - birthDate.getFullYear();
     if (age < 18) {
-      setError('Must be 18 or older');
+      setError(t('onboarding.personal.mustBe18'));
       return;
     }
 
     if (!gender) {
-      setError('Select your gender');
+      setError(t('onboarding.personal.selectGender'));
       return;
     }
 
@@ -56,7 +58,7 @@ export default function OnboardingPersonal() {
       }
       setLocation('/onboarding/occupation');
     } catch (err: any) {
-      setError(err?.message || 'Failed to save. Please try again.');
+      setError(err?.message || t('onboarding.personal.saveFailed'));
     } finally {
       setIsPending(false);
     }
@@ -67,15 +69,14 @@ export default function OnboardingPersonal() {
       {/* Step Header */}
       <div className="flex flex-col gap-2">
         <div className="flex items-center justify-between text-xs text-[#A8A49E]">
-          <span className="font-semibold text-[#2563EB]">Step 1 of 3</span>
-          <span className="font-mono">Personal info</span>
+          <span className="font-semibold text-[#2563EB]">{t('onboarding.personal.step')}</span>
         </div>
         <div className="w-full h-1 bg-[#21262D] rounded-full overflow-hidden">
           <div className="w-1/3 h-full bg-[#2563EB] rounded-full" />
         </div>
 
         <h1 className="font-serif text-2xl font-bold text-[#F0EDE6] leading-tight mt-3">
-          Tell us about yourself
+          {t('onboarding.personal.title')}
         </h1>
       </div>
 
@@ -84,11 +85,11 @@ export default function OnboardingPersonal() {
         {/* Full Name */}
         <div className="flex flex-col gap-1.5">
           <label className="text-xs font-semibold uppercase tracking-wider text-[#A8A49E]">
-            Full Name
+            {t('onboarding.personal.fullNameLabel')}
           </label>
           <input
             type="text"
-            placeholder="Full Name"
+            placeholder={t('onboarding.personal.fullNamePlaceholder')}
             value={fullName}
             onChange={(e) => {
               setFullName(e.target.value);
@@ -101,7 +102,7 @@ export default function OnboardingPersonal() {
         {/* Date of Birth */}
         <div className="flex flex-col gap-1.5">
           <label className="text-xs font-semibold uppercase tracking-wider text-[#A8A49E]">
-            Date of Birth
+            {t('onboarding.personal.dobLabel')}
           </label>
           <input
             type="date"
@@ -117,7 +118,7 @@ export default function OnboardingPersonal() {
         {/* Gender Selection */}
         <div className="flex flex-col gap-1.5 mt-1">
           <label className="text-xs font-semibold uppercase tracking-wider text-[#A8A49E]">
-            Gender
+            {t('onboarding.personal.genderLabel')}
           </label>
           <div className="grid grid-cols-2 gap-3">
             <button
@@ -132,7 +133,7 @@ export default function OnboardingPersonal() {
                   : 'border-[#21262D] bg-[#1A1A2E] text-[#A8A49E] hover:border-[#A8A49E]/40'
               }`}
             >
-              Female
+              {t('onboarding.personal.genderFemale')}
             </button>
             <button
               type="button"
@@ -146,7 +147,7 @@ export default function OnboardingPersonal() {
                   : 'border-[#21262D] bg-[#1A1A2E] text-[#A8A49E] hover:border-[#A8A49E]/40'
               }`}
             >
-              Male
+              {t('onboarding.personal.genderMale')}
             </button>
           </div>
         </div>
@@ -164,7 +165,7 @@ export default function OnboardingPersonal() {
           {isPending ? (
             <Loader2 className="w-5 h-5 animate-spin text-white" />
           ) : (
-            <span>Continue</span>
+            <span>{t('onboarding.personal.continue')}</span>
           )}
         </button>
       </div>

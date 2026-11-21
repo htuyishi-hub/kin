@@ -20,6 +20,9 @@ import { StatusBar } from "expo-status-bar";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider } from "react-native-safe-area-context";
+import * as Localization from "expo-localization";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { initI18n, changeLanguage, type SupportedLanguage } from "@workspace/i18n";
 
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
@@ -111,6 +114,24 @@ function PushRegistrar() {
 
 
 function RootLayoutNav() {
+  useEffect(() => {
+    async function loadSavedLanguage() {
+      try {
+        const stored = await AsyncStorage.getItem("@kin_language");
+        if (stored === "en" || stored === "rw") {
+          await changeLanguage(stored as SupportedLanguage);
+        } else {
+          const deviceLang = Localization.getLocales()?.[0]?.languageCode;
+          const initial = deviceLang === "rw" ? "rw" : "en";
+          await changeLanguage(initial);
+        }
+      } catch {
+        // Fallback default is en
+      }
+    }
+    loadSavedLanguage();
+  }, []);
+
   return (
     <>
       <StatusBar style="light" />

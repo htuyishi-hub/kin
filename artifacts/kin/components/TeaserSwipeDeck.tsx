@@ -20,6 +20,7 @@ import Animated, {
   withSpring,
   withTiming,
 } from "react-native-reanimated";
+import { useTranslation } from "@workspace/i18n";
 
 import { Colors } from "@/constants/colors";
 
@@ -59,6 +60,7 @@ export function TeaserSwipeDeck({
   goldenBidsRemaining = 3,
   onRefresh,
 }: TeaserSwipeDeckProps) {
+  const { t } = useTranslation();
   const [currentIndex, setCurrentIndex] = useState(0);
   const [photoIndex, setPhotoIndex] = useState(0);
 
@@ -180,14 +182,14 @@ export function TeaserSwipeDeck({
     return (
       <View style={styles.emptyContainer}>
         <Feather name="compass" size={48} color={Colors.gold} />
-        <Text style={styles.emptyTitle}>Deck Cleared</Text>
+        <Text style={styles.emptyTitle}>{t("discover.noMoreProfiles")}</Text>
         <Text style={styles.emptySubtitle}>
-          You've reviewed all active members matching your current Intent Class. Check back soon or adjust your settings.
+          {t("discover.checkBackLater")}
         </Text>
         {onRefresh && (
           <TouchableOpacity style={styles.refreshButton} onPress={onRefresh} activeOpacity={0.85}>
             <Feather name="rotate-cw" size={16} color={Colors.bone} />
-            <Text style={styles.refreshButtonText}>Refresh Stack</Text>
+            <Text style={styles.refreshButtonText}>Refresh</Text>
           </TouchableOpacity>
         )}
       </View>
@@ -449,7 +451,7 @@ export function TeaserSwipeDeck({
               }}
               activeOpacity={0.8}
             >
-              <Text style={styles.cancelBtnText}>Cancel</Text>
+              <Text style={styles.cancelBtnText}>{t("common.cancel")}</Text>
             </TouchableOpacity>
           </View>
         </View>

@@ -44,6 +44,7 @@ function mapProfile(p: typeof profilesTable.$inferSelect) {
     phoneVerified: p.phoneVerified ?? false,
     idVerified: p.idVerified ?? false,
     proximityConsent: p.proximityConsent ?? false,
+    language: (p as any).language ?? "en",
     createdAt: p.createdAt?.toISOString() ?? new Date().toISOString(),
     lastActive: p.lastActive?.toISOString() ?? new Date().toISOString(),
   };
@@ -174,7 +175,7 @@ router.patch("/me", requireAuth, async (req, res) => {
   const userId = (req as AuthedRequest).userId;
   const body = req.body as Record<string, unknown>;
 
-  const allowed = ["fullName", "gender", "dateOfBirth", "campusName", "faculty", "yearOfStudy", "hostelName", "city", "district", "proximityConsent"];
+  const allowed = ["fullName", "gender", "dateOfBirth", "campusName", "faculty", "yearOfStudy", "hostelName", "city", "district", "proximityConsent", "language"];
   const updates: Record<string, unknown> = {};
   for (const key of allowed) {
     if (key in body) updates[camelToSnake(key)] = body[key];

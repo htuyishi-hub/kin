@@ -12,7 +12,7 @@ function generateOtp(): string {
   return String(randomInt(100000, 999999));
 }
 
-async function sendSmsOtp(phoneNumber: string, otp: string): Promise<void> {
+async function sendSmsOtp(phoneNumber: string, otp: string, lang: "en" | "rw" = "en"): Promise<void> {
   const username = process.env["AT_USERNAME"];
   const apiKey   = process.env["AT_API_KEY"];
   const senderId = process.env["AT_SENDER_ID"] ?? "KIN";
@@ -26,16 +26,20 @@ async function sendSmsOtp(phoneNumber: string, otp: string): Promise<void> {
   const at = AfricasTalking({ username, apiKey });
   const sms = at.SMS;
 
+  const message = lang === "rw"
+    ? `Kode yawe yo kwemeza ya Kin ni ${otp}. Irangira mu minota 10. Ntuyisangize undi muntu.`
+    : `Your Kin verification code is ${otp}. It expires in 10 minutes. Do not share it.`;
+
   await sms.send({
     to:      [phoneNumber],
-    message: `Your Kin verification code is ${otp}. It expires in 10 minutes. Do not share it.`,
+    message,
     from:    senderId,
   });
 }
 
 // POST /auth/send-otp
 router.post("/auth/send-otp", async (req, res) => {
-  const { phoneNumber } = req.body as { phoneNumber?: string };
+  const { phoneNumber, lang } = req.body as { phoneNumber?: string; lang?: "en" | "rw" };
   if (!phoneNumber || typeof phoneNumber !== "string") {
     res.status(400).json({ error: "bad_request", message: "phoneNumber is required" });
     return;
@@ -60,11 +64,14 @@ router.post("/auth/send-otp", async (req, res) => {
   await db.insert(otpSessionsTable).values({ phoneNumber, code: otp, expiresAt });
 
   try {
-    await sendSmsOtp(phoneNumber, otp);
+    await sendSmsOtp(phoneNumber, otp, lang ?? "en");
     req.log.info({ phoneNumber }, "OTP sent via SMS");
   } catch (err: any) {
     req.log.error({ phoneNumber, err: err?.message }, "Failed to send OTP via SMS");
-    res.status(502).json({ error: "sms_failed", message: "Could not send verification SMS. Please try again." });
+    const errMsg = lang === "rw"
+      ? "Ntabwo byashobotse kohereza ubutumwa bwa SMS. Ongera ugerageze."
+      : "Could not send verification SMS. Please try again.";
+    res.status(502).json({ error: "sms_failed", message: errMsg });
     return;
   }
 
@@ -73,10 +80,11 @@ router.post("/auth/send-otp", async (req, res) => {
 
 // POST /auth/verify-otp
 router.post("/auth/verify-otp", async (req, res) => {
-  const { phoneNumber, otp, inviteCode } = req.body as {
+  const { phoneNumber, otp, inviteCode, lang } = req.body as {
     phoneNumber?: string;
     otp?: string;
     inviteCode?: string;
+    lang?: "en" | "rw";
   };
   if (!phoneNumber || !otp) {
     res.status(400).json({ error: "bad_request", message: "phoneNumber and otp are required" });
@@ -159,6 +167,7 @@ router.post("/auth/verify-otp", async (req, res) => {
         isVerified,
         verificationMethod,
         trustScore: isVerified ? 65 : 50,
+        language: lang === "rw" ? "rw" : "en",
       } as any)
       .returning();
 

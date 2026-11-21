@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useLocation, useSearch } from 'wouter';
 import { Loader2 } from 'lucide-react';
+import { useTranslation } from '@workspace/i18n';
 import { isValidEmail, sendOtpForSignUp } from '@/lib/authService';
 
 export default function EmailScreen() {
@@ -9,6 +10,7 @@ export default function EmailScreen() {
   const params = new URLSearchParams(searchString);
   const role = params.get('role') || 'student';
   const isStudent = role === 'student';
+  const { t } = useTranslation();
 
   const [email, setEmail] = useState('');
   const [error, setError] = useState('');
@@ -19,12 +21,12 @@ export default function EmailScreen() {
     const cleaned = email.trim().toLowerCase();
 
     if (!cleaned) {
-      setError('Enter your email');
+      setError(t('auth.email.enterEmail'));
       return;
     }
 
     if (!isValidEmail(cleaned)) {
-      setError('Invalid email format');
+      setError(t('auth.email.invalidFormat'));
       return;
     }
 
@@ -34,13 +36,13 @@ export default function EmailScreen() {
     try {
       const res = await sendOtpForSignUp(cleaned);
       if (!res.success) {
-        setError(res.error || 'Failed to send code. Please try again.');
+        setError(res.error || t('auth.email.sendFailed'));
         return;
       }
 
       setLocation(`/otp?email=${encodeURIComponent(cleaned)}&role=${role}&mode=signup`);
     } catch (err: any) {
-      setError(err?.message || 'An error occurred. Please try again.');
+      setError(err?.message || t('auth.email.sendFailed'));
     } finally {
       setIsPending(false);
     }
@@ -54,23 +56,23 @@ export default function EmailScreen() {
           onClick={() => setLocation('/')}
           className="self-start py-1.5 text-sm font-medium text-[#FF6B6B] hover:opacity-80 transition-opacity cursor-pointer mb-2"
         >
-          ← Back
+          ← {t('common.back')}
         </button>
 
         <div className="flex items-center mb-1">
           {isStudent ? (
             <span className="bg-[#2563EB] text-[#F0EDE6] text-[10px] font-bold px-2 py-0.5 rounded tracking-wider">
-              UR STUDENT
+              {t('discover.urStudentBadge')}
             </span>
           ) : (
             <span className="bg-[#242438] text-[#C9A84C] text-[10px] font-bold px-2 py-0.5 rounded tracking-wider">
-              INVITE ONLY
+              {t('welcome.inviteBadge')}
             </span>
           )}
         </div>
 
         <h1 className="font-serif text-2xl font-bold text-[#F0EDE6] leading-tight">
-          {isStudent ? 'Student Sign Up' : 'Personal Account Sign Up'}
+          {isStudent ? t('auth.email.studentTitle') : t('auth.email.personalTitle')}
         </h1>
       </div>
 
@@ -78,7 +80,7 @@ export default function EmailScreen() {
       <form onSubmit={handleSubmit} className="flex flex-col gap-4 my-auto py-6">
         <div className="flex flex-col gap-1.5">
           <label className="text-xs font-semibold uppercase tracking-wider text-[#A8A49E]">
-            Email Address
+            {t('auth.email.inputLabel')}
           </label>
           <div
             className={`flex items-center bg-[#1A1A2E] border-1.5 rounded-xl overflow-hidden transition-colors ${
@@ -87,7 +89,7 @@ export default function EmailScreen() {
           >
             <input
               type="email"
-              placeholder="izina@gmail.com"
+              placeholder={t('auth.email.placeholder')}
               value={email}
               onChange={(e) => {
                 setEmail(e.target.value);
@@ -108,7 +110,7 @@ export default function EmailScreen() {
           {isPending ? (
             <Loader2 className="w-5 h-5 animate-spin text-white" />
           ) : (
-            <span>Send 6-Digit Code</span>
+            <span>{t('auth.email.sendCode')}</span>
           )}
         </button>
       </form>
@@ -119,8 +121,8 @@ export default function EmailScreen() {
           onClick={() => setLocation('/signin')}
           className="flex items-center gap-1.5 text-sm cursor-pointer hover:opacity-90 transition-opacity"
         >
-          <span className="text-[#A8A49E]">Already have an account?</span>
-          <span className="font-semibold text-[#2563EB]">Sign in</span>
+          <span className="text-[#A8A49E]">{t('auth.email.alreadyHaveAccount')}</span>
+          <span className="font-semibold text-[#2563EB]">{t('auth.email.signInAction')}</span>
         </button>
       </div>
     </div>

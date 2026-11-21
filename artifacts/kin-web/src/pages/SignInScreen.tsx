@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
 import { useLocation } from 'wouter';
 import { Loader2 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { isValidEmail, sendOtpForSignIn } from '@/lib/authService';
 
 export default function SignInScreen() {
   const [, setLocation] = useLocation();
+  const { t } = useTranslation();
 
   const [email, setEmail] = useState('');
   const [error, setError] = useState('');
@@ -16,12 +18,12 @@ export default function SignInScreen() {
     const cleaned = email.trim().toLowerCase();
 
     if (!cleaned) {
-      setError('Enter your email');
+      setError(t('auth.email.enterEmail'));
       return;
     }
 
     if (!isValidEmail(cleaned)) {
-      setError('Invalid email format');
+      setError(t('auth.email.invalidFormat'));
       return;
     }
 
@@ -32,14 +34,14 @@ export default function SignInScreen() {
     try {
       const res = await sendOtpForSignIn(cleaned);
       if (!res.success) {
-        setError(res.error || 'Failed to send login code.');
+        setError(res.isNotFound ? t('auth.signIn.accountNotFound') : (res.error || t('auth.email.sendFailed')));
         setIsNotFound(Boolean(res.isNotFound));
         return;
       }
 
       setLocation(`/otp?email=${encodeURIComponent(cleaned)}&mode=signin`);
     } catch (err: any) {
-      setError(err?.message || 'An error occurred. Please try again.');
+      setError(err?.message || t('common.networkError'));
     } finally {
       setIsPending(false);
     }
@@ -53,11 +55,11 @@ export default function SignInScreen() {
           onClick={() => setLocation('/')}
           className="self-start py-1.5 text-sm font-medium text-[#FF6B6B] hover:opacity-80 transition-opacity cursor-pointer mb-2"
         >
-          ← Back
+          ← {t('common.back')}
         </button>
 
         <h1 className="font-serif text-2xl font-bold text-[#F0EDE6] leading-tight">
-          Sign In
+          {t('auth.signIn.title')}
         </h1>
       </div>
 
@@ -65,7 +67,7 @@ export default function SignInScreen() {
       <form onSubmit={handleSubmit} className="flex flex-col gap-4 my-auto py-6">
         <div className="flex flex-col gap-1.5">
           <label className="text-xs font-semibold uppercase tracking-wider text-[#A8A49E]">
-            Email Address
+            {t('auth.signIn.emailLabel')}
           </label>
           <div
             className={`flex items-center bg-[#1A1A2E] border-1.5 rounded-xl overflow-hidden transition-colors ${
@@ -74,7 +76,7 @@ export default function SignInScreen() {
           >
             <input
               type="email"
-              placeholder="izina@gmail.com"
+              placeholder={t('auth.signIn.emailPlaceholder')}
               value={email}
               onChange={(e) => {
                 setEmail(e.target.value);
@@ -98,7 +100,7 @@ export default function SignInScreen() {
                   onClick={() => setLocation('/signup')}
                   className="self-start bg-[#FF6B6B] text-[#0D1117] text-[11px] font-bold px-3 py-1.5 rounded-md hover:bg-[#FF6B6B]/90 transition-colors cursor-pointer"
                 >
-                  Create an account
+                  {t('auth.signIn.createAccount')}
                 </button>
               )}
             </div>
@@ -113,7 +115,7 @@ export default function SignInScreen() {
           {isPending ? (
             <Loader2 className="w-5 h-5 animate-spin text-white" />
           ) : (
-            <span>Send Code</span>
+            <span>{t('auth.signIn.sendCode')}</span>
           )}
         </button>
 
@@ -123,7 +125,7 @@ export default function SignInScreen() {
           onClick={() => setLocation('/forgot-account')}
           className="self-center py-2 text-xs font-medium text-[#FF6B6B] hover:underline cursor-pointer"
         >
-          Forgot account?
+          {t('auth.signIn.forgotAccount')}
         </button>
       </form>
 
@@ -133,8 +135,8 @@ export default function SignInScreen() {
           onClick={() => setLocation('/')}
           className="flex items-center gap-1.5 text-sm cursor-pointer hover:opacity-90 transition-opacity"
         >
-          <span className="text-[#A8A49E]">Don't have an account?</span>
-          <span className="font-semibold text-[#2563EB]">Create account</span>
+          <span className="text-[#A8A49E]">{t('auth.signIn.noAccount')}</span>
+          <span className="font-semibold text-[#2563EB]">{t('auth.signIn.createAccount')}</span>
         </button>
       </div>
     </div>

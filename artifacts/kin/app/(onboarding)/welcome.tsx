@@ -1,5 +1,5 @@
 import { router } from 'expo-router';
-import React, { lazy, Suspense, useEffect } from 'react';
+import React, { lazy, Suspense, useEffect, useState } from 'react';
 import {
   Pressable,
   StyleSheet,
@@ -14,6 +14,8 @@ import Animated, {
   Easing,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useTranslation, changeLanguage, getCurrentLanguage, type SupportedLanguage } from '@workspace/i18n';
 
 import { Colors }         from '@/constants/colors';
 import { Space, Radius }  from '@/constants/spacing';
@@ -41,6 +43,8 @@ class SafeShadowCanvas extends React.Component<{ children: React.ReactNode }, { 
 export default function WelcomeScreen() {
   const insets            = useSafeAreaInsets();
   const { width, height } = useWindowDimensions();
+  const { t, i18n }       = useTranslation();
+  const [currentLang, setCurrentLang] = useState<SupportedLanguage>(getCurrentLanguage());
 
   const textOpacity   = useSharedValue(0);
   const buttonOpacity = useSharedValue(0);
@@ -53,11 +57,41 @@ export default function WelcomeScreen() {
     return () => clearTimeout(timer);
   }, []);
 
+  async function handleLanguageSelect(lang: SupportedLanguage) {
+    await changeLanguage(lang);
+    setCurrentLang(lang);
+    try {
+      await AsyncStorage.setItem('@kin_language', lang);
+    } catch {
+      // non-fatal
+    }
+  }
+
   const taglineStyle = useAnimatedStyle(() => ({ opacity: textOpacity.value }));
   const buttonStyle  = useAnimatedStyle(() => ({ opacity: buttonOpacity.value }));
 
   return (
     <View style={styles.root}>
+      {/* First-Screen Language Picker */}
+      <View style={[styles.langPickerContainer, { top: insets.top + 12 }]}>
+        <Pressable
+          onPress={() => handleLanguageSelect('en')}
+          style={[styles.langPill, currentLang === 'en' && styles.langPillActive]}
+          accessibilityRole="button"
+          accessibilityLabel="Switch to English"
+        >
+          <Text style={[styles.langPillText, currentLang === 'en' && styles.langPillTextActive]}>EN</Text>
+        </Pressable>
+        <Pressable
+          onPress={() => handleLanguageSelect('rw')}
+          style={[styles.langPill, currentLang === 'rw' && styles.langPillActive]}
+          accessibilityRole="button"
+          accessibilityLabel="Hindura mu Kinyarwanda"
+        >
+          <Text style={[styles.langPillText, currentLang === 'rw' && styles.langPillTextActive]}>RW</Text>
+        </Pressable>
+      </View>
+
       <SafeShadowCanvas>
         <Suspense fallback={null}>
           <ShadowCanvas
@@ -72,55 +106,55 @@ export default function WelcomeScreen() {
         style={[styles.taglineContainer, { top: height * 0.52 }, taglineStyle]}
         pointerEvents="none"
       >
-        <Text style={styles.taglineEN}>The person you will marry is here.</Text>
+        <Text style={styles.taglineEN}>{t('welcome.tagline')}</Text>
       </Animated.View>
 
       <Animated.View
         style={[styles.buttonContainer, { paddingBottom: insets.bottom + 40 }, buttonStyle]}
       >
-        {/* Button 1: University Students (Normal Google Email -> Verified via UR Reg Number) */}
+        {/* Button 1: University Students */}
         <Pressable
           style={({ pressed }) => [
             styles.socialButton,
             pressed && { opacity: 0.88, transform: [{ scale: 0.97 }] },
           ]}
           onPress={() => router.push({ pathname: '/(onboarding)/email', params: { role: 'student', mode: 'signup' } })}
-          accessibilityLabel="Continue as Student"
+          accessibilityLabel={t('welcome.studentSignUp')}
           accessibilityRole="button"
         >
           <UrBadge />
-          <Text style={styles.socialButtonText}>Student Sign Up</Text>
+          <Text style={styles.socialButtonText}>{t('welcome.studentSignUp')}</Text>
         </Pressable>
 
         {/* Divider */}
         <View style={styles.dividerRow}>
           <View style={styles.dividerLine} />
-          <Text style={styles.dividerText}>or</Text>
+          <Text style={styles.dividerText}>{t('welcome.orDivider')}</Text>
           <View style={styles.dividerLine} />
         </View>
 
-        {/* Button 2: Personal Account (Normal Google Email -> Verified via Member Invite) */}
+        {/* Button 2: Personal Account */}
         <Pressable
           style={({ pressed }) => [
             styles.personalButton,
             pressed && { opacity: 0.88, transform: [{ scale: 0.97 }] },
           ]}
           onPress={() => router.push({ pathname: '/(onboarding)/email', params: { role: 'personal', mode: 'signup' } })}
-          accessibilityLabel="Continue with Personal Account"
+          accessibilityLabel={t('welcome.personalSignUp')}
           accessibilityRole="button"
         >
           <InviteBadge />
-          <Text style={styles.personalButtonText}>Personal Account (Invited)</Text>
+          <Text style={styles.personalButtonText}>{t('welcome.personalSignUp')}</Text>
         </Pressable>
 
         <Pressable
           onPress={() => router.push('/(onboarding)/sign-in')}
           style={styles.signInLink}
-          accessibilityLabel="Sign In"
+          accessibilityLabel={t('welcome.signInAction')}
           accessibilityRole="button"
         >
-          <Text style={styles.signInLabel}>Already have an account?</Text>
-          <Text style={styles.signInAction}> Sign in</Text>
+          <Text style={styles.signInLabel}>{t('welcome.alreadyHaveAccount')}</Text>
+          <Text style={styles.signInAction}> {t('welcome.signInAction')}</Text>
         </Pressable>
       </Animated.View>
     </View>
@@ -265,5 +299,33 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter_600SemiBold',
     fontSize:   14,
     color:      Colors.trust,
+  },
+  langPickerContainer: {
+    position:        'absolute',
+    right:           20,
+    zIndex:          100,
+    flexDirection:   'row',
+    backgroundColor: Colors.ink,
+    borderRadius:    Radius.full,
+    padding:         3,
+    borderWidth:     1,
+    borderColor:     Colors.divider,
+  },
+  langPill: {
+    paddingHorizontal: 10,
+    paddingVertical:   5,
+    borderRadius:      Radius.full,
+  },
+  langPillActive: {
+    backgroundColor: Colors.coral,
+  },
+  langPillText: {
+    fontFamily: 'Inter_600SemiBold',
+    fontSize:   12,
+    color:      Colors.boneDim,
+  },
+  langPillTextActive: {
+    color:      Colors.bone,
+    fontWeight: 'bold',
   },
 });

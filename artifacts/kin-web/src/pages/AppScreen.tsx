@@ -13,8 +13,11 @@ import {
   Clock,
   LogOut,
   Send,
+  Globe,
 } from 'lucide-react';
+import { useTranslation, changeLanguage, getCurrentLanguage, type SupportedLanguage } from '@workspace/i18n';
 import { useAuth } from '@/contexts/AuthContext';
+import { getSupabaseClient } from '@/lib/supabase';
 
 interface Candidate {
   id: string;
@@ -67,6 +70,8 @@ const SAMPLE_PROFILES: Candidate[] = [
 export default function AppScreen() {
   const [, setLocation] = useLocation();
   const { user, signOut } = useAuth();
+  const { t } = useTranslation();
+  const [currentLang, setCurrentLang] = useState<SupportedLanguage>(getCurrentLanguage());
 
   const [activeTab, setActiveTab] = useState<'discover' | 'matches' | 'serious' | 'profile'>('discover');
   const [profileIndex, setProfileIndex] = useState(0);
@@ -75,13 +80,27 @@ export default function AppScreen() {
 
   const currentProfile = SAMPLE_PROFILES[profileIndex % SAMPLE_PROFILES.length];
 
+  async function handleLanguageSelect(lang: SupportedLanguage) {
+    await changeLanguage(lang);
+    setCurrentLang(lang);
+    try {
+      localStorage.setItem('kin_language', lang);
+    } catch {}
+    if (user?.id) {
+      try {
+        const supabase = getSupabaseClient();
+        await supabase.from('profiles').update({ language: lang }).eq('id', user.id);
+      } catch {}
+    }
+  }
+
   function handleSwipe(action: 'pass' | 'like' | 'bid') {
     if (action === 'bid') {
       if (goldenBids <= 0) return;
       setGoldenBids((prev) => prev - 1);
-      setMatchAlert(`Golden Bid sent to ${currentProfile.name}!`);
+      setMatchAlert(t('discover.goldenBidAlert', { name: currentProfile.name }));
     } else if (action === 'like') {
-      setMatchAlert(`You liked ${currentProfile.name}! (It's a Match)`);
+      setMatchAlert(t('discover.matchAlert', { name: currentProfile.name }));
     }
 
     setTimeout(() => {
@@ -109,7 +128,7 @@ export default function AppScreen() {
         {/* Golden Bids Pill */}
         <div className="flex items-center gap-1.5 bg-[#242438] border border-[#C9A84C]/40 px-2.5 py-1 rounded-full text-xs font-semibold text-[#C9A84C]">
           <Star className="w-3.5 h-3.5 fill-current" />
-          <span>{goldenBids} Golden Bids</span>
+          <span>{goldenBids} {t('discover.goldenBids')}</span>
         </div>
       </div>
 
@@ -141,12 +160,12 @@ export default function AppScreen() {
                   {currentProfile.isUrStudent && (
                     <span className="bg-[#2563EB] text-white text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1 shadow">
                       <GraduationCap className="w-3 h-3" />
-                      UR STUDENT
+                      {t('discover.urStudentBadge')}
                     </span>
                   )}
                   <span className="bg-[#0D1117]/80 backdrop-blur-sm text-[#3FB950] text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1 border border-[#3FB950]/30">
                     <ShieldCheck className="w-3 h-3" />
-                    Trust {currentProfile.trustScore}
+                    {t('discover.trustBadge', { score: currentProfile.trustScore })}
                   </span>
                 </div>
 
@@ -190,7 +209,7 @@ export default function AppScreen() {
                 onClick={() => handleSwipe('bid')}
                 disabled={goldenBids <= 0}
                 className="w-15 h-15 rounded-full bg-[#C9A84C] text-[#0D1117] flex items-center justify-center font-bold active:scale-95 transition-all shadow-[0_0_20px_rgba(201,168,76,0.35)] disabled:opacity-50 cursor-pointer"
-                title="Send Golden Bid"
+                title={t('discover.goldenBids')}
               >
                 <Star className="w-7 h-7 fill-current" />
               </button>
@@ -210,7 +229,7 @@ export default function AppScreen() {
         {activeTab === 'matches' && (
           <div className="flex-1 flex flex-col p-4 gap-4">
             <h2 className="font-serif text-lg font-bold text-[#F0EDE6]">
-              Guided Chat
+              {t('matches.guidedChatTitle')}
             </h2>
 
             {/* Active Match Card */}
@@ -228,7 +247,7 @@ export default function AppScreen() {
                 <p className="text-xs text-[#A8A49E] truncate">Muraho neza! Nshimishijwe no...</p>
                 <div className="flex items-center gap-2 mt-1.5">
                   <span className="text-[9px] font-bold bg-[#2563EB]/20 text-[#2563EB] px-2 py-0.5 rounded">
-                    Phase 1: Icebreakers
+                    {t('matches.phase1')}
                   </span>
                   <span className="text-[10px] text-[#FF6B6B] flex items-center gap-1 font-mono">
                     <Clock className="w-3 h-3" />
@@ -252,7 +271,7 @@ export default function AppScreen() {
                 <p className="text-xs text-[#A8A49E] truncate">Golden Bid Accepted! Mwatangiye...</p>
                 <div className="flex items-center gap-2 mt-1.5">
                   <span className="text-[9px] font-bold bg-[#C9A84C]/20 text-[#C9A84C] px-2 py-0.5 rounded">
-                    Phase 2: Mutual Prompts
+                    {t('matches.phase2')}
                   </span>
                 </div>
               </div>
@@ -266,23 +285,23 @@ export default function AppScreen() {
             <div className="flex items-center gap-2">
               <Sparkles className="w-5 h-5 text-[#C9A84C]" />
               <h2 className="font-serif text-lg font-bold text-[#F0EDE6]">
-                Serious Queue
+                {t('serious.queueTitle')}
               </h2>
             </div>
             <p className="text-xs text-[#A8A49E] leading-relaxed">
-              Reserved for members with marriage intent. Matched based on mutual trust and values.
+              {t('serious.description')}
             </p>
 
             <div className="p-4 bg-[#1A1A2E] border border-[#C9A84C]/30 rounded-2xl flex flex-col gap-3 mt-2">
               <span className="text-xs font-semibold text-[#C9A84C] uppercase tracking-wider">
-                Connection Tokens
+                {t('serious.connectionTokens')}
               </span>
               <div className="flex items-baseline gap-2">
                 <span className="text-3xl font-mono font-bold text-[#F0EDE6]">3</span>
-                <span className="text-xs text-[#A8A49E]">tokens remaining</span>
+                <span className="text-xs text-[#A8A49E]">{t('serious.tokensRemaining')}</span>
               </div>
               <p className="text-[11px] text-[#A8A49E]">
-                Each trusted connection gives you an opportunity for a long-term relationship.
+                {t('serious.tokenExplainer')}
               </p>
             </div>
           </div>
@@ -293,7 +312,7 @@ export default function AppScreen() {
           <div className="flex-1 flex flex-col p-5 gap-4 justify-between">
             <div className="flex flex-col gap-4">
               <h2 className="font-serif text-lg font-bold text-[#F0EDE6]">
-                My Profile
+                {t('profile.myProfile')}
               </h2>
 
               <div className="p-4 bg-[#1A1A2E] border border-[#21262D] rounded-2xl flex items-center gap-3.5">
@@ -306,12 +325,44 @@ export default function AppScreen() {
                   </h3>
                   <div className="flex items-center gap-1.5 mt-1">
                     <span className="bg-[#3FB950]/20 text-[#3FB950] text-[10px] font-bold px-2 py-0.5 rounded">
-                      Trust 50
+                      {t('profile.trustScore', { score: 50 })}
                     </span>
                     <span className="bg-[#2563EB]/20 text-[#2563EB] text-[10px] font-bold px-2 py-0.5 rounded">
-                      UR Badge
+                      {t('profile.urBadge')}
                     </span>
                   </div>
+                </div>
+              </div>
+
+              {/* Language Setting Row */}
+              <div className="p-4 bg-[#1A1A2E] border border-[#21262D] rounded-2xl flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <Globe className="w-5 h-5 text-[#A8A49E]" />
+                  <span className="text-sm font-medium text-[#F0EDE6]">{t('profile.language')}</span>
+                </div>
+                <div className="flex items-center bg-[#0D1117] border border-[#21262D] rounded-full p-1 gap-1">
+                  <button
+                    type="button"
+                    onClick={() => handleLanguageSelect('en')}
+                    className={`px-3 py-1 rounded-full text-xs font-semibold transition-all cursor-pointer ${
+                      currentLang === 'en'
+                        ? 'bg-[#2563EB] text-[#F0EDE6]'
+                        : 'text-[#8B949E] hover:text-[#F0EDE6]'
+                    }`}
+                  >
+                    {t('profile.languageEn')}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleLanguageSelect('rw')}
+                    className={`px-3 py-1 rounded-full text-xs font-semibold transition-all cursor-pointer ${
+                      currentLang === 'rw'
+                        ? 'bg-[#2563EB] text-[#F0EDE6]'
+                        : 'text-[#8B949E] hover:text-[#F0EDE6]'
+                    }`}
+                  >
+                    {t('profile.languageRw')}
+                  </button>
                 </div>
               </div>
             </div>
@@ -322,7 +373,7 @@ export default function AppScreen() {
               className="w-full py-3.5 px-4 bg-[#E5534B]/15 border border-[#FF6B6B] rounded-full text-xs font-bold text-[#FF6B6B] flex items-center justify-center gap-2 hover:bg-[#E5534B]/25 transition-colors cursor-pointer mb-2"
             >
               <LogOut className="w-4 h-4" />
-              <span>Sign Out</span>
+              <span>{t('profile.signOut')}</span>
             </button>
           </div>
         )}
@@ -337,7 +388,7 @@ export default function AppScreen() {
           }`}
         >
           <Flame className="w-5 h-5" />
-          <span>Discover</span>
+          <span>{t('discover.tabTitle')}</span>
         </button>
 
         <button
@@ -347,7 +398,7 @@ export default function AppScreen() {
           }`}
         >
           <MessageCircle className="w-5 h-5" />
-          <span>Chat</span>
+          <span>{t('matches.tabTitle')}</span>
         </button>
 
         <button
@@ -357,7 +408,7 @@ export default function AppScreen() {
           }`}
         >
           <Sparkles className="w-5 h-5" />
-          <span>Serious</span>
+          <span>{t('serious.tabTitle')}</span>
         </button>
 
         <button
@@ -367,7 +418,7 @@ export default function AppScreen() {
           }`}
         >
           <User className="w-5 h-5" />
-          <span>Profile</span>
+          <span>{t('profile.tabTitle')}</span>
         </button>
       </div>
     </div>

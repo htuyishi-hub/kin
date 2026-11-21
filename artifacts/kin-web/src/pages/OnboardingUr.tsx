@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useLocation } from 'wouter';
 import { Loader2, GraduationCap, CheckCircle } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
 
@@ -17,6 +18,7 @@ const CAMPUSES = [
 
 export default function OnboardingUr() {
   const [, setLocation] = useLocation();
+  const { t } = useTranslation();
   const { user } = useAuth();
 
   const [campus, setCampus] = useState('Huye');
@@ -30,12 +32,12 @@ export default function OnboardingUr() {
     const cleanReg = regNumber.trim();
 
     if (!cleanReg) {
-      setError('Enter your 9-digit registration number');
+      setError(t('onboarding.ur.enterRegNumber'));
       return;
     }
 
     if (cleanReg.length !== 9 || !/^\d{9}$/.test(cleanReg)) {
-      setError('Registration number must be 9 digits (e.g. 222012345)');
+      setError(t('onboarding.ur.mustBe9Digits'));
       return;
     }
 
@@ -65,7 +67,7 @@ export default function OnboardingUr() {
         setLocation('/app');
       }, 1000);
     } catch (err: any) {
-      setError(err?.message || 'Failed to verify registration number.');
+      setError(err?.message || t('common.networkError'));
     } finally {
       setIsPending(false);
     }
@@ -76,8 +78,7 @@ export default function OnboardingUr() {
       {/* Step Header */}
       <div className="flex flex-col gap-2">
         <div className="flex items-center justify-between text-xs text-[#A8A49E]">
-          <span className="font-semibold text-[#2563EB]">Step 3 of 3</span>
-          <span className="font-mono">UR Verification</span>
+          <span className="font-semibold text-[#2563EB]">{t('onboarding.ur.step')}</span>
         </div>
         <div className="w-full h-1 bg-[#21262D] rounded-full overflow-hidden">
           <div className="w-full h-full bg-[#2563EB] rounded-full" />
@@ -98,7 +99,7 @@ export default function OnboardingUr() {
         {/* Campus Selection */}
         <div className="flex flex-col gap-1.5">
           <label className="text-xs font-semibold uppercase tracking-wider text-[#A8A49E]">
-            UR Campus
+            {t('onboarding.ur.campusLabel')}
           </label>
           <div className="grid grid-cols-2 gap-2">
             {CAMPUSES.map((c) => (
@@ -121,7 +122,7 @@ export default function OnboardingUr() {
         {/* 9-Digit Registration Number */}
         <div className="flex flex-col gap-1.5 mt-2">
           <label className="text-xs font-semibold uppercase tracking-wider text-[#A8A49E]">
-            Registration Number (9 Digits)
+            {t('onboarding.ur.registrationLabel')}
           </label>
           <div
             className={`flex items-center bg-[#1A1A2E] border-1.5 rounded-xl overflow-hidden transition-colors ${
@@ -130,7 +131,7 @@ export default function OnboardingUr() {
           >
             <input
               type="text"
-              placeholder="e.g. 222012345"
+              placeholder={t('onboarding.ur.registrationPlaceholder')}
               value={regNumber}
               maxLength={9}
               onChange={(e) => {
@@ -147,7 +148,7 @@ export default function OnboardingUr() {
         {verifiedSuccess && (
           <div className="p-3 bg-[#3FB950]/15 border border-[#3FB950] rounded-xl flex items-center gap-2.5 text-[#3FB950]">
             <CheckCircle className="w-5 h-5 flex-shrink-0" />
-            <span className="text-xs font-semibold">UR Badge verified successfully!</span>
+            <span className="text-xs font-semibold">{t('onboarding.ur.verifiedSuccess')}</span>
           </div>
         )}
       </form>
@@ -164,7 +165,7 @@ export default function OnboardingUr() {
           ) : (
             <>
               <GraduationCap className="w-5 h-5" />
-              <span>Verify Student</span>
+              <span>{t('onboarding.ur.verifyStudent')}</span>
             </>
           )}
         </button>
@@ -175,7 +176,7 @@ export default function OnboardingUr() {
           onClick={() => setLocation('/onboarding/vouch')}
           className="py-2 text-xs font-medium text-[#A8A49E] hover:text-[#F0EDE6] transition-colors cursor-pointer text-center"
         >
-          Skip / Not a UR student
+          {t('onboarding.ur.skipNotUr')}
         </button>
       </div>
     </div>

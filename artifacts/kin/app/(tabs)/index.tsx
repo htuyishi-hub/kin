@@ -17,12 +17,14 @@ import { KLogo } from "@/components/KLogo";
 import { TeaserCandidate, TeaserSwipeDeck } from "@/components/TeaserSwipeDeck";
 import { Colors } from "@/constants/colors";
 import { useAuth } from "@/contexts/AuthContext";
+import { useTranslation } from "@workspace/i18n";
 
 type ReactionType = "campus" | "coffee" | "serious";
 
 export default function DiscoverScreen() {
   const insets = useSafeAreaInsets();
   const { token } = useAuth();
+  const { t } = useTranslation();
 
   const apiBaseUrl =
     process.env.EXPO_PUBLIC_API_URL ??
@@ -92,7 +94,7 @@ export default function DiscoverScreen() {
       const data = await res.json();
       if (data.matchCreated && data.matchId) {
         Haptics.notificationAsync?.(Haptics.NotificationFeedbackType.Success);
-        setMatchNotification(`It's a Match with ${candidate.firstName}!`);
+        setMatchNotification(t("discover.matchAlert", { name: candidate.firstName }));
         setTimeout(() => {
           setMatchNotification(null);
           router.push(`/match/${data.matchId}`);
@@ -150,7 +152,7 @@ export default function DiscoverScreen() {
         <View style={styles.headerLeft}>
           <KLogo size={24} color={Colors.trust} />
           <View style={styles.intentPill}>
-            <Text style={styles.intentPillLabel}>Intent:</Text>
+            <Text style={styles.intentPillLabel}>{t("profile.statsIntent")}:</Text>
             <Text style={styles.intentPillValue}>{myIntentClass}</Text>
           </View>
         </View>

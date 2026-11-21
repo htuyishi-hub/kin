@@ -2,6 +2,7 @@ import { Tabs } from "expo-router";
 import { Feather } from "@expo/vector-icons";
 import React from "react";
 import { Platform, View, StyleSheet } from "react-native";
+import { useTranslation } from "@workspace/i18n";
 import { Colors } from "@/constants/colors";
 
 function TabIcon({ name, color, size }: { name: any; color: string; size: number }) {
@@ -9,6 +10,8 @@ function TabIcon({ name, color, size }: { name: any; color: string; size: number
 }
 
 export default function TabLayout() {
+  const { t } = useTranslation();
+
   return (
     <Tabs
       screenOptions={{
@@ -39,7 +42,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: "Discover",
+          title: t('discover.tabTitle'),
           tabBarIcon: ({ color, size }) => (
             <TabIcon name="compass" color={color} size={size} />
           ),
@@ -48,7 +51,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="matches"
         options={{
-          title: "Matches",
+          title: t('matches.tabTitle'),
           tabBarIcon: ({ color, size }) => (
             <TabIcon name="message-circle" color={color} size={size} />
           ),
@@ -57,7 +60,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="serious"
         options={{
-          title: "Serious",
+          title: t('serious.tabTitle'),
           tabBarIcon: ({ color, size }) => (
             <TabIcon name="star" color={color} size={size} />
           ),
@@ -66,7 +69,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="profile"
         options={{
-          title: "Profile",
+          title: t('profile.tabTitle'),
           tabBarIcon: ({ color, size }) => (
             <TabIcon name="user" color={color} size={size} />
           ),

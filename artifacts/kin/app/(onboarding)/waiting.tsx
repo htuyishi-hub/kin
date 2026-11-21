@@ -15,6 +15,7 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useTranslation } from "@workspace/i18n";
 
 import { useAuth } from "@/contexts/AuthContext";
 import { useColors } from "@/hooks/useColors";
@@ -24,6 +25,7 @@ export default function WaitingScreen() {
   const insets = useSafeAreaInsets();
   const isWeb = Platform.OS === "web";
   const { token } = useAuth();
+  const { t } = useTranslation();
 
   const [inviteCodeInput, setInviteCodeInput] = useState("");
   const [claiming, setClaiming] = useState(false);
@@ -65,7 +67,7 @@ export default function WaitingScreen() {
   async function handleClaimCode() {
     const code = inviteCodeInput.trim().toUpperCase();
     if (!code) {
-      setError("Please enter an invite code");
+      setError(t("onboarding.invite.enterCodeError"));
       return;
     }
 
@@ -84,17 +86,17 @@ export default function WaitingScreen() {
 
       const data = await res.json();
       if (!res.ok) {
-        throw new Error(data.message || "Failed to claim invite code");
+        throw new Error(data.message || t("onboarding.invite.invalidCode"));
       }
 
-      setClaimSuccess(`Verified by ${data.inviterName || "a community member"}!`);
+      setClaimSuccess(t("onboarding.invite.verifiedByMember"));
       Haptics.notificationAsync?.(Haptics.NotificationFeedbackType.Success);
       await refetchProfile();
       setTimeout(() => {
         router.replace("/(tabs)");
       }, 1200);
     } catch (err: any) {
-      setError(err?.message || "Invalid invite code. Please check and try again.");
+      setError(err?.message || t("onboarding.invite.invalidCode"));
       Haptics.notificationAsync?.(Haptics.NotificationFeedbackType.Error);
     } finally {
       setClaiming(false);
@@ -135,17 +137,14 @@ export default function WaitingScreen() {
             <Feather name="unlock" size={40} color={colors.primary} />
           </View>
           <View style={styles.textBlock}>
-            <Text style={[styles.title, { color: colors.foreground }]}>Early access — you're in</Text>
-            <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>
-              Kin is just starting out. For now, your profile is ready.
-            </Text>
+            <Text style={[styles.title, { color: colors.foreground }]}>{t("waiting.earlyAccessTitle")}</Text>
           </View>
           <TouchableOpacity
             style={[styles.button, { backgroundColor: colors.primary }]}
             onPress={() => router.replace("/(tabs)")}
             activeOpacity={0.85}
           >
-            <Text style={[styles.buttonTextPrimary, { color: colors.primaryForeground }]}>Enter Kin</Text>
+            <Text style={[styles.buttonTextPrimary, { color: colors.primaryForeground }]}>{t("waiting.enterKin")}</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -170,14 +169,14 @@ export default function WaitingScreen() {
         </View>
 
         <View style={styles.textBlock}>
-          <Text style={[styles.title, { color: colors.foreground }]}>Almost there</Text>
+          <Text style={[styles.title, { color: colors.foreground }]}>{t("waiting.almostThere")}</Text>
         </View>
 
         {/* CLAIM CODE */}
         <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
           <View style={styles.cardHeader}>
             <Feather name="key" size={18} color={colors.accent} />
-            <Text style={[styles.cardTitle, { color: colors.foreground }]}>Enter an invite code</Text>
+            <Text style={[styles.cardTitle, { color: colors.foreground }]}>{t("onboarding.invite.title")}</Text>
           </View>
 
           <View style={styles.inputRow}>
@@ -186,7 +185,7 @@ export default function WaitingScreen() {
                 styles.input,
                 { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.secondary },
               ]}
-              placeholder="e.g. KIN-9X42A7"
+              placeholder={t("onboarding.invite.placeholder")}
               placeholderTextColor={colors.mutedForeground}
               value={inviteCodeInput}
               onChangeText={(t) => {
@@ -205,7 +204,7 @@ export default function WaitingScreen() {
               {claiming ? (
                 <ActivityIndicator color={colors.primaryForeground} size="small" />
               ) : (
-                <Text style={[styles.claimBtnText, { color: colors.primaryForeground }]}>Apply</Text>
+                <Text style={[styles.claimBtnText, { color: colors.primaryForeground }]}>{t("onboarding.invite.applyCode")}</Text>
               )}
             </TouchableOpacity>
           </View>
@@ -220,7 +219,7 @@ export default function WaitingScreen() {
         <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
           <View style={styles.cardHeader}>
             <Feather name="share-2" size={18} color={colors.primary} />
-            <Text style={[styles.cardTitle, { color: colors.foreground }]}>Your Invite Link</Text>
+            <Text style={[styles.cardTitle, { color: colors.foreground }]}>{t("waiting.inviteLinkTitle")}</Text>
           </View>
 
           <View style={[styles.linkBox, { backgroundColor: colors.secondary, borderColor: colors.border }]}>
@@ -236,7 +235,7 @@ export default function WaitingScreen() {
               activeOpacity={0.85}
             >
               <Feather name="send" size={16} color={colors.primaryForeground} />
-              <Text style={[styles.shareBtnText, { color: colors.primaryForeground }]}>Share</Text>
+              <Text style={[styles.shareBtnText, { color: colors.primaryForeground }]}>{t("waiting.share")}</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -246,7 +245,7 @@ export default function WaitingScreen() {
             >
               <Feather name={copied ? "check" : "copy"} size={16} color={copied ? colors.accent : colors.foreground} />
               <Text style={[styles.copyBtnText, { color: copied ? colors.accent : colors.foreground }]}>
-                {copied ? "Copied" : "Copy"}
+                {copied ? t("waiting.copied") : t("waiting.copy")}
               </Text>
             </TouchableOpacity>
           </View>
@@ -261,10 +260,7 @@ export default function WaitingScreen() {
           <Feather name="award" size={20} color={colors.accent} />
           <View style={{ flex: 1 }}>
             <Text style={[styles.urOptionTitle, { color: colors.foreground }]}>
-              University of Rwanda Student?
-            </Text>
-            <Text style={[styles.urOptionSub, { color: colors.mutedForeground }]}>
-              Verify instantly using your student registration number
+              {t("onboarding.ur.campusTitle")}
             </Text>
           </View>
           <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
