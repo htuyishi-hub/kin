@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useLocation } from 'wouter';
 import { useTranslation, changeLanguage, getCurrentLanguage, type SupportedLanguage } from '@workspace/i18n';
+import { KinnLogo } from '@/components/KinnLogo';
 
 export default function WelcomeScreen() {
   const [, setLocation] = useLocation();
@@ -57,12 +58,10 @@ export default function WelcomeScreen() {
       </div>
 
       {/* Kin Wordmark Brand */}
-      <div className="pt-8 flex flex-col items-center relative z-10">
+      <div className="pt-8 flex flex-col items-center relative z-10 gap-2">
+        <KinnLogo size={52} />
         <span className="font-serif text-3xl font-bold tracking-tight text-[#F0EDE6]">
-          Kin
-        </span>
-        <span className="text-[10px] tracking-[0.25em] uppercase text-[#C9A84C] font-semibold mt-1">
-          {t('welcome.brandSubtitle')}
+          kinn
         </span>
       </div>
 

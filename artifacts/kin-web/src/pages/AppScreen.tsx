@@ -67,6 +67,8 @@ const SAMPLE_PROFILES: Candidate[] = [
   },
 ];
 
+import { KinnLogo } from '@/components/KinnLogo';
+
 export default function AppScreen() {
   const [, setLocation] = useLocation();
   const { user, signOut } = useAuth();
@@ -119,7 +121,8 @@ export default function AppScreen() {
       {/* App Top Bar */}
       <div className="px-5 py-3 border-b border-[#21262D] flex items-center justify-between bg-[#0D1117]/95 z-20">
         <div className="flex items-center gap-2">
-          <span className="font-serif text-xl font-bold text-[#F0EDE6] tracking-tight">Kin</span>
+          <KinnLogo size={22} />
+          <span className="font-serif text-xl font-bold text-[#F0EDE6] tracking-tight">kinn</span>
           <span className="text-[10px] font-bold text-[#C9A84C] bg-[#C9A84C]/15 border border-[#C9A84C]/30 px-2 py-0.5 rounded-full">
             RWANDA
           </span>
