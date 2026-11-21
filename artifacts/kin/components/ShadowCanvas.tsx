@@ -9,6 +9,7 @@ import {
   BlurMask,
   Picture,
   RadialGradient,
+  LinearGradient,
   Skia,
   type SkPicture,
 } from '@shopify/react-native-skia';
@@ -203,7 +204,7 @@ export function ShadowCanvas({ textOpacity, screenWidth: W, screenHeight: H }: S
             phase === 'scatter' ? 'scatter' : 'gather'
           );
           for (const p of particles.current) {
-            pnt.setColor(Skia.Color('#2563EB'));
+            pnt.setColor(Skia.Color(p.x < centerX ? '#38BDF8' : '#2563EB'));
             pnt.setAlphaf(p.alpha);
             cv.drawCircle(p.x, p.y, p.radius, pnt);
           }
@@ -262,12 +263,17 @@ export function ShadowCanvas({ textOpacity, screenWidth: W, screenHeight: H }: S
       <Group opacity={kOpacity}>
         <Path
           path={kData.path}
-          color={Colors.trust}
           style="stroke"
           strokeWidth={WELCOME_CONFIG.kForm.strokeWidth}
           strokeCap="round"
           strokeJoin="round"
-        />
+        >
+          <LinearGradient
+            start={{ x: centerX - H * WELCOME_CONFIG.kForm.heightRatio * 0.7, y: groundY - WELCOME_CONFIG.kForm.yOffsetAboveGround }}
+            end={{ x: centerX + H * WELCOME_CONFIG.kForm.heightRatio * 0.7, y: groundY - WELCOME_CONFIG.kForm.yOffsetAboveGround }}
+            colors={['#38BDF8', '#2563EB']}
+          />
+        </Path>
       </Group>
     </Canvas>
   );

@@ -39,7 +39,7 @@ export const WELCOME_CONFIG = {
     width:   1,
   },
   particles: {
-    count:          80,
+    count:          92,
     scatterVelocity: 4,
     gravity:        0.12,
     damping:        0.88,
@@ -54,9 +54,11 @@ export const WELCOME_CONFIG = {
     heightRatio:          0.22,
     yOffsetAboveGround:    80,
     strokeWidth:           14,
-    verticalBarPoints:     35,
-    upperDiagPoints:       22,
-    lowerDiagPoints:       23,
+    stemPoints:            24,
+    armPoints:             18,
+    branchPoints:          14,
+    risePoints:            18,
+    archPoints:            18,
   },
   tagline: {
     fadeInDuration: 700,
