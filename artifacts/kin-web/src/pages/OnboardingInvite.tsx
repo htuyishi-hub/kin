@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
 
-export default function OnboardingVouch() {
+export default function OnboardingInvite() {
   const [, setLocation] = useLocation();
   const { t } = useTranslation();
   const { user } = useAuth();

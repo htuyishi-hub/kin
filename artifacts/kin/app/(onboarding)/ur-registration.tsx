@@ -45,7 +45,7 @@ export default function UrRegistrationScreen() {
       onSuccess: () => {
         // Deterministic routing: use the sync ref set immediately after verification.
         if (urVerifiedRef.current) router.replace("/(tabs)");
-        else router.replace("/(onboarding)/vouch");
+        else router.replace("/(onboarding)/invite");
       },
       onError: (err: any) => {
         if (err?.data?.code === "UR_REGISTRATION_INVALID") {

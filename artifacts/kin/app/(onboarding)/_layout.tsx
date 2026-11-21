@@ -13,7 +13,7 @@ export default function OnboardingLayout() {
       <Stack.Screen name="occupation" />
       <Stack.Screen name="ur-campus" />
       <Stack.Screen name="ur-registration" />
-      <Stack.Screen name="vouch" />
+      <Stack.Screen name="invite" />
       <Stack.Screen name="waiting" />
     </Stack>
   );

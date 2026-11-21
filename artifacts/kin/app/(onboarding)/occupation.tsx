@@ -52,7 +52,7 @@ export default function OccupationScreen() {
   const { mutate: complete, isPending } = useCompleteOnboarding({
     mutation: {
       onSuccess: () => {
-        router.push("/(onboarding)/vouch");
+        router.push("/(onboarding)/invite");
       },
       onError: (err: any) => {
         setError(err?.data?.message ?? t("common.networkError"));

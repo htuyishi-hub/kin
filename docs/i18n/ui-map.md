@@ -22,7 +22,7 @@ flowchart TD
     Step1 --> Step2["Onboarding Step 2: Occupation & Intent<br/>(/onboarding/occupation)"]
     
     Step2 -->|UR Student| Step3UR["Onboarding Step 3A: UR Verification<br/>(/onboarding/ur)"]
-    Step2 -->|Personal / Other| Step3Invite["Onboarding Step 3B: Invite Claim<br/>(/onboarding/vouch)"]
+    Step2 -->|Personal / Other| Step3Invite["Onboarding Step 3B: Invite Claim<br/>(/onboarding/invite)"]
     
     Step3UR -->|Verified| MainTabs["Main In-App Tabs<br/>(/(tabs) or /app)"]
     Step3Invite -->|Claimed| MainTabs
@@ -118,9 +118,9 @@ flowchart TD
 #### Step 3B: Invite Code Claim Branch
 | Metric | Detail |
 |---|---|
-| **Mobile File** | [`artifacts/kin/app/(onboarding)/vouch.tsx`](file:///home/antigravity/htuyishi-hub/kin/artifacts/kin/app/(onboarding)/vouch.tsx) |
-| **Web File** | [`artifacts/kin-web/src/pages/OnboardingVouch.tsx`](file:///home/antigravity/htuyishi-hub/kin/artifacts/kin-web/src/pages/OnboardingVouch.tsx) |
-| **Route** | `/(onboarding)/vouch` (mobile), `/onboarding/vouch` (web) |
+| **Mobile File** | [`artifacts/kin/app/(onboarding)/invite.tsx`](file:///home/antigravity/htuyishi-hub/kin/artifacts/kin/app/(onboarding)/invite.tsx) |
+| **Web File** | [`artifacts/kin-web/src/pages/OnboardingInvite.tsx`](file:///home/antigravity/htuyishi-hub/kin/artifacts/kin-web/src/pages/OnboardingInvite.tsx) |
+| **Route** | `/(onboarding)/invite` (mobile), `/onboarding/invite` (web) |
 | **Keys Used** | `onboarding.invite.step`<br/>`onboarding.invite.title`<br/>`onboarding.invite.codeLabel`<br/>`onboarding.invite.placeholder`<br/>`onboarding.invite.applyCode`<br/>`onboarding.invite.continueToWaiting`<br/>`onboarding.invite.enterCodeError`<br/>`onboarding.invite.invalidCode`<br/>`onboarding.invite.verifiedByMember` |
 
 #### Waiting Room

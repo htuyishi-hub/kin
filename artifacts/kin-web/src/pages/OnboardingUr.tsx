@@ -173,7 +173,7 @@ export default function OnboardingUr() {
         {/* Skip button for non-UR members */}
         <button
           type="button"
-          onClick={() => setLocation('/onboarding/vouch')}
+          onClick={() => setLocation('/onboarding/invite')}
           className="py-2 text-xs font-medium text-[#A8A49E] hover:text-[#F0EDE6] transition-colors cursor-pointer text-center"
         >
           {t('onboarding.ur.skipNotUr')}

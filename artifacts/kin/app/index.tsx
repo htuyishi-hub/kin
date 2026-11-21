@@ -39,7 +39,7 @@ export default function IndexScreen() {
   );
 
   if (!earlyAccess && !isVerified) {
-    return <Redirect href="/(onboarding)/vouch" />;
+    return <Redirect href="/(onboarding)/invite" />;
   }
 
   return <Redirect href="/(tabs)" />;

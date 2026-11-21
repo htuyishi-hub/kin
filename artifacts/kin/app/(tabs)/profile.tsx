@@ -260,7 +260,7 @@ export default function ProfileScreen() {
 
           <TouchableOpacity
             style={styles.actionRow}
-            onPress={() => router.push("/(onboarding)/vouch")}
+            onPress={() => router.push("/(onboarding)/invite")}
             activeOpacity={0.8}
           >
             <Feather name="user-plus" size={18} color={Colors.bone} />
