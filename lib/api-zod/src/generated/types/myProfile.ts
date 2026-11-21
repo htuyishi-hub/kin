@@ -30,6 +30,8 @@ export interface MyProfile {
   phoneVerified: boolean;
   idVerified: boolean;
   proximityConsent: boolean;
+  bio?: string | null;
+  tags?: string[];
   createdAt: Date;
   lastActive: Date;
 }

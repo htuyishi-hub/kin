@@ -59,6 +59,12 @@ export const profilesTable = pgTable("profiles", {
   onboardingComplete: boolean("onboarding_complete").default(false),
   language: text("language").$type<"en" | "rw">().default("en"),
 
+  // Profile extras (optional)
+  bio: text("bio"),
+  tags: text("tags").array(),
+  voiceIntroPath: text("voice_intro_path"),
+  voiceIntroDurationMs: integer("voice_intro_duration_ms"),
+
   pushNotificationToken: text("push_notification_token"),
 
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),

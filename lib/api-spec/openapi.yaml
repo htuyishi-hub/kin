@@ -168,6 +168,39 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
+  /me/profile-extras:
+    patch:
+      operationId: updateProfileExtras
+      tags: [me]
+      summary: Update optional profile extras (tags and bio)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateProfileExtrasRequest"
+      responses:
+        "200":
+          description: Profile extras updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MyProfile"
+        "400":
+          description: Validation error or contact info detected
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "429":
+          description: Daily edit limit reached
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
   # ── UR verification (Phase 2) ─────────────────────────────────────────────
   /me/ur/verify-registration:
     post:
@@ -769,6 +802,13 @@ components:
           type: boolean
         proximityConsent:
           type: boolean
+        bio:
+          type: string
+          nullable: true
+        tags:
+          type: array
+          items:
+            type: string
         createdAt:
           type: string
           format: date-time
@@ -815,6 +855,19 @@ components:
           type: string
         proximityConsent:
           type: boolean
+
+    UpdateProfileExtrasRequest:
+      type: object
+      properties:
+        bio:
+          type: string
+          nullable: true
+          maxLength: 140
+        tags:
+          type: array
+          items:
+            type: string
+          maxItems: 5
 
     OnboardingRequest:
       type: object
@@ -915,6 +968,13 @@ components:
         vouchOverlap:
           type: integer
           description: Number of shared vouchers
+        bio:
+          type: string
+          nullable: true
+        tags:
+          type: array
+          items:
+            type: string
         milieuCards:
           type: array
           items:

@@ -44,6 +44,7 @@ import type {
   SendMessageRequest,
   SendOtpRequest,
   SendOtpResponse,
+  UpdateProfileExtrasRequest,
   UpdateProfileRequest,
   VerifyOtpRequest,
   VerifyURRegistration200,
@@ -513,6 +514,77 @@ export const useCompleteOnboarding = <TError = ErrorType<ErrorResponse>,
         TContext
       > => {
       return useMutation(getCompleteOnboardingMutationOptions(options));
+    }
+
+export const getUpdateProfileExtrasUrl = () => {
+
+
+
+
+  return `/api/me/profile-extras`
+}
+
+/**
+ * @summary Update optional profile extras (tags and bio)
+ */
+export const updateProfileExtras = async (updateProfileExtrasRequest: UpdateProfileExtrasRequest, options?: RequestInit): Promise<MyProfile> => {
+
+  return customFetch<MyProfile>(getUpdateProfileExtrasUrl(),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(updateProfileExtrasRequest)
+  }
+);}
+
+
+
+
+
+export const getUpdateProfileExtrasMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateProfileExtras>>, TError,{data: BodyType<UpdateProfileExtrasRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateProfileExtras>>, TError,{data: BodyType<UpdateProfileExtrasRequest>}, TContext> => {
+
+const mutationKey = ['updateProfileExtras'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateProfileExtras>>, {data: BodyType<UpdateProfileExtrasRequest>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  updateProfileExtras(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateProfileExtrasMutationResult = NonNullable<Awaited<ReturnType<typeof updateProfileExtras>>>
+    export type UpdateProfileExtrasMutationBody = BodyType<UpdateProfileExtrasRequest>
+    export type UpdateProfileExtrasMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Update optional profile extras (tags and bio)
+ */
+export const useUpdateProfileExtras = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateProfileExtras>>, TError,{data: BodyType<UpdateProfileExtrasRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateProfileExtras>>,
+        TError,
+        {data: BodyType<UpdateProfileExtrasRequest>},
+        TContext
+      > => {
+      return useMutation(getUpdateProfileExtrasMutationOptions(options));
     }
 
 export const getVerifyURRegistrationUrl = () => {

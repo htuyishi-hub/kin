@@ -84,6 +84,8 @@ export interface MyProfile {
   phoneVerified: boolean;
   idVerified: boolean;
   proximityConsent: boolean;
+  bio?: string | null;
+  tags?: string[];
   createdAt: string;
   lastActive: string;
 }
@@ -108,6 +110,13 @@ export interface UpdateProfileRequest {
   city?: string;
   district?: string;
   proximityConsent?: boolean;
+}
+
+export interface UpdateProfileExtrasRequest {
+  /** @maxLength 140 */
+  bio?: string | null;
+  /** @maxItems 5 */
+  tags?: string[];
 }
 
 export type OnboardingRequestOccupation = typeof OnboardingRequestOccupation[keyof typeof OnboardingRequestOccupation];
@@ -197,6 +206,8 @@ export interface MatchCandidate {
   milieuScore: number;
   /** Number of shared vouchers */
   vouchOverlap: number;
+  bio?: string | null;
+  tags?: string[];
   /** Human-readable shared milieu strings */
   milieuCards: string[];
 }

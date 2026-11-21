@@ -24,6 +24,8 @@ export interface MatchCandidate {
   milieuScore: number;
   /** Number of shared vouchers */
   vouchOverlap: number;
+  bio?: string | null;
+  tags?: string[];
   /** Human-readable shared milieu strings */
   milieuCards: string[];
 }
