@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useLocation } from 'wouter';
 import {
   Flame,
@@ -14,6 +14,12 @@ import {
   LogOut,
   Send,
   Globe,
+  Play,
+  Pause,
+  Volume2,
+  Mic,
+  Square,
+  Trash2,
 } from 'lucide-react';
 import { useTranslation, changeLanguage, getCurrentLanguage, type SupportedLanguage } from '@workspace/i18n';
 import { useAuth } from '@/contexts/AuthContext';
@@ -31,6 +37,8 @@ interface Candidate {
   photoUrl: string;
   bio?: string | null;
   tags?: string[];
+  voiceIntroPath?: string | null;
+  voiceIntroDurationMs?: number | null;
 }
 
 const ALL_TAGS = [
@@ -53,6 +61,8 @@ const SAMPLE_PROFILES: Candidate[] = [
     photoUrl: '/images/couple1.jpg',
     tags: ['technology', 'faith', 'reading'],
     bio: 'Software engineer building tools for community growth.',
+    voiceIntroPath: 'https://actions.google.com/sounds/v1/speech/hello_world.ogg',
+    voiceIntroDurationMs: 6000,
   },
   {
     id: '2',
@@ -66,6 +76,8 @@ const SAMPLE_PROFILES: Candidate[] = [
     photoUrl: '/images/couple2.jpg',
     tags: ['education', 'fitness', 'music'],
     bio: 'Medical student passionate about healthcare and running.',
+    voiceIntroPath: 'https://actions.google.com/sounds/v1/speech/hello_world.ogg',
+    voiceIntroDurationMs: 8000,
   },
   {
     id: '3',
@@ -101,6 +113,22 @@ export default function AppScreen() {
   const [extrasError, setExtrasError] = useState<string | null>(null);
   const [extrasSuccess, setExtrasSuccess] = useState(false);
 
+  const [voiceIntroPath, setVoiceIntroPath] = useState<string | null>(null);
+  const [voiceIntroDurationMs, setVoiceIntroDurationMs] = useState<number | null>(null);
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordSeconds, setRecordSeconds] = useState(0);
+  const [isPlayingVoice, setIsPlayingVoice] = useState(false);
+  const [voiceError, setVoiceError] = useState<string | null>(null);
+  const [isSavingVoice, setIsSavingVoice] = useState(false);
+
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
+  const recordTimerRef = useRef<any>(null);
+  const profileAudioRef = useRef<HTMLAudioElement | null>(null);
+
+  const candidateAudioRef = useRef<HTMLAudioElement | null>(null);
+  const [playingCandidateAudio, setPlayingCandidateAudio] = useState(false);
+
   useEffect(() => {
     if (!token) return;
     fetch('/api/me', {
@@ -111,6 +139,8 @@ export default function AppScreen() {
         if (data) {
           if (Array.isArray(data.tags)) setSelectedTags(data.tags);
           if (typeof data.bio === 'string') setBioText(data.bio);
+          if (typeof data.voiceIntroPath === 'string') setVoiceIntroPath(data.voiceIntroPath);
+          if (typeof data.voiceIntroDurationMs === 'number') setVoiceIntroDurationMs(data.voiceIntroDurationMs);
         }
       })
       .catch(() => {});
@@ -196,6 +226,160 @@ export default function AppScreen() {
     }
   }
 
+  async function handleStartRecording() {
+    setVoiceError(null);
+    try {
+      if (!navigator.mediaDevices?.getUserMedia) {
+        setVoiceError(t('errors.micPermission'));
+        return;
+      }
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mediaRecorder = new MediaRecorder(stream);
+      mediaRecorderRef.current = mediaRecorder;
+      audioChunksRef.current = [];
+
+      mediaRecorder.ondataavailable = (e) => {
+        if (e.data.size > 0) {
+          audioChunksRef.current.push(e.data);
+        }
+      };
+
+      mediaRecorder.onstop = async () => {
+        stream.getTracks().forEach((track) => track.stop());
+        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+        const durMs = Math.max(1000, recordSeconds * 1000);
+        await handleSaveVoice(audioBlob, durMs);
+      };
+
+      mediaRecorder.start();
+      setIsRecording(true);
+      setRecordSeconds(0);
+      recordTimerRef.current = setInterval(() => {
+        setRecordSeconds((prev) => {
+          if (prev >= 29) {
+            handleStopRecording();
+            return 30;
+          }
+          return prev + 1;
+        });
+      }, 1000);
+    } catch {
+      setVoiceError(t('errors.micPermission'));
+    }
+  }
+
+  function handleStopRecording() {
+    if (recordTimerRef.current) {
+      clearInterval(recordTimerRef.current);
+      recordTimerRef.current = null;
+    }
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+      mediaRecorderRef.current.stop();
+    }
+    setIsRecording(false);
+  }
+
+  async function handleSaveVoice(blob: Blob, durationMs: number) {
+    setIsSavingVoice(true);
+    setVoiceError(null);
+    try {
+      const storagePath = `${user?.id || 'user'}/voice_${Date.now()}.webm`;
+      const res = await fetch('/api/me/voice-intro', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({
+          storagePath,
+          durationMs: Math.min(30000, Math.max(1000, durationMs)),
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        if (data.code === 'VOICE_INTRO_TOO_LONG') {
+          setVoiceError(t('errors.voiceTooLong'));
+        } else if (data.code === 'VOICE_INTRO_TOO_SHORT') {
+          setVoiceError(t('errors.voiceTooShort'));
+        } else {
+          setVoiceError(t('errors.generic'));
+        }
+      } else {
+        setVoiceIntroPath(data.voiceIntroPath || storagePath);
+        setVoiceIntroDurationMs(data.voiceIntroDurationMs || durationMs);
+      }
+    } catch {
+      setVoiceError(t('errors.generic'));
+    } finally {
+      setIsSavingVoice(false);
+    }
+  }
+
+  async function handleDeleteVoice() {
+    setVoiceError(null);
+    setIsSavingVoice(true);
+    try {
+      const res = await fetch('/api/me/voice-intro', {
+        method: 'DELETE',
+        headers: {
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+      });
+      if (res.ok) {
+        setVoiceIntroPath(null);
+        setVoiceIntroDurationMs(null);
+        if (profileAudioRef.current) {
+          profileAudioRef.current.pause();
+          setIsPlayingVoice(false);
+        }
+      } else {
+        setVoiceError(t('errors.generic'));
+      }
+    } catch {
+      setVoiceError(t('errors.generic'));
+    } finally {
+      setIsSavingVoice(false);
+    }
+  }
+
+  function toggleProfileVoicePlay() {
+    if (!voiceIntroPath) return;
+    if (isPlayingVoice) {
+      if (profileAudioRef.current) {
+        profileAudioRef.current.pause();
+      }
+      setIsPlayingVoice(false);
+    } else {
+      if (!profileAudioRef.current) {
+        profileAudioRef.current = new Audio(voiceIntroPath);
+        profileAudioRef.current.onended = () => setIsPlayingVoice(false);
+      } else {
+        profileAudioRef.current.src = voiceIntroPath;
+      }
+      profileAudioRef.current.play().catch(() => {});
+      setIsPlayingVoice(true);
+    }
+  }
+
+  function toggleCandidateVoice(path: string) {
+    if (playingCandidateAudio) {
+      if (candidateAudioRef.current) {
+        candidateAudioRef.current.pause();
+      }
+      setPlayingCandidateAudio(false);
+    } else {
+      if (!candidateAudioRef.current) {
+        candidateAudioRef.current = new Audio(path);
+        candidateAudioRef.current.onended = () => setPlayingCandidateAudio(false);
+      } else {
+        candidateAudioRef.current.src = path;
+      }
+      candidateAudioRef.current.play().catch(() => {});
+      setPlayingCandidateAudio(true);
+    }
+  }
+
   const currentProfile = SAMPLE_PROFILES[profileIndex % SAMPLE_PROFILES.length];
 
   async function handleLanguageSelect(lang: SupportedLanguage) {
@@ -213,6 +397,11 @@ export default function AppScreen() {
   }
 
   function handleSwipe(action: 'pass' | 'like' | 'bid') {
+    if (candidateAudioRef.current) {
+      candidateAudioRef.current.pause();
+    }
+    setPlayingCandidateAudio(false);
+
     if (action === 'bid') {
       if (goldenBids <= 0) return;
       setGoldenBids((prev) => prev - 1);
@@ -320,6 +509,25 @@ export default function AppScreen() {
                         </span>
                       ))}
                     </div>
+                  )}
+                  {currentProfile.voiceIntroPath && (
+                    <button
+                      type="button"
+                      onClick={() => toggleCandidateVoice(currentProfile.voiceIntroPath!)}
+                      className="self-start flex items-center gap-1.5 bg-[#0D1117]/80 hover:bg-[#0D1117] border border-[#C9A84C]/40 px-2.5 py-1 rounded-full text-xs font-medium text-[#C9A84C] transition-colors cursor-pointer mt-1"
+                    >
+                      {playingCandidateAudio ? (
+                        <Pause className="w-3.5 h-3.5 fill-current" />
+                      ) : (
+                        <Play className="w-3.5 h-3.5 fill-current" />
+                      )}
+                      <Volume2 className="w-3.5 h-3.5 text-[#A8A49E]" />
+                      <span>
+                        {t('profile.voiceDuration', {
+                          seconds: Math.max(1, Math.round((currentProfile.voiceIntroDurationMs || 5000) / 1000)),
+                        })}
+                      </span>
+                    </button>
                   )}
                   {currentProfile.bio && (
                     <p className="text-xs text-[#A8A49E] line-clamp-2 mt-0.5">
@@ -542,6 +750,75 @@ export default function AppScreen() {
                     {t('profile.clearExtras')}
                   </button>
                 </div>
+              </div>
+
+              {/* Voice Intro Section */}
+              <div className="p-4 bg-[#1A1A2E] border border-[#21262D] rounded-2xl flex flex-col gap-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-semibold text-[#F0EDE6]">{t('profile.voiceIntroTitle')}</span>
+                  <span className="text-xs text-[#A8A49E]">{t('profile.voiceLimit')}</span>
+                </div>
+
+                {voiceIntroPath ? (
+                  <div className="flex items-center gap-2 mt-1">
+                    <button
+                      type="button"
+                      onClick={toggleProfileVoicePlay}
+                      disabled={isSavingVoice}
+                      className="flex-1 flex items-center justify-center gap-2 py-2 px-4 bg-[#2563EB] hover:bg-[#1D4ED8] disabled:opacity-50 text-white rounded-xl text-xs font-semibold transition-colors cursor-pointer"
+                    >
+                      {isPlayingVoice ? <Pause className="w-4 h-4 fill-current" /> : <Play className="w-4 h-4 fill-current" />}
+                      <span>{isPlayingVoice ? t('profile.pauseVoice') : t('profile.playVoice')}</span>
+                    </button>
+                    <span className="bg-[#0D1117] border border-[#21262D] px-3 py-2 rounded-xl text-xs font-semibold text-[#C9A84C]">
+                      {t('profile.voiceDuration', {
+                        seconds: Math.max(1, Math.round((voiceIntroDurationMs || 5000) / 1000)),
+                      })}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={handleDeleteVoice}
+                      disabled={isSavingVoice}
+                      className="p-2 bg-[#0D1117] border border-[#FF6B6B]/40 hover:bg-[#FF6B6B]/10 text-[#FF6B6B] rounded-xl transition-colors cursor-pointer"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex flex-col gap-2 mt-1">
+                    {isRecording ? (
+                      <div className="flex items-center justify-between bg-[#0D1117] border border-[#FF6B6B]/40 rounded-xl p-3">
+                        <div className="flex items-center gap-2">
+                          <span className="w-2.5 h-2.5 rounded-full bg-[#FF6B6B] animate-pulse" />
+                          <span className="text-xs font-medium text-[#F0EDE6]">{recordSeconds}s / 30s</span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={handleStopRecording}
+                          disabled={isSavingVoice}
+                          className="flex items-center gap-1.5 py-1.5 px-3 bg-[#FF6B6B] hover:bg-[#FF5252] text-white rounded-lg text-xs font-semibold transition-colors cursor-pointer"
+                        >
+                          <Square className="w-3.5 h-3.5 fill-current" />
+                          <span>{t('profile.stopRecording')}</span>
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={handleStartRecording}
+                        disabled={isSavingVoice}
+                        className="w-full flex items-center justify-center gap-2 py-2.5 px-4 bg-[#0D1117] hover:bg-[#161B22] border border-[#21262D] text-[#F0EDE6] rounded-xl text-xs font-semibold transition-colors cursor-pointer"
+                      >
+                        <Mic className="w-4 h-4" />
+                        <span>{t('profile.recordVoice')}</span>
+                      </button>
+                    )}
+                  </div>
+                )}
+
+                {voiceError && (
+                  <p className="text-xs text-[#FF6B6B]">{voiceError}</p>
+                )}
               </div>
 
               {/* Language Setting Row */}

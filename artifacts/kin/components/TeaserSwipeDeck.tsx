@@ -21,8 +21,10 @@ import Animated, {
   withTiming,
 } from "react-native-reanimated";
 import { useTranslation } from "@workspace/i18n";
+import { useAudioPlayer, useAudioPlayerStatus } from "expo-audio";
 
 import { Colors } from "@/constants/colors";
+import { resolveAudioUrl } from "@/services/voiceIntroService";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 const SWIPE_THRESHOLD = 120;
@@ -41,6 +43,8 @@ export type TeaserCandidate = {
   vouchedBy?: { fullName: string; firstName: string; isVerified: boolean } | null;
   bio?: string | null;
   tags?: string[];
+  voiceIntroPath?: string | null;
+  voiceIntroDurationMs?: number | null;
 };
 
 type ReactionType = "campus" | "coffee" | "serious";
@@ -52,6 +56,48 @@ interface TeaserSwipeDeckProps {
   onSwipeDown: (candidate: TeaserCandidate) => void;
   goldenBidsRemaining?: number;
   onRefresh?: () => void;
+}
+
+function CandidateVoicePlayer({
+  path,
+  durationMs,
+}: {
+  path: string;
+  durationMs?: number | null;
+}) {
+  const { t } = useTranslation();
+  const audioUri = resolveAudioUrl(path);
+  const player = useAudioPlayer(audioUri);
+  const status = useAudioPlayerStatus(player);
+  const isPlaying = Boolean(status.playing);
+
+  const togglePlay = () => {
+    if (isPlaying) {
+      player.pause();
+    } else {
+      player.play();
+    }
+  };
+
+  const seconds = durationMs ? Math.round(durationMs / 1000) : Math.round(status.duration || 5);
+
+  return (
+    <TouchableOpacity
+      style={styles.voicePill}
+      onPress={togglePlay}
+      activeOpacity={0.8}
+    >
+      <Feather
+        name={isPlaying ? "pause" : "play"}
+        size={13}
+        color={Colors.gold}
+      />
+      <Feather name="volume-2" size={13} color={Colors.boneDim} />
+      <Text style={styles.voiceDurationText}>
+        {t("profile.voiceDuration", { seconds: Math.max(1, seconds) })}
+      </Text>
+    </TouchableOpacity>
+  );
 }
 
 export function TeaserSwipeDeck({
@@ -314,6 +360,13 @@ export function TeaserSwipeDeck({
                   </View>
                 ))}
               </View>
+            )}
+            {!!currentCandidate.voiceIntroPath && (
+              <CandidateVoicePlayer
+                key={currentCandidate.id + "_" + currentCandidate.voiceIntroPath}
+                path={currentCandidate.voiceIntroPath}
+                durationMs={currentCandidate.voiceIntroDurationMs}
+              />
             )}
             {!!currentCandidate.bio && (
               <Text style={styles.bioText} numberOfLines={2}>
@@ -846,5 +899,23 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_600SemiBold",
     fontSize: 14,
     color: Colors.boneDim,
+  },
+  voicePill: {
+    flexDirection: "row",
+    alignItems: "center",
+    alignSelf: "flex-start",
+    gap: 6,
+    backgroundColor: "rgba(13, 17, 23, 0.75)",
+    borderColor: "rgba(201, 168, 76, 0.4)",
+    borderWidth: 1,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 20,
+    marginVertical: 4,
+  },
+  voiceDurationText: {
+    fontFamily: "Inter_600SemiBold",
+    fontSize: 11,
+    color: Colors.gold,
   },
 });

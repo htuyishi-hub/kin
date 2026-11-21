@@ -3,9 +3,20 @@ import {
   useGetMe, useAddPhoto,
   usePauseProfile,
   useUpdateProfileExtras,
+  useUploadVoiceIntro,
+  useDeleteVoiceIntro,
 } from "@workspace/api-client-react";
 import { router } from "expo-router";
 import React, { useState, useEffect } from "react";
+import {
+  useAudioRecorder,
+  useAudioRecorderState,
+  RecordingPresets,
+  requestRecordingPermissionsAsync,
+  useAudioPlayer,
+  useAudioPlayerStatus,
+} from "expo-audio";
+import { uploadVoiceIntroFile, resolveAudioUrl } from "@/services/voiceIntroService";
 import {
   ActivityIndicator,
   Platform,
@@ -48,6 +59,211 @@ function trustLabel(score: number) {
     if (score >= threshold) label = text;
   }
   return label;
+}
+
+function ProfileVoiceSection({
+  voiceIntroPath,
+  voiceIntroDurationMs,
+  userId,
+  onRefetch,
+}: {
+  voiceIntroPath?: string | null;
+  voiceIntroDurationMs?: number | null;
+  userId: string;
+  onRefetch: () => void;
+}) {
+  const { t } = useTranslation();
+  const [voiceError, setVoiceError] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+
+  const recorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
+  const recorderState = useAudioRecorderState(recorder, 200);
+
+  const { mutate: uploadVoiceIntro, isPending: isSavingVoice } = useUploadVoiceIntro({
+    mutation: {
+      onSuccess: () => {
+        setIsUploading(false);
+        setVoiceError(null);
+        onRefetch();
+      },
+      onError: (err: any) => {
+        setIsUploading(false);
+        const errCode = err?.code || err?.response?.data?.code || err?.data?.code;
+        if (errCode === "VOICE_INTRO_TOO_LONG") {
+          setVoiceError(t("errors.voiceTooLong"));
+        } else if (errCode === "VOICE_INTRO_TOO_SHORT") {
+          setVoiceError(t("errors.voiceTooShort"));
+        } else {
+          setVoiceError(t("errors.generic"));
+        }
+      },
+    },
+  });
+
+  const { mutate: deleteVoice, isPending: isDeletingVoice } = useDeleteVoiceIntro({
+    mutation: {
+      onSuccess: () => {
+        setVoiceError(null);
+        onRefetch();
+      },
+      onError: () => {
+        setVoiceError(t("errors.generic"));
+      },
+    },
+  });
+
+  const audioUri = resolveAudioUrl(voiceIntroPath);
+  const player = useAudioPlayer(audioUri);
+  const playerStatus = useAudioPlayerStatus(player);
+  const isPlaying = Boolean(playerStatus.playing);
+
+  const handleTogglePlay = () => {
+    if (isPlaying) {
+      player.pause();
+    } else {
+      player.play();
+    }
+  };
+
+  const handleStartRecording = async () => {
+    setVoiceError(null);
+    try {
+      const { granted } = await requestRecordingPermissionsAsync();
+      if (!granted) {
+        setVoiceError(t("errors.micPermission"));
+        return;
+      }
+      await recorder.prepareToRecordAsync();
+      recorder.record();
+    } catch {
+      setVoiceError(t("errors.micPermission"));
+    }
+  };
+
+  const handleStopRecording = async () => {
+    try {
+      await recorder.stop();
+      const durMs = Math.round(recorderState.durationMillis || (recorder.currentTime * 1000));
+      if (durMs < 1000) {
+        setVoiceError(t("errors.voiceTooShort"));
+        return;
+      }
+      if (durMs > 30000) {
+        setVoiceError(t("errors.voiceTooLong"));
+        return;
+      }
+      setIsUploading(true);
+      const uri = recorder.uri;
+      if (!uri) {
+        setVoiceError(t("errors.generic"));
+        setIsUploading(false);
+        return;
+      }
+      const res = await uploadVoiceIntroFile(userId, uri);
+      uploadVoiceIntro({
+        data: {
+          storagePath: res.storagePath,
+          durationMs: durMs,
+        },
+      });
+    } catch {
+      setVoiceError(t("errors.generic"));
+      setIsUploading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (recorderState.isRecording && recorderState.durationMillis >= 30000) {
+      handleStopRecording();
+    }
+  }, [recorderState.isRecording, recorderState.durationMillis]);
+
+  const hasVoice = Boolean(voiceIntroPath);
+  const isBusy = isUploading || isSavingVoice || isDeletingVoice;
+
+  return (
+    <View style={styles.section}>
+      <View style={styles.sectionHeaderRow}>
+        <Text style={styles.sectionLabel}>{t("profile.voiceIntroTitle")}</Text>
+        <Text style={styles.sectionCounter}>{t("profile.voiceLimit")}</Text>
+      </View>
+
+      {hasVoice ? (
+        <View style={styles.voiceControlsRow}>
+          <TouchableOpacity
+            style={styles.voicePlayBtn}
+            onPress={handleTogglePlay}
+            disabled={isBusy}
+            activeOpacity={0.8}
+          >
+            <Feather name={isPlaying ? "pause" : "play"} size={16} color={Colors.bone} />
+            <Text style={styles.voicePlayBtnText}>
+              {isPlaying ? t("profile.pauseVoice") : t("profile.playVoice")}
+            </Text>
+          </TouchableOpacity>
+
+          <View style={styles.voiceDurationBadge}>
+            <Text style={styles.voiceDurationBadgeText}>
+              {t("profile.voiceDuration", {
+                seconds: Math.max(1, Math.round((voiceIntroDurationMs || 5000) / 1000)),
+              })}
+            </Text>
+          </View>
+
+          <TouchableOpacity
+            style={styles.voiceDeleteBtn}
+            onPress={() => deleteVoice()}
+            disabled={isBusy}
+            activeOpacity={0.8}
+          >
+            {isDeletingVoice ? (
+              <ActivityIndicator size="small" color={Colors.danger} />
+            ) : (
+              <Feather name="trash-2" size={16} color={Colors.danger} />
+            )}
+          </TouchableOpacity>
+        </View>
+      ) : (
+        <View style={styles.voiceRecordArea}>
+          {recorderState.isRecording ? (
+            <View style={styles.recordingActiveRow}>
+              <View style={styles.recordingPulseDot} />
+              <Text style={styles.recordingTimerText}>
+                {Math.round(recorderState.durationMillis / 1000)}s / 30s
+              </Text>
+              <TouchableOpacity
+                style={styles.voiceStopBtn}
+                onPress={handleStopRecording}
+                disabled={isBusy}
+                activeOpacity={0.8}
+              >
+                <Feather name="square" size={14} color={Colors.bone} />
+                <Text style={styles.voiceStopBtnText}>{t("profile.stopRecording")}</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <TouchableOpacity
+              style={styles.voiceRecordBtn}
+              onPress={handleStartRecording}
+              disabled={isBusy}
+              activeOpacity={0.8}
+            >
+              {isBusy ? (
+                <ActivityIndicator size="small" color={Colors.bone} />
+              ) : (
+                <>
+                  <Feather name="mic" size={16} color={Colors.bone} />
+                  <Text style={styles.voiceRecordBtnText}>{t("profile.recordVoice")}</Text>
+                </>
+              )}
+            </TouchableOpacity>
+          )}
+        </View>
+      )}
+
+      {voiceError && <Text style={styles.extrasErrorText}>{voiceError}</Text>}
+    </View>
+  );
 }
 
 export default function ProfileScreen() {
@@ -334,6 +550,14 @@ export default function ProfileScreen() {
             </TouchableOpacity>
           </View>
         </View>
+
+        {/* Voice Intro Card */}
+        <ProfileVoiceSection
+          voiceIntroPath={(profile as any)?.voiceIntroPath}
+          voiceIntroDurationMs={(profile as any)?.voiceIntroDurationMs}
+          userId={profile?.id ?? ""}
+          onRefetch={refetch}
+        />
 
         {/* Invite link card */}
         <View style={styles.trustCard}>
@@ -736,5 +960,107 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_500Medium",
     fontSize: 13,
     color: Colors.boneDim,
+  },
+  voiceControlsRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    marginTop: 6,
+  },
+  voicePlayBtn: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    backgroundColor: Colors.trust,
+    borderRadius: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+  },
+  voicePlayBtnText: {
+    fontFamily: "Inter_600SemiBold",
+    fontSize: 13,
+    color: Colors.bone,
+  },
+  voiceDurationBadge: {
+    backgroundColor: Colors.ink,
+    borderWidth: 1,
+    borderColor: Colors.divider,
+    borderRadius: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  voiceDurationBadgeText: {
+    fontFamily: "Inter_600SemiBold",
+    fontSize: 12,
+    color: Colors.gold,
+  },
+  voiceDeleteBtn: {
+    backgroundColor: Colors.ink,
+    borderWidth: 1,
+    borderColor: Colors.danger + "44",
+    borderRadius: 12,
+    padding: 10,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  voiceRecordArea: {
+    marginTop: 6,
+  },
+  voiceRecordBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    backgroundColor: Colors.inkRaised,
+    borderWidth: 1,
+    borderColor: Colors.divider,
+    borderRadius: 12,
+    paddingVertical: 12,
+  },
+  voiceRecordBtnText: {
+    fontFamily: "Inter_600SemiBold",
+    fontSize: 14,
+    color: Colors.bone,
+  },
+  recordingActiveRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    backgroundColor: Colors.ink,
+    borderWidth: 1,
+    borderColor: Colors.danger + "55",
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+  },
+  recordingPulseDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: Colors.danger,
+  },
+  recordingTimerText: {
+    flex: 1,
+    fontFamily: "Inter_600SemiBold",
+    fontSize: 13,
+    color: Colors.bone,
+  },
+  voiceStopBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: Colors.danger,
+    borderRadius: 8,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+  },
+  voiceStopBtnText: {
+    fontFamily: "Inter_600SemiBold",
+    fontSize: 12,
+    color: Colors.bone,
   },
 });

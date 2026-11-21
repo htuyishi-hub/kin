@@ -62,6 +62,8 @@ export default function DiscoverScreen() {
     trustScore: item.trustScore ?? 1,
     bio: item.bio ?? null,
     tags: item.tags ?? [],
+    voiceIntroPath: item.voiceIntroPath ?? null,
+    voiceIntroDurationMs: item.voiceIntroDurationMs ?? null,
   }));
 
   const goldenBidsRemaining = (myProfile as any)?.goldenBidsRemaining ?? (myProfile as any)?.golden_bids_remaining ?? 3;
