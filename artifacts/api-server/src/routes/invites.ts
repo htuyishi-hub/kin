@@ -118,7 +118,7 @@ router.post("/invites/claim", requireAuth, async (req, res) => {
   }
 
   if (me[0].invitedByProfile) {
-    res.status(400).json({ error: "already_claimed", message: "You have already claimed an invite" });
+    res.status(400).json({ error: "already_claimed", code: "INVITE_ALREADY_CLAIMED", message: "You have already claimed an invite" });
     return;
   }
 

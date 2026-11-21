@@ -62,14 +62,14 @@ export async function verifyURRegistration(req: Request, res: Response) {
   // Step 1 — format validation
   if (!isValidRegistrationNumber(reg)) {
     await safeAudit(profileId, reg, "invalid_format");
-    return respond(res, { status: "invalid_format", message: "Registration number must be 9 digits" }, 200);
+    return respond(res, { status: "invalid_format", code: "UR_REGISTRATION_INVALID", message: "Registration number must be 9 digits" }, 200);
   }
 
   // Step 2 — prefix validation (academic intake years 2018-2030)
   const isLikelyUrStudent = /^2[1-3]\d{7}$/.test(reg);
   if (!isLikelyUrStudent) {
     await safeAudit(profileId, reg, "invalid_format");
-    return respond(res, { status: "invalid_format", message: "Registration number must be 9 digits starting with 21, 22, or 23" }, 200);
+    return respond(res, { status: "invalid_format", code: "UR_REGISTRATION_INVALID", message: "Registration number must be 9 digits starting with 21, 22, or 23" }, 200);
   }
 
   // Step 3 — campus requirement
