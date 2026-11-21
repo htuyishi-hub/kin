@@ -243,7 +243,6 @@
     "confirmTitle": "Kwemeza {{name}}?",
     "confirmButton": "Emeza",
     "approvedStatus": "Wemeje {{name}}",
-    "activatedStatus": "{{name}} yemejwe mu muryango",
-    "approvalWarning": "Kwemeza nabi bigutwara amanota {{points}} y'ubwizerane."
+    "activatedStatus": "{{name}} yemejwe mu muryango"
   }
 }

@@ -243,7 +243,6 @@
     "confirmTitle": "Approve {{name}}?",
     "confirmButton": "Confirm Approval",
     "approvedStatus": "Approved {{name}}",
-    "activatedStatus": "{{name}} activated",
-    "approvalWarning": "A wrong approval costs you {{points}} trust points."
+    "activatedStatus": "{{name}} activated"
   }
 }

@@ -29,7 +29,6 @@ import { useTranslation } from "@workspace/i18n";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 const SWIPE_THRESHOLD = 120;
-const APPROVAL_PENALTY_POINTS = 25;
 
 type ModerationCandidate = {
   id: string;
@@ -369,9 +368,6 @@ export default function ModerationReviewScreen() {
             <Text style={styles.modalTitle}>
               {t("moderation.confirmTitle", { name: pendingCandidate?.firstName ?? "" })}
             </Text>
-            <Text style={styles.modalWarning}>
-              {t("moderation.approvalWarning", { points: APPROVAL_PENALTY_POINTS })}
-            </Text>
 
             <View style={styles.modalButtons}>
               <TouchableOpacity
@@ -643,12 +639,6 @@ const styles = StyleSheet.create({
     fontFamily: "Fraunces_700Bold",
     fontSize: 20,
     color: Colors.bone,
-    textAlign: "center",
-  },
-  modalWarning: {
-    fontFamily: "Inter_500Medium",
-    fontSize: 13,
-    color: Colors.gold,
     textAlign: "center",
   },
   modalButtons: {

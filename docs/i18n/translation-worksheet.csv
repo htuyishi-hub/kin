@@ -203,4 +203,3 @@ moderation.confirmTitle,moderation,title,Approve {{name}}?,Kwemeza {{name}}?,,{{
 moderation.confirmButton,moderation,button,Confirm Approval,Emeza,,,25,confirm modal button,needs_review
 moderation.approvedStatus,moderation,status,Approved {{name}},Wemeje {{name}},,{{name}},50,approval success toast,needs_review
 moderation.activatedStatus,moderation,status,{{name}} activated,{{name}} yemejwe mu muryango,,{{name}},50,candidate activation toast,needs_review
-moderation.approvalWarning,moderation,status,A wrong approval costs you {{points}} trust points.,Kwemeza nabi bigutwara amanota {{points}} y'ubwizerane.,,{{points}},50,moderation approval penalty warning,needs_review
