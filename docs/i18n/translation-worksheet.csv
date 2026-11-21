@@ -203,3 +203,33 @@ moderation.confirmTitle,moderation,title,Approve {{name}}?,Kwemeza {{name}}?,,{{
 moderation.confirmButton,moderation,button,Confirm Approval,Emeza,,,25,confirm modal button,needs_review
 moderation.approvedStatus,moderation,status,Approved {{name}},Wemeje {{name}},,{{name}},50,approval success toast,needs_review
 moderation.activatedStatus,moderation,status,{{name}} activated,{{name}} yemejwe mu muryango,,{{name}},50,candidate activation toast,needs_review
+profile.tagsTitle,profile,label,Tags,Ibikuranga,,,25,profile extras tags section label,needs_review
+profile.bioTitle,profile,label,Bio,Ibyo wivugaho,,,25,profile extras bio section label,needs_review
+profile.bioPlaceholder,profile,placeholder,A few words about you,Amagambo make akwerekeyeho,,,40,profile extras bio input placeholder,needs_review
+profile.clearExtras,profile,button,Clear,Hanagura,,,20,profile extras clear button,needs_review
+profile.tagsLimit,profile,label,Up to 5 tags,Ibyiciro bitarenze 5,,,30,profile extras tags limit indicator,needs_review
+profile.saved,profile,status,Saved,Byabitswe,,,20,profile extras saved status,needs_review
+tags.faith,profile,label,Faith,Ukwemera,,,20,whitelist tag chip,needs_review
+tags.family,profile,label,Family,Umuryango,,,20,whitelist tag chip,needs_review
+tags.career,profile,label,Career,Umwuga,,,20,whitelist tag chip,needs_review
+tags.education,profile,label,Education,Amashuri,,,20,whitelist tag chip,needs_review
+tags.business,profile,label,Business,Ubucuruzi,,,20,whitelist tag chip,needs_review
+tags.travel,profile,label,Travel,Ingendo,,,20,whitelist tag chip,needs_review
+tags.music,profile,label,Music,Umuziki,,,20,whitelist tag chip,needs_review
+tags.football,profile,label,Football,Umupira,,,20,whitelist tag chip,needs_review
+tags.humor,profile,label,Humor,Urwenya,,,20,whitelist tag chip,needs_review
+tags.kindness,profile,label,Kindness,Ubugwaneza,,,20,whitelist tag chip,needs_review
+tags.honesty,profile,label,Honesty,Ubunyangamugayo,,,20,whitelist tag chip,needs_review
+tags.ambition,profile,label,Ambition,Intego,,,20,whitelist tag chip,needs_review
+tags.nature,profile,label,Nature,Ibidukikije,,,20,whitelist tag chip,needs_review
+tags.cooking,profile,label,Cooking,Guteka,,,20,whitelist tag chip,needs_review
+tags.reading,profile,label,Reading,Gusoma,,,20,whitelist tag chip,needs_review
+tags.art,profile,label,Art,Ubuhanzi,,,20,whitelist tag chip,needs_review
+tags.fitness,profile,label,Fitness,Siporo,,,20,whitelist tag chip,needs_review
+tags.technology,profile,label,Technology,Ikoranabuhanga,,,20,whitelist tag chip,needs_review
+tags.community,profile,label,Community,Umuryango mugari,,,20,whitelist tag chip,needs_review
+tags.culture,profile,label,Culture,Umuco,,,20,whitelist tag chip,needs_review
+errors.bioContactInfo,errors,error,Contact information is not allowed in bio.,Ntibyemewe gushyiramo amakuru y'itumanaho.,,,70,contact info in bio error message,needs_review
+errors.tooManyEdits,errors,error,Daily edit limit reached. Try again tomorrow.,Warengeje inshuro zo guhindura zigenewe umunsi.,,,70,rate limit error for profile extras,needs_review
+errors.invalidTag,errors,error,Invalid tag provided.,Icyiciro cyatanzwe si cyo.,,,50,invalid tag provided error,needs_review
+errors.tagsLimitExceeded,errors,error,You can select up to 5 tags.,Wahitamo ibyiciro bitarenze 5.,,,50,tags limit error,needs_review

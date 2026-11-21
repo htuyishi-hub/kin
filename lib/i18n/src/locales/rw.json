@@ -195,10 +195,37 @@
     "inviteFriends": "Tumira inshuti & wemezwe",
     "statsInvites": "Abatumiwe",
     "statsTokens": "Amatike",
-    "statsIntent": "Intego",
     "urStudentVerified": "Umunyeshuri wa UR wemejwe",
     "verifiedMember": "Umunyamuryango wemejwe",
-    "shareInviteMessage": "Injira muri Kin: {{link}}"
+    "shareInviteMessage": "Injira muri Kin: {{link}}",
+    "tagsTitle": "Ibikuranga",
+    "bioTitle": "Ibyo wivugaho",
+    "bioPlaceholder": "Amagambo make akwerekeyeho",
+    "clearExtras": "Hanagura",
+    "tagsLimit": "Ibyiciro bitarenze 5",
+    "saved": "Byabitswe"
+  },
+  "tags": {
+    "faith": "Ukwemera",
+    "family": "Umuryango",
+    "career": "Umwuga",
+    "education": "Amashuri",
+    "business": "Ubucuruzi",
+    "travel": "Ingendo",
+    "music": "Umuziki",
+    "football": "Umupira",
+    "humor": "Urwenya",
+    "kindness": "Ubugwaneza",
+    "honesty": "Ubunyangamugayo",
+    "ambition": "Intego",
+    "nature": "Ibidukikije",
+    "cooking": "Guteka",
+    "reading": "Gusoma",
+    "art": "Ubuhanzi",
+    "fitness": "Siporo",
+    "technology": "Ikoranabuhanga",
+    "community": "Umuryango mugari",
+    "culture": "Umuco"
   },
   "common": {
     "back": "Subira inyuma",
@@ -231,7 +258,11 @@
   "errors": {
     "generic": "Hari ikitagenze neza. Ongera ugerageze.",
     "urRegistrationInvalid": "Nimero yo kwiyandikisha igomba kuba imibare 9",
-    "inviteAlreadyClaimed": "Wamaze gukoresha ubutumire"
+    "inviteAlreadyClaimed": "Wamaze gukoresha ubutumire",
+    "bioContactInfo": "Ntibyemewe gushyiramo amakuru y'itumanaho.",
+    "tooManyEdits": "Warengeje inshuro zo guhindura zigenewe umunsi.",
+    "invalidTag": "Icyiciro cyatanzwe si cyo.",
+    "tagsLimitExceeded": "Wahitamo ibyiciro bitarenze 5."
   },
   "moderation": {
     "title": "Igenzura ry'umuryango",

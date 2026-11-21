@@ -198,7 +198,35 @@
     "statsIntent": "Intent",
     "urStudentVerified": "UR Student Verified",
     "verifiedMember": "Verified Member",
-    "shareInviteMessage": "Join me on Kin: {{link}}"
+    "shareInviteMessage": "Join me on Kin: {{link}}",
+    "tagsTitle": "Tags",
+    "bioTitle": "Bio",
+    "bioPlaceholder": "A few words about you",
+    "clearExtras": "Clear",
+    "tagsLimit": "Up to 5 tags",
+    "saved": "Saved"
+  },
+  "tags": {
+    "faith": "Faith",
+    "family": "Family",
+    "career": "Career",
+    "education": "Education",
+    "business": "Business",
+    "travel": "Travel",
+    "music": "Music",
+    "football": "Football",
+    "humor": "Humor",
+    "kindness": "Kindness",
+    "honesty": "Honesty",
+    "ambition": "Ambition",
+    "nature": "Nature",
+    "cooking": "Cooking",
+    "reading": "Reading",
+    "art": "Art",
+    "fitness": "Fitness",
+    "technology": "Technology",
+    "community": "Community",
+    "culture": "Culture"
   },
   "common": {
     "back": "Back",
@@ -231,7 +259,11 @@
   "errors": {
     "generic": "Something went wrong. Try again.",
     "urRegistrationInvalid": "Registration number must be 9 digits",
-    "inviteAlreadyClaimed": "You have already claimed an invite"
+    "inviteAlreadyClaimed": "You have already claimed an invite",
+    "bioContactInfo": "Contact information is not allowed in bio.",
+    "tooManyEdits": "Daily edit limit reached. Try again tomorrow.",
+    "invalidTag": "Invalid tag provided.",
+    "tagsLimitExceeded": "You can select up to 5 tags."
   },
   "moderation": {
     "title": "Community Moderation",
