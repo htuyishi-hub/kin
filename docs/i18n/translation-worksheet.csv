@@ -131,7 +131,6 @@ matches.guidedChatTitle,matches,title,Guided Chat,Ikiganiro Kiyobowe,,,40,matche
 matches.noMatches,matches,label,No matches yet,Nta muntu murahuza kugeza ubu,,,35,matches field label / tag,needs_review
 matches.keepSwiping,matches,label,Keep discovering people with matching intentions.,Komeza uvumbure abantu bahuje nawe intego.,,,68,matches field label / tag,needs_review
 matches.phase1,matches,label,Phase 1: Icebreakers,Icyiciro cya 1: Kumenyana,,,35,matches field label / tag,needs_review
-matches.phase2,matches,label,Phase 2: Mutual Prompts,Icyiciro cya 2: Ibibazo By'Intego,,,35,matches field label / tag,needs_review
 matches.phase3,matches,label,Phase 3: Open Chat,Icyiciro cya 3: Ikiganiro Cyisanzuye,,,35,matches field label / tag,needs_review
 matches.timeRemaining,matches,status,{{hours}}h {{minutes}}m left,hasigaye amasaha {{hours}} n'iminota {{minutes}},Hasigaye amasaha {{hours}} n'iminota {{minutes}},"{{hours}}, {{minutes}}",39,matches dynamic string with {{hours}},approved
 matches.typeMessage,matches,label,Type a message...,Andika ubutumwa...,,,35,matches field label / tag,needs_review
@@ -204,4 +203,4 @@ moderation.confirmTitle,moderation,title,Approve {{name}}?,Kwemeza {{name}}?,,{{
 moderation.confirmButton,moderation,button,Confirm Approval,Emeza,,,25,confirm modal button,needs_review
 moderation.approvedStatus,moderation,status,Approved {{name}},Wemeje {{name}},,{{name}},50,approval success toast,needs_review
 moderation.activatedStatus,moderation,status,{{name}} activated,{{name}} yemejwe mu muryango,,{{name}},50,candidate activation toast,needs_review
-moderation.quorumProgress,moderation,status,Quorum: {{approvers}}/2 approvers · {{score}}/5 pts,Abemeje: {{approvers}}/2 · amanota {{score}}/5,,{{approvers}}; {{score}},60,multi-sig progress indicator,needs_review
+moderation.approvalWarning,moderation,status,A wrong approval costs you {{points}} trust points.,Kwemeza nabi bigutwara amanota {{points}} y'ubwizerane.,,{{points}},50,moderation approval penalty warning,needs_review

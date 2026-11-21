@@ -158,7 +158,6 @@
     "noMatches": "Nta muntu murahuza kugeza ubu",
     "keepSwiping": "Komeza uvumbure abantu bahuje nawe intego.",
     "phase1": "Icyiciro cya 1: Kumenyana",
-    "phase2": "Icyiciro cya 2: Ibibazo By'Intego",
     "phase3": "Icyiciro cya 3: Ikiganiro Cyisanzuye",
     "timeRemaining": "Hasigaye amasaha {{hours}} n'iminota {{minutes}}",
     "typeMessage": "Andika ubutumwa...",
@@ -245,6 +244,6 @@
     "confirmButton": "Emeza",
     "approvedStatus": "Wemeje {{name}}",
     "activatedStatus": "{{name}} yemejwe mu muryango",
-    "quorumProgress": "Abemeje: {{approvers}}/2 · amanota {{score}}/5"
+    "approvalWarning": "Kwemeza nabi bigutwara amanota {{points}} y'ubwizerane."
   }
 }

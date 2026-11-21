@@ -158,7 +158,6 @@
     "noMatches": "No matches yet",
     "keepSwiping": "Keep discovering people with matching intentions.",
     "phase1": "Phase 1: Icebreakers",
-    "phase2": "Phase 2: Mutual Prompts",
     "phase3": "Phase 3: Open Chat",
     "timeRemaining": "{{hours}}h {{minutes}}m left",
     "typeMessage": "Type a message...",
@@ -245,6 +244,6 @@
     "confirmButton": "Confirm Approval",
     "approvedStatus": "Approved {{name}}",
     "activatedStatus": "{{name}} activated",
-    "quorumProgress": "Quorum: {{approvers}}/2 approvers · {{score}}/5 pts"
+    "approvalWarning": "A wrong approval costs you {{points}} trust points."
   }
 }

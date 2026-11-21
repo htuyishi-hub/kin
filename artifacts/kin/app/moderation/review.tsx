@@ -29,6 +29,7 @@ import { useTranslation } from "@workspace/i18n";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 const SWIPE_THRESHOLD = 120;
+const APPROVAL_PENALTY_POINTS = 25;
 
 type ModerationCandidate = {
   id: string;
@@ -322,15 +323,6 @@ export default function ModerationReviewScreen() {
               {/* Teaser Overlay: FIRST NAME ONLY */}
               <View style={styles.cardOverlay}>
                 <Text style={styles.candidateName}>{currentCandidate.firstName}</Text>
-                <View style={styles.scorePill}>
-                  <Feather name="shield" size={12} color={Colors.gold} />
-                  <Text style={styles.scorePillText}>
-                    {t("moderation.quorumProgress", {
-                      approvers: currentCandidate.approverCount ?? 0,
-                      score: currentCandidate.approvalScore ?? 0,
-                    })}
-                  </Text>
-                </View>
               </View>
             </Animated.View>
           </GestureDetector>
@@ -376,6 +368,9 @@ export default function ModerationReviewScreen() {
 
             <Text style={styles.modalTitle}>
               {t("moderation.confirmTitle", { name: pendingCandidate?.firstName ?? "" })}
+            </Text>
+            <Text style={styles.modalWarning}>
+              {t("moderation.approvalWarning", { points: APPROVAL_PENALTY_POINTS })}
             </Text>
 
             <View style={styles.modalButtons}>
@@ -531,23 +526,6 @@ const styles = StyleSheet.create({
     fontSize: 30,
     color: Colors.bone,
   },
-  scorePill: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    backgroundColor: Colors.inkRaised,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 10,
-    alignSelf: "flex-start",
-    borderWidth: 1,
-    borderColor: Colors.divider,
-  },
-  scorePillText: {
-    fontFamily: "Inter_600SemiBold",
-    fontSize: 12,
-    color: Colors.gold,
-  },
   stampBadge: {
     position: "absolute",
     top: 40,
@@ -665,6 +643,12 @@ const styles = StyleSheet.create({
     fontFamily: "Fraunces_700Bold",
     fontSize: 20,
     color: Colors.bone,
+    textAlign: "center",
+  },
+  modalWarning: {
+    fontFamily: "Inter_500Medium",
+    fontSize: 13,
+    color: Colors.gold,
     textAlign: "center",
   },
   modalButtons: {
