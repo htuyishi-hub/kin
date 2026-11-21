@@ -186,7 +186,6 @@
     "photos": "PHOTOS",
     "settings": "SETTINGS",
     "inviteLink": "Invite Link",
-    "inviteLinkDesc": "Share your personal link to invite trusted people. They get verified immediately upon joining.",
     "shareInvite": "Share Invite Link",
     "invitedCount": "{{count}} invited",
     "resumeProfile": "Resume profile",

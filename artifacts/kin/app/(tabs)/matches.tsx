@@ -1,5 +1,5 @@
 import { Feather } from "@expo/vector-icons";
-import { useGetIncomingVouches, useGetMatches } from "@workspace/api-client-react";
+import { useGetMatches } from "@workspace/api-client-react";
 import { router } from "expo-router";
 import React from "react";
 import {
@@ -23,13 +23,10 @@ export default function MatchesScreen() {
   const { t } = useTranslation();
 
   const { data: matches = [], isLoading } = useGetMatches({ query: { refetchInterval: 15000 } as any });
-  const { data: incoming = [] } = useGetIncomingVouches({ query: { refetchInterval: 15000 } as any });
 
   const tabBarHeight = Platform.OS === "web" ? 84 : (Platform.OS === "ios" ? 90 : 70);
   const paddingTop = isWeb ? 67 : insets.top + 16;
   const paddingBottom = tabBarHeight + (isWeb ? 0 : insets.bottom);
-
-  const pendingVouches = incoming.filter((v) => v.status === "pending");
 
   if (isLoading) {
     return (
@@ -51,30 +48,6 @@ export default function MatchesScreen() {
         contentContainerStyle={{ paddingBottom: paddingBottom + 16, paddingHorizontal: 16 }}
         showsVerticalScrollIndicator={false}
         scrollEnabled={!!matches.length}
-        ListHeaderComponent={
-          pendingVouches.length > 0 ? (
-            <TouchableOpacity
-              style={[styles.vouchBanner, { backgroundColor: colors.secondary, borderColor: colors.border }]}
-              onPress={() => router.push("/vouches")}
-              activeOpacity={0.85}
-            >
-              <View style={[styles.vouchBadge, { backgroundColor: colors.accent }]}>
-                <Text style={[styles.vouchBadgeText, { color: colors.card }]}>
-                  {pendingVouches.length}
-                </Text>
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={[styles.vouchBannerTitle, { color: colors.foreground }]}>
-                  Vouch request{pendingVouches.length > 1 ? "s" : ""}
-                </Text>
-                <Text style={[styles.vouchBannerSub, { color: colors.mutedForeground }]}>
-                  Someone asked you to vouch for them
-                </Text>
-              </View>
-              <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
-            </TouchableOpacity>
-          ) : null
-        }
         ListEmptyComponent={
           <View style={[styles.empty, { paddingTop: 60 }]}>
             <Feather name="message-circle" size={48} color={colors.muted} />

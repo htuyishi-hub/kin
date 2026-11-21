@@ -179,10 +179,7 @@ export default function ProfileScreen() {
               {t('profile.invitedCount', { count: String((profile as any)?.invite_count ?? profile?.vouchCount ?? 0) })}
             </Text>
           </View>
-          <Text style={{ fontFamily: "Inter_400Regular", fontSize: 13, color: Colors.boneDim, marginVertical: 6, lineHeight: 18 }}>
-            {t('profile.inviteLinkDesc')}
-          </Text>
-          <View style={{ flexDirection: "row", gap: 8, marginTop: 4 }}>
+          <View style={{ flexDirection: "row", gap: 8, marginTop: 10 }}>
             <TouchableOpacity
               style={{
                 flex: 1,

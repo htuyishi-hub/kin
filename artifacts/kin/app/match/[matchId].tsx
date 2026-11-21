@@ -27,12 +27,6 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useColors } from "@/hooks/useColors";
 
 const PHASE_LABELS = ["", "Values", "Vision", "Free"];
-const PHASE_SUBTITLES = [
-  "",
-  "Share what you value in life and relationships.",
-  "Share your hopes for the future.",
-  "The conversation is yours now.",
-];
 
 type MessageItem = {
   id: string;
@@ -218,27 +212,6 @@ export default function MatchScreen() {
           )}
         </TouchableOpacity>
       </View>
-
-      {phase <= 2 && (
-        <View style={[styles.phaseGuide, { backgroundColor: colors.secondary, borderBottomColor: colors.border }]}>
-          <Text style={[styles.phaseGuideText, { color: colors.mutedForeground }]}>
-            {PHASE_SUBTITLES[phase]}
-          </Text>
-        </View>
-      )}
-
-      {messages.length === 0 && !match.firstMessageSent && (
-        <View style={[styles.intro, { backgroundColor: colors.secondary, borderColor: colors.border }]}>
-          <Text style={[styles.introTitle, { color: colors.foreground }]}>
-            You have been introduced
-          </Text>
-          <Text style={[styles.introBody, { color: colors.mutedForeground }]}>
-            {canSendFirst
-              ? "The system has assigned you to send the first message."
-              : "The system has assigned the other person to send the first message. Wait for them."}
-          </Text>
-        </View>
-      )}
 
       <KeyboardAvoidingView
         style={{ flex: 1 }}
