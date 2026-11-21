@@ -171,30 +171,6 @@ export interface AddPhotoRequest {
   isPrimary?: boolean;
 }
 
-export interface PromptDefinition {
-  key: string;
-  promptText: string;
-  /** Kinyarwanda version */
-  promptRw: string;
-  tier?: number | null;
-  intent?: string | null;
-}
-
-export interface MicroPromptAnswer {
-  id: string;
-  promptKey: string;
-  promptText: string;
-  promptRw: string;
-  answer: string;
-  sortOrder: number;
-}
-
-export interface MicroPromptInput {
-  promptKey: string;
-  /** @maxLength 160 */
-  answer: string;
-}
-
 export type MatchCandidatePrimaryIntent = typeof MatchCandidatePrimaryIntent[keyof typeof MatchCandidatePrimaryIntent] | null;
 
 
@@ -221,7 +197,6 @@ export interface MatchCandidate {
   milieuScore: number;
   /** Number of shared vouchers */
   vouchOverlap: number;
-  microPrompts: MicroPromptAnswer[];
   /** Human-readable shared milieu strings */
   milieuCards: string[];
 }
@@ -396,10 +371,6 @@ export type VerifyURRegistration200 = {
 
 export type PauseProfileBody = {
   paused: boolean;
-};
-
-export type SetMyPromptsBody = {
-  answers: MicroPromptInput[];
 };
 
 export type GetMatchQueueParams = {

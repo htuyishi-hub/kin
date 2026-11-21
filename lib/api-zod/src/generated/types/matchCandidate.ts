@@ -6,7 +6,6 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { MatchCandidatePrimaryIntent } from './matchCandidatePrimaryIntent';
-import type { MicroPromptAnswer } from './microPromptAnswer';
 
 export interface MatchCandidate {
   id: string;
@@ -25,7 +24,6 @@ export interface MatchCandidate {
   milieuScore: number;
   /** Number of shared vouchers */
   vouchOverlap: number;
-  microPrompts: MicroPromptAnswer[];
   /** Human-readable shared milieu strings */
   milieuCards: string[];
 }

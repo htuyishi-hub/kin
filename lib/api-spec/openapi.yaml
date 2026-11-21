@@ -16,8 +16,6 @@ tags:
     description: Current user profile management
   - name: photos
     description: Profile photo management
-  - name: prompts
-    description: Micro-prompt definitions and user answers
   - name: matchQueue
     description: Match discovery queue
   - name: interests
@@ -334,68 +332,6 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
-
-  # ── Prompts ─────────────────────────────────────────────────────────────────
-  /prompts:
-    get:
-      operationId: getPrompts
-      tags: [prompts]
-      summary: Get available micro-prompt definitions
-      security:
-        - bearerAuth: []
-      responses:
-        "200":
-          description: Prompt list
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/PromptDefinition"
-
-  /me/prompts:
-    get:
-      operationId: getMyPrompts
-      tags: [prompts]
-      summary: Get own micro-prompt answers
-      security:
-        - bearerAuth: []
-      responses:
-        "200":
-          description: Answers
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/MicroPromptAnswer"
-    put:
-      operationId: setMyPrompts
-      tags: [prompts]
-      summary: Set micro-prompt answers (replaces all existing)
-      security:
-        - bearerAuth: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                answers:
-                  type: array
-                  items:
-                    $ref: "#/components/schemas/MicroPromptInput"
-              required: [answers]
-      responses:
-        "200":
-          description: Updated answers
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/MicroPromptAnswer"
 
   # ── Match Queue ──────────────────────────────────────────────────────────────
   /match-queue:
@@ -935,52 +871,6 @@ components:
           default: false
       required: [base64Data]
 
-    # Prompts
-    PromptDefinition:
-      type: object
-      properties:
-        key:
-          type: string
-        promptText:
-          type: string
-        promptRw:
-          type: string
-          description: Kinyarwanda version
-        tier:
-          type: integer
-          nullable: true
-        intent:
-          type: string
-          nullable: true
-      required: [key, promptText, promptRw]
-
-    MicroPromptAnswer:
-      type: object
-      properties:
-        id:
-          type: string
-        promptKey:
-          type: string
-        promptText:
-          type: string
-        promptRw:
-          type: string
-        answer:
-          type: string
-        sortOrder:
-          type: integer
-      required: [id, promptKey, promptText, promptRw, answer, sortOrder]
-
-    MicroPromptInput:
-      type: object
-      properties:
-        promptKey:
-          type: string
-        answer:
-          type: string
-          maxLength: 160
-      required: [promptKey, answer]
-
     # Match Queue
     MatchCandidate:
       type: object
@@ -1025,10 +915,6 @@ components:
         vouchOverlap:
           type: integer
           description: Number of shared vouchers
-        microPrompts:
-          type: array
-          items:
-            $ref: "#/components/schemas/MicroPromptAnswer"
         milieuCards:
           type: array
           items:
@@ -1040,7 +926,6 @@ components:
         - vouchCount
         - milieuScore
         - vouchOverlap
-        - microPrompts
         - milieuCards
 
     # Interests

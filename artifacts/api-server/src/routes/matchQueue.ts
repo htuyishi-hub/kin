@@ -4,8 +4,6 @@ import {
   db,
   profilesTable,
   profilePhotosTable,
-  microPromptsTable,
-  promptDefinitionsTable,
   interestsTable,
   matchesTable,
   reportsTable,

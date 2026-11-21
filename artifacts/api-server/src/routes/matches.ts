@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { eq, and, or, inArray } from "drizzle-orm";
-import { db, matchesTable, profilesTable, messagesTable, profilePhotosTable, microPromptsTable, promptDefinitionsTable, exitSurveysTable } from "@workspace/db";
+import { db, matchesTable, profilesTable, messagesTable, profilePhotosTable, exitSurveysTable } from "@workspace/db";
 import { requireAuth, type AuthedRequest } from "../middlewares/auth.js";
 
 const router = Router();
@@ -142,19 +142,6 @@ router.get("/matches/:matchId", requireAuth, async (req, res) => {
     .where(and(eq(profilePhotosTable.userId, otherId), eq(profilePhotosTable.isPrimary, true)))
     .limit(1);
 
-  const prompts = await db
-    .select({
-      id: microPromptsTable.id,
-      promptKey: microPromptsTable.promptKey,
-      answer: microPromptsTable.answer,
-      sortOrder: microPromptsTable.sortOrder,
-      promptText: promptDefinitionsTable.promptText,
-      promptRw: promptDefinitionsTable.promptRw,
-    })
-    .from(microPromptsTable)
-    .innerJoin(promptDefinitionsTable, eq(microPromptsTable.promptKey, promptDefinitionsTable.key))
-    .where(eq(microPromptsTable.userId, otherId));
-
   const milieuCards = buildMilieuCards(me[0], other[0]);
 
   const introductionCard = `${other[0].fullName}, meet someone who shares your values.\nLike you, ${other[0].fullName?.split(" ")[0]} has been vouched for by people in their community and is looking for ${match.conversationPhase === 1 ? "a meaningful connection" : "the same things you are"}. ${milieuCards.length > 0 ? milieuCards[0] : "You both value honesty and community trust."}\n\nWe think you two should talk.`;
@@ -178,14 +165,6 @@ router.get("/matches/:matchId", requireAuth, async (req, res) => {
       primaryPhotoPath: photo[0]?.storagePath ?? null,
       milieuScore: 0,
       vouchOverlap: 0,
-      microPrompts: prompts.map((p) => ({
-        id: p.id,
-        promptKey: p.promptKey,
-        promptText: p.promptText,
-        promptRw: p.promptRw,
-        answer: p.answer,
-        sortOrder: p.sortOrder ?? 0,
-      })),
       milieuCards,
     },
     introductionCard,

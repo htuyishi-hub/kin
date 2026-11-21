@@ -268,58 +268,6 @@ export const DeletePhotoResponse = zod.object({
 
 
 /**
- * @summary Get available micro-prompt definitions
- */
-export const GetPromptsResponseItem = zod.object({
-  "key": zod.string(),
-  "promptText": zod.string(),
-  "promptRw": zod.string().describe('Kinyarwanda version'),
-  "tier": zod.number().nullish(),
-  "intent": zod.string().nullish()
-})
-export const GetPromptsResponse = zod.array(GetPromptsResponseItem)
-
-
-/**
- * @summary Get own micro-prompt answers
- */
-export const GetMyPromptsResponseItem = zod.object({
-  "id": zod.string(),
-  "promptKey": zod.string(),
-  "promptText": zod.string(),
-  "promptRw": zod.string(),
-  "answer": zod.string(),
-  "sortOrder": zod.number()
-})
-export const GetMyPromptsResponse = zod.array(GetMyPromptsResponseItem)
-
-
-/**
- * @summary Set micro-prompt answers (replaces all existing)
- */
-export const setMyPromptsBodyAnswersItemAnswerMax = 160;
-
-
-
-export const SetMyPromptsBody = zod.object({
-  "answers": zod.array(zod.object({
-  "promptKey": zod.string(),
-  "answer": zod.string().max(setMyPromptsBodyAnswersItemAnswerMax)
-}))
-})
-
-export const SetMyPromptsResponseItem = zod.object({
-  "id": zod.string(),
-  "promptKey": zod.string(),
-  "promptText": zod.string(),
-  "promptRw": zod.string(),
-  "answer": zod.string(),
-  "sortOrder": zod.number()
-})
-export const SetMyPromptsResponse = zod.array(SetMyPromptsResponseItem)
-
-
-/**
  * @summary Get ranked list of match candidates
  */
 export const getMatchQueueQueryLimitDefault = 20;
@@ -343,14 +291,6 @@ export const GetMatchQueueResponseItem = zod.object({
   "primaryPhotoPath": zod.string().nullish(),
   "milieuScore": zod.number().describe('Shared milieu score for ordering'),
   "vouchOverlap": zod.number().describe('Number of shared vouchers'),
-  "microPrompts": zod.array(zod.object({
-  "id": zod.string(),
-  "promptKey": zod.string(),
-  "promptText": zod.string(),
-  "promptRw": zod.string(),
-  "answer": zod.string(),
-  "sortOrder": zod.number()
-})),
   "milieuCards": zod.array(zod.string()).describe('Human-readable shared milieu strings')
 })
 export const GetMatchQueueResponse = zod.array(GetMatchQueueResponseItem)
@@ -430,14 +370,6 @@ export const GetMatchResponse = zod.object({
   "primaryPhotoPath": zod.string().nullish(),
   "milieuScore": zod.number().describe('Shared milieu score for ordering'),
   "vouchOverlap": zod.number().describe('Number of shared vouchers'),
-  "microPrompts": zod.array(zod.object({
-  "id": zod.string(),
-  "promptKey": zod.string(),
-  "promptText": zod.string(),
-  "promptRw": zod.string(),
-  "answer": zod.string(),
-  "sortOrder": zod.number()
-})),
   "milieuCards": zod.array(zod.string()).describe('Human-readable shared milieu strings')
 }),
   "introductionCard": zod.string().describe('The system-generated introduction text'),
