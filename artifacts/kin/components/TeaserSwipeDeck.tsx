@@ -39,6 +39,8 @@ export type TeaserCandidate = {
   trustScore?: number;
   approvedBy?: { fullName: string; firstName: string; isVerified: boolean } | null;
   vouchedBy?: { fullName: string; firstName: string; isVerified: boolean } | null;
+  bio?: string | null;
+  tags?: string[];
 };
 
 type ReactionType = "campus" | "coffee" | "serious";
@@ -299,11 +301,25 @@ export function TeaserSwipeDeck({
             <Text style={styles.softPassBadgeText}>14-DAY SNOOZE</Text>
           </Animated.View>
 
-          {/* TEASER DATA OVERLAY: FIRST NAME ONLY (Demographics strictly hidden) */}
+          {/* TEASER DATA OVERLAY */}
           <View style={styles.cardOverlay}>
             <View style={styles.nameRow}>
               <Text style={styles.candidateName}>{currentCandidate.firstName}</Text>
             </View>
+            {currentCandidate.tags && currentCandidate.tags.length > 0 && (
+              <View style={styles.tagsRow}>
+                {currentCandidate.tags.slice(0, 3).map((tag) => (
+                  <View key={tag} style={styles.tagChip}>
+                    <Text style={styles.tagChipText}>{t(`tags.${tag}`, { defaultValue: tag })}</Text>
+                  </View>
+                ))}
+              </View>
+            )}
+            {!!currentCandidate.bio && (
+              <Text style={styles.bioText} numberOfLines={2}>
+                {currentCandidate.bio}
+              </Text>
+            )}
           </View>
         </Animated.View>
       </GestureDetector>
@@ -621,6 +637,31 @@ const styles = StyleSheet.create({
     fontFamily: "Fraunces_700Bold",
     fontSize: 30,
     color: Colors.bone,
+  },
+  tagsRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 6,
+    marginTop: 4,
+  },
+  tagChip: {
+    backgroundColor: "rgba(255, 255, 255, 0.08)",
+    borderColor: "rgba(255, 255, 255, 0.15)",
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+  },
+  tagChipText: {
+    fontSize: 11,
+    color: Colors.boneDim,
+    fontWeight: "500",
+  },
+  bioText: {
+    fontSize: 13,
+    color: Colors.boneDim,
+    lineHeight: 18,
+    marginTop: 2,
   },
   approvedPill: {
     flexDirection: "row",

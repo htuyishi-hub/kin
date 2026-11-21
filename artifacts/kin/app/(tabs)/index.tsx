@@ -60,6 +60,8 @@ export default function DiscoverScreen() {
     incoming_reaction: item.incoming_reaction ?? null,
     intent_class: item.intent_class ?? item.primaryIntent,
     trustScore: item.trustScore ?? 1,
+    bio: item.bio ?? null,
+    tags: item.tags ?? [],
   }));
 
   const goldenBidsRemaining = (myProfile as any)?.goldenBidsRemaining ?? (myProfile as any)?.golden_bids_remaining ?? 3;

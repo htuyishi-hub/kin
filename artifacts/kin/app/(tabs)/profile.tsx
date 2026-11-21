@@ -2,9 +2,10 @@ import { Feather } from "@expo/vector-icons";
 import {
   useGetMe, useAddPhoto,
   usePauseProfile,
+  useUpdateProfileExtras,
 } from "@workspace/api-client-react";
 import { router } from "expo-router";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   ActivityIndicator,
   Platform,
@@ -12,6 +13,7 @@ import {
   Share,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
@@ -23,6 +25,13 @@ import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/contexts/AuthContext";
 import { Colors } from "@/constants/colors";
 import { AvatarUpload } from "@/components/AvatarUpload";
+
+const ALL_TAGS = [
+  "faith", "family", "career", "education", "business",
+  "travel", "music", "football", "humor", "kindness",
+  "honesty", "ambition", "nature", "cooking", "reading",
+  "art", "fitness", "technology", "community", "culture",
+];
 import { PhotoGrid, PhotoSlot } from "@/components/PhotoGrid";
 
 const TRUST_LABELS: [number, string][] = [
@@ -103,6 +112,82 @@ export default function ProfileScreen() {
     }
   };
 
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [bioText, setBioText] = useState("");
+  const [isExtrasInitialized, setIsExtrasInitialized] = useState(false);
+  const [extrasError, setExtrasError] = useState<string | null>(null);
+  const [extrasSuccess, setExtrasSuccess] = useState(false);
+
+  useEffect(() => {
+    if (profile && !isExtrasInitialized) {
+      if ((profile as any).tags) setSelectedTags((profile as any).tags);
+      if ((profile as any).bio) setBioText((profile as any).bio);
+      setIsExtrasInitialized(true);
+    }
+  }, [profile, isExtrasInitialized]);
+
+  const { mutate: updateExtras, isPending: isUpdatingExtras } = useUpdateProfileExtras({
+    mutation: {
+      onSuccess: () => {
+        setExtrasSuccess(true);
+        setExtrasError(null);
+        refetch();
+        setTimeout(() => setExtrasSuccess(false), 2000);
+      },
+      onError: (err: any) => {
+        setExtrasSuccess(false);
+        const errCode = err?.code || err?.response?.data?.code || err?.data?.code;
+        if (errCode === "BIO_CONTACT_INFO") {
+          setExtrasError(t("errors.bioContactInfo"));
+        } else if (errCode === "TOO_MANY_EDITS") {
+          setExtrasError(t("errors.tooManyEdits"));
+        } else if (errCode === "TAGS_LIMIT_EXCEEDED") {
+          setExtrasError(t("errors.tagsLimitExceeded"));
+        } else {
+          setExtrasError(t("errors.generic"));
+        }
+      },
+    },
+  });
+
+  const toggleTag = (tag: string) => {
+    setExtrasError(null);
+    setExtrasSuccess(false);
+    if (selectedTags.includes(tag)) {
+      setSelectedTags((prev) => prev.filter((t) => t !== tag));
+    } else {
+      if (selectedTags.length >= 5) {
+        setExtrasError(t("errors.tagsLimitExceeded"));
+        return;
+      }
+      setSelectedTags((prev) => [...prev, tag]);
+    }
+  };
+
+  const handleSaveExtras = () => {
+    setExtrasError(null);
+    setExtrasSuccess(false);
+    updateExtras({
+      data: {
+        bio: bioText.trim() || null,
+        tags: selectedTags,
+      },
+    });
+  };
+
+  const handleClearExtras = () => {
+    setExtrasError(null);
+    setExtrasSuccess(false);
+    setBioText("");
+    setSelectedTags([]);
+    updateExtras({
+      data: {
+        bio: null,
+        tags: [],
+      },
+    });
+  };
+
   const isURVerified = Boolean((profile as any)?.institutionVerified);
   const vouchScore = Math.min(100, (profile?.vouchCount ?? 0) * 30);
   const isPaused = profile?.profilePaused ?? false;
@@ -169,6 +254,85 @@ export default function ProfileScreen() {
         <View style={styles.section}>
           <Text style={styles.sectionLabel}>{t('profile.photos')}</Text>
           <PhotoGrid slots={photoSlots} onChange={handlePhotoGridChange} />
+        </View>
+
+        {/* Tags */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeaderRow}>
+            <Text style={styles.sectionLabel}>{t('profile.tagsTitle')}</Text>
+            <Text style={styles.sectionCounter}>{selectedTags.length}/5</Text>
+          </View>
+          <View style={styles.tagChipsContainer}>
+            {ALL_TAGS.map((tag) => {
+              const isSelected = selectedTags.includes(tag);
+              return (
+                <TouchableOpacity
+                  key={tag}
+                  style={[styles.tagChipSelectable, isSelected && styles.tagChipSelected]}
+                  onPress={() => toggleTag(tag)}
+                  activeOpacity={0.7}
+                >
+                  <Text style={[styles.tagChipSelectableText, isSelected && styles.tagChipSelectedText]}>
+                    {t(`tags.${tag}`, { defaultValue: tag })}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </View>
+
+        {/* Bio */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeaderRow}>
+            <Text style={styles.sectionLabel}>{t('profile.bioTitle')}</Text>
+            <Text style={styles.sectionCounter}>{bioText.length}/140</Text>
+          </View>
+          <TextInput
+            style={styles.bioInput}
+            value={bioText}
+            onChangeText={(text) => {
+              setBioText(text);
+              setExtrasError(null);
+              setExtrasSuccess(false);
+            }}
+            placeholder={t('profile.bioPlaceholder')}
+            placeholderTextColor={Colors.boneDim}
+            maxLength={140}
+            multiline
+            numberOfLines={3}
+          />
+
+          {extrasError && (
+            <Text style={styles.extrasErrorText}>{extrasError}</Text>
+          )}
+
+          {extrasSuccess && (
+            <Text style={styles.extrasSuccessText}>{t('profile.saved')}</Text>
+          )}
+
+          <View style={styles.extrasButtonsRow}>
+            <TouchableOpacity
+              style={[styles.saveExtrasBtn, isUpdatingExtras && { opacity: 0.6 }]}
+              onPress={handleSaveExtras}
+              disabled={isUpdatingExtras}
+              activeOpacity={0.8}
+            >
+              {isUpdatingExtras ? (
+                <ActivityIndicator size="small" color={Colors.bone} />
+              ) : (
+                <Text style={styles.saveExtrasBtnText}>{t('common.save')}</Text>
+              )}
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.clearExtrasBtn, isUpdatingExtras && { opacity: 0.6 }]}
+              onPress={handleClearExtras}
+              disabled={isUpdatingExtras}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.clearExtrasBtnText}>{t('profile.clearExtras')}</Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* Invite link card */}
@@ -482,5 +646,95 @@ const styles = StyleSheet.create({
   },
   langToggleTextActive: {
     color:      Colors.bone,
+  },
+  sectionCounter: {
+    fontFamily: "Inter_500Medium",
+    fontSize: 12,
+    color: Colors.boneDim,
+    marginRight: 4,
+  },
+  tagChipsContainer: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+  tagChipSelectable: {
+    backgroundColor: Colors.ink,
+    borderColor: Colors.divider,
+    borderWidth: 1,
+    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+  },
+  tagChipSelected: {
+    backgroundColor: Colors.trust,
+    borderColor: Colors.trust,
+  },
+  tagChipSelectableText: {
+    fontFamily: "Inter_500Medium",
+    fontSize: 13,
+    color: Colors.boneDim,
+  },
+  tagChipSelectedText: {
+    color: Colors.bone,
+    fontFamily: "Inter_600SemiBold",
+  },
+  bioInput: {
+    backgroundColor: Colors.ink,
+    borderColor: Colors.divider,
+    borderWidth: 1,
+    borderRadius: 14,
+    padding: 12,
+    fontFamily: "Inter_400Regular",
+    fontSize: 14,
+    color: Colors.bone,
+    minHeight: 70,
+    textAlignVertical: "top",
+  },
+  extrasErrorText: {
+    fontFamily: "Inter_500Medium",
+    fontSize: 12,
+    color: Colors.danger,
+    marginTop: 4,
+    marginLeft: 4,
+  },
+  extrasSuccessText: {
+    fontFamily: "Inter_500Medium",
+    fontSize: 12,
+    color: Colors.trust,
+    marginTop: 4,
+    marginLeft: 4,
+  },
+  extrasButtonsRow: {
+    flexDirection: "row",
+    gap: 10,
+    marginTop: 6,
+  },
+  saveExtrasBtn: {
+    flex: 1,
+    backgroundColor: Colors.trust,
+    borderRadius: 12,
+    paddingVertical: 10,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  saveExtrasBtnText: {
+    fontFamily: "Inter_600SemiBold",
+    fontSize: 14,
+    color: Colors.bone,
+  },
+  clearExtrasBtn: {
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: Colors.divider,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  clearExtrasBtnText: {
+    fontFamily: "Inter_500Medium",
+    fontSize: 13,
+    color: Colors.boneDim,
   },
 });

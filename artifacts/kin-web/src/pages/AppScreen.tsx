@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useLocation } from 'wouter';
 import {
   Flame,
@@ -29,7 +29,16 @@ interface Candidate {
   intent: string;
   trustScore: number;
   photoUrl: string;
+  bio?: string | null;
+  tags?: string[];
 }
+
+const ALL_TAGS = [
+  'faith', 'family', 'career', 'education', 'business',
+  'travel', 'music', 'football', 'humor', 'kindness',
+  'honesty', 'ambition', 'nature', 'cooking', 'reading',
+  'art', 'fitness', 'technology', 'community', 'culture',
+];
 
 const SAMPLE_PROFILES: Candidate[] = [
   {
@@ -42,6 +51,8 @@ const SAMPLE_PROFILES: Candidate[] = [
     intent: 'Serious Marriage',
     trustScore: 85,
     photoUrl: '/images/couple1.jpg',
+    tags: ['technology', 'faith', 'reading'],
+    bio: 'Software engineer building tools for community growth.',
   },
   {
     id: '2',
@@ -53,6 +64,8 @@ const SAMPLE_PROFILES: Candidate[] = [
     intent: 'Long-term Relationship',
     trustScore: 92,
     photoUrl: '/images/couple2.jpg',
+    tags: ['education', 'fitness', 'music'],
+    bio: 'Medical student passionate about healthcare and running.',
   },
   {
     id: '3',
@@ -64,6 +77,8 @@ const SAMPLE_PROFILES: Candidate[] = [
     intent: 'Serious Marriage',
     trustScore: 78,
     photoUrl: '/images/couple3.jpg',
+    tags: ['art', 'travel', 'cooking'],
+    bio: 'Architect designing sustainable spaces across Rwanda.',
   },
 ];
 
@@ -71,7 +86,7 @@ import { KinnLogo } from '@/components/KinnLogo';
 
 export default function AppScreen() {
   const [, setLocation] = useLocation();
-  const { user, signOut } = useAuth();
+  const { user, token, signOut } = useAuth();
   const { t } = useTranslation();
   const [currentLang, setCurrentLang] = useState<SupportedLanguage>(getCurrentLanguage());
 
@@ -79,6 +94,107 @@ export default function AppScreen() {
   const [profileIndex, setProfileIndex] = useState(0);
   const [goldenBids, setGoldenBids] = useState(3);
   const [matchAlert, setMatchAlert] = useState<string | null>(null);
+
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [bioText, setBioText] = useState('');
+  const [isSavingExtras, setIsSavingExtras] = useState(false);
+  const [extrasError, setExtrasError] = useState<string | null>(null);
+  const [extrasSuccess, setExtrasSuccess] = useState(false);
+
+  useEffect(() => {
+    if (!token) return;
+    fetch('/api/me', {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data) {
+          if (Array.isArray(data.tags)) setSelectedTags(data.tags);
+          if (typeof data.bio === 'string') setBioText(data.bio);
+        }
+      })
+      .catch(() => {});
+  }, [token]);
+
+  function toggleTag(tag: string) {
+    setExtrasError(null);
+    setExtrasSuccess(false);
+    if (selectedTags.includes(tag)) {
+      setSelectedTags((prev) => prev.filter((t) => t !== tag));
+    } else {
+      if (selectedTags.length >= 5) {
+        setExtrasError(t('errors.tagsLimitExceeded'));
+        return;
+      }
+      setSelectedTags((prev) => [...prev, tag]);
+    }
+  }
+
+  async function handleSaveExtras() {
+    setExtrasError(null);
+    setExtrasSuccess(false);
+    setIsSavingExtras(true);
+    try {
+      const res = await fetch('/api/me/profile-extras', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({
+          bio: bioText.trim() || null,
+          tags: selectedTags,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        if (data.code === 'BIO_CONTACT_INFO') {
+          setExtrasError(t('errors.bioContactInfo'));
+        } else if (data.code === 'TOO_MANY_EDITS') {
+          setExtrasError(t('errors.tooManyEdits'));
+        } else if (data.code === 'TAGS_LIMIT_EXCEEDED') {
+          setExtrasError(t('errors.tagsLimitExceeded'));
+        } else {
+          setExtrasError(t('errors.generic'));
+        }
+      } else {
+        setExtrasSuccess(true);
+        setTimeout(() => setExtrasSuccess(false), 2000);
+      }
+    } catch {
+      setExtrasError(t('errors.generic'));
+    } finally {
+      setIsSavingExtras(false);
+    }
+  }
+
+  async function handleClearExtras() {
+    setExtrasError(null);
+    setExtrasSuccess(false);
+    setBioText('');
+    setSelectedTags([]);
+    setIsSavingExtras(true);
+    try {
+      await fetch('/api/me/profile-extras', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({
+          bio: null,
+          tags: [],
+        }),
+      });
+      setExtrasSuccess(true);
+      setTimeout(() => setExtrasSuccess(false), 2000);
+    } catch {
+      setExtrasError(t('errors.generic'));
+    } finally {
+      setIsSavingExtras(false);
+    }
+  }
 
   const currentProfile = SAMPLE_PROFILES[profileIndex % SAMPLE_PROFILES.length];
 
@@ -193,6 +309,23 @@ export default function AppScreen() {
                   <p className="text-xs text-[#F0EDE6]/90 font-medium">
                     {currentProfile.occupation}
                   </p>
+                  {currentProfile.tags && currentProfile.tags.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5 mt-1">
+                      {currentProfile.tags.slice(0, 3).map((tag) => (
+                        <span
+                          key={tag}
+                          className="bg-white/10 text-white/80 text-[10px] font-medium px-2 py-0.5 rounded-full border border-white/15"
+                        >
+                          {t(`tags.${tag}`, { defaultValue: tag })}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                  {currentProfile.bio && (
+                    <p className="text-xs text-[#A8A49E] line-clamp-2 mt-0.5">
+                      {currentProfile.bio}
+                    </p>
+                  )}
                 </div>
               </div>
             </div>
@@ -334,6 +467,80 @@ export default function AppScreen() {
                       {t('profile.urBadge')}
                     </span>
                   </div>
+                </div>
+              </div>
+
+              {/* Tags Section */}
+              <div className="p-4 bg-[#1A1A2E] border border-[#21262D] rounded-2xl flex flex-col gap-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-semibold text-[#F0EDE6]">{t('profile.tagsTitle')}</span>
+                  <span className="text-xs text-[#A8A49E]">{selectedTags.length}/5</span>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {ALL_TAGS.map((tag) => {
+                    const isSelected = selectedTags.includes(tag);
+                    return (
+                      <button
+                        key={tag}
+                        type="button"
+                        onClick={() => toggleTag(tag)}
+                        className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors cursor-pointer ${
+                          isSelected
+                            ? 'bg-[#2563EB] border-[#2563EB] text-white'
+                            : 'bg-[#0D1117] border-[#21262D] text-[#A8A49E] hover:text-[#F0EDE6]'
+                        }`}
+                      >
+                        {t(`tags.${tag}`, { defaultValue: tag })}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Bio Section */}
+              <div className="p-4 bg-[#1A1A2E] border border-[#21262D] rounded-2xl flex flex-col gap-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-semibold text-[#F0EDE6]">{t('profile.bioTitle')}</span>
+                  <span className="text-xs text-[#A8A49E]">{bioText.length}/140</span>
+                </div>
+                <textarea
+                  value={bioText}
+                  onChange={(e) => {
+                    setBioText(e.target.value);
+                    setExtrasError(null);
+                    setExtrasSuccess(false);
+                  }}
+                  placeholder={t('profile.bioPlaceholder')}
+                  maxLength={140}
+                  rows={3}
+                  className="w-full bg-[#0D1117] border border-[#21262D] rounded-xl p-3 text-xs text-[#F0EDE6] placeholder-[#8B949E] resize-none focus:outline-none focus:border-[#2563EB]"
+                />
+
+                {extrasError && (
+                  <p className="text-xs text-[#FF6B6B]">{extrasError}</p>
+                )}
+
+                {extrasSuccess && (
+                  <p className="text-xs text-[#3FB950]">{t('profile.saved')}</p>
+                )}
+
+                <div className="flex items-center gap-2 mt-1">
+                  <button
+                    type="button"
+                    onClick={handleSaveExtras}
+                    disabled={isSavingExtras}
+                    className="flex-1 py-2 px-4 bg-[#2563EB] hover:bg-[#1D4ED8] disabled:opacity-50 text-white rounded-xl text-xs font-semibold transition-colors cursor-pointer"
+                  >
+                    {t('common.save')}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleClearExtras}
+                    disabled={isSavingExtras}
+                    className="py-2 px-4 bg-[#0D1117] border border-[#21262D] text-[#A8A49E] hover:text-[#F0EDE6] rounded-xl text-xs font-semibold transition-colors cursor-pointer"
+                  >
+                    {t('profile.clearExtras')}
+                  </button>
                 </div>
               </div>
 
