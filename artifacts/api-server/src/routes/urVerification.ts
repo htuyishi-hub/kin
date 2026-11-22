@@ -130,6 +130,7 @@ export async function verifyURRegistration(req: Request, res: Response) {
           registrationNumber: reg,
           institutionVerified: true,
           isVerified: true,
+          accountStatus: "active",
           verificationMethod: "ur_registry",
         } as any)
         .where(eq(profilesTable.id, profileId));

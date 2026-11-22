@@ -162,7 +162,7 @@ router.post("/auth/verify-otp", async (req, res) => {
       .values({
         phoneNumber,
         phoneVerified: true,
-        inviteCode: myInviteCode,
+        inviteCode: isVerified ? myInviteCode : null,
         invitedByProfile,
         isVerified,
         verificationMethod,
@@ -211,7 +211,7 @@ router.post("/auth/verify-otp", async (req, res) => {
       phoneVerified: true,
       lastActive: new Date(),
     };
-    if (!profile[0]!.inviteCode) {
+    if (!profile[0]!.inviteCode && profile[0]!.isVerified && profile[0]!.accountStatus === "active") {
       updateValues["inviteCode"] = generateInviteCode();
     }
     await db

@@ -18,6 +18,12 @@ function mapProfile(p: typeof profilesTable.$inferSelect) {
     (p.vouchCount ?? 0) >= 1
   );
 
+  const isVerifiedActive =
+    isVerified &&
+    (p.accountStatus === "active" || (!p.accountStatus && isVerified)) &&
+    p.profileActive !== false &&
+    p.profilePaused !== true;
+
   return {
     id: p.id,
     phoneNumber: p.phoneNumber,
@@ -32,7 +38,7 @@ function mapProfile(p: typeof profilesTable.$inferSelect) {
     district: p.district ?? null,
     primaryIntent: p.primaryIntent ?? null,
     vouchCount: p.vouchCount ?? 0,
-    inviteCode: p.inviteCode ?? null,
+    inviteCode: isVerifiedActive ? p.inviteCode ?? null : null,
     inviteCount: p.inviteCount ?? 0,
     invitedByProfile: p.invitedByProfile ?? null,
     isVerified,
@@ -162,13 +168,23 @@ router.get("/me", requireAuth, async (req, res) => {
     : null;
 
   const accountStatus = p.accountStatus ?? (isVerified || earlyAccess ? "active" : "waitlisted");
+  const isVerifiedActive =
+    isVerified &&
+    accountStatus === "active" &&
+    p.profileActive !== false &&
+    p.profilePaused !== true;
+
+  const inviteCode = isVerifiedActive ? p.inviteCode ?? null : null;
+  const inviteLink = isVerifiedActive && inviteCode ? `${baseUrl}/invite/${inviteCode}` : null;
 
   res.json({
     ...mapProfile(p),
     account_status: accountStatus,
     accountStatus: accountStatus,
-    invite_code: p.inviteCode,
-    invite_link: `${baseUrl}/invite/${p.inviteCode}`,
+    invite_code: inviteCode,
+    invite_link: inviteLink,
+    inviteCode: inviteCode,
+    inviteLink: inviteLink,
     invite_count: p.inviteCount ?? 0,
     is_verified: isVerified,
     institution_verified: p?.institutionVerified ?? false,

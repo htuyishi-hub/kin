@@ -16,6 +16,22 @@ router.get("/invites/my-code", requireAuth, async (req, res) => {
     return;
   }
 
+  const isVerifiedActive =
+    profile[0].isVerified === true &&
+    profile[0].accountStatus === "active" &&
+    profile[0].profileActive !== false &&
+    profile[0].profilePaused !== true;
+
+  if (!isVerifiedActive) {
+    res.json({
+      inviteCode: null,
+      inviteLink: null,
+      inviteCount: 0,
+      invitedMembers: [],
+    });
+    return;
+  }
+
   let inviteCode = profile[0].inviteCode;
   if (!inviteCode) {
     inviteCode = generateInviteCode();
@@ -81,6 +97,10 @@ router.get("/invites/validate/:code", async (req, res) => {
       id: profilesTable.id,
       fullName: profilesTable.fullName,
       campusName: profilesTable.campusName,
+      isVerified: profilesTable.isVerified,
+      accountStatus: profilesTable.accountStatus,
+      profileActive: profilesTable.profileActive,
+      profilePaused: profilesTable.profilePaused,
     })
     .from(profilesTable)
     .where(eq(profilesTable.inviteCode, normalized))
@@ -88,6 +108,20 @@ router.get("/invites/validate/:code", async (req, res) => {
 
   if (!inviter[0]) {
     res.status(404).json({ valid: false, code: "INVITE_INVALID", message: "Invalid or expired invite code" });
+    return;
+  }
+
+  if (
+    inviter[0].isVerified !== true ||
+    inviter[0].accountStatus !== "active" ||
+    inviter[0].profileActive === false ||
+    inviter[0].profilePaused === true
+  ) {
+    res.status(400).json({
+      valid: false,
+      code: "INVITE_OWNER_NOT_ACTIVE",
+      message: "This invite code is not currently active.",
+    });
     return;
   }
 
@@ -118,15 +152,8 @@ router.post("/invites/claim", requireAuth, async (req, res) => {
   const userId = (req as AuthedRequest).userId;
   const { code } = req.body as { code?: string };
 
-  // Rate-limit: 10 per hour per user and per IP
-  const clientIp =
-    (typeof req.headers["x-forwarded-for"] === "string"
-      ? req.headers["x-forwarded-for"].split(",")[0]?.trim()
-      : Array.isArray(req.headers["x-forwarded-for"])
-      ? req.headers["x-forwarded-for"][0]?.trim()
-      : req.ip) ||
-    req.socket?.remoteAddress ||
-    "unknown";
+  // Rate-limit: 10 per hour per user and per IP (uses req.ip with trust proxy support)
+  const clientIp = req.ip || req.socket?.remoteAddress || "unknown";
 
   const userAllowed = checkAndIncrementInviteRateLimit(`user:${userId}`);
   const ipAllowed = checkAndIncrementInviteRateLimit(`ip:${clientIp}`);
@@ -195,24 +222,61 @@ router.post("/invites/claim", requireAuth, async (req, res) => {
   try {
     // Atomic update within transaction
     await db.transaction(async (tx) => {
-      // Re-verify limit inside transaction to prevent race conditions
+      // 1. Verify inviter is active, verified, not banned, and not paused inside the same transaction
+      const [inviterRecord] = await tx
+        .select()
+        .from(profilesTable)
+        .where(eq(profilesTable.id, inviter[0]!.id))
+        .limit(1);
+
+      if (
+        !inviterRecord ||
+        inviterRecord.isVerified !== true ||
+        inviterRecord.accountStatus !== "active" ||
+        inviterRecord.profileActive === false ||
+        inviterRecord.profilePaused === true
+      ) {
+        throw new Error("INVITER_NOT_ACTIVE");
+      }
+
+      // 2. Mutual claim / invite loop detection (check if inviter's ancestor chain contains userId)
+      let currInviterId: string | null = inviterRecord.invitedByProfile;
+      let depth = 0;
+      while (currInviterId && depth < 10) {
+        if (currInviterId === userId) {
+          throw new Error("MUTUAL_INVITE_LOOP");
+        }
+        const [parent] = await tx
+          .select({ invitedByProfile: profilesTable.invitedByProfile })
+          .from(profilesTable)
+          .where(eq(profilesTable.id, currInviterId))
+          .limit(1);
+        currInviterId = parent?.invitedByProfile ?? null;
+        depth++;
+      }
+
+      // 3. Re-verify claim count limit inside transaction
       const [txClaimCount] = await tx
         .select({ count: sql<number>`count(*)` })
         .from(invitesTable)
-        .where(and(eq(invitesTable.inviterId, inviter[0]!.id), eq(invitesTable.status, "accepted")));
+        .where(and(eq(invitesTable.inviterId, inviterRecord.id), eq(invitesTable.status, "accepted")));
 
       if (Number(txClaimCount?.count ?? 0) >= maxClaims) {
         throw new Error("MAX_CLAIMS_REACHED");
       }
 
+      // 4. Assign an invite code upon verification if user doesn't already have one
+      const newInviteCode = me[0]!.inviteCode ?? generateInviteCode();
+
       // Update user profile to mark verified and active
       await tx
         .update(profilesTable)
         .set({
-          invitedByProfile: inviter[0]!.id,
+          invitedByProfile: inviterRecord.id,
           isVerified: true,
           accountStatus: "active",
           verificationMethod: "invite",
+          inviteCode: newInviteCode,
           trustScore: Math.min(100, (me[0]!.trustScore ?? 50) + 15),
         } as any)
         .where(eq(profilesTable.id, userId));
@@ -222,13 +286,13 @@ router.post("/invites/claim", requireAuth, async (req, res) => {
         .update(profilesTable)
         .set({
           inviteCount: sql`${profilesTable.inviteCount} + 1`,
-          trustScore: Math.min(100, (inviter[0]!.trustScore ?? 50) + 10),
+          trustScore: Math.min(100, (inviterRecord.trustScore ?? 50) + 10),
         } as any)
-        .where(eq(profilesTable.id, inviter[0]!.id));
+        .where(eq(profilesTable.id, inviterRecord.id));
 
       // Record in invites table
       await tx.insert(invitesTable).values({
-        inviterId: inviter[0]!.id,
+        inviterId: inviterRecord.id,
         invitedUserId: userId,
         inviteCode: normalized,
         status: "accepted",
@@ -241,10 +305,10 @@ router.post("/invites/claim", requireAuth, async (req, res) => {
           userId,
           eventType: "invited_by_member",
           delta: 15 as any,
-          sourceId: inviter[0]!.id,
+          sourceId: inviterRecord.id,
         },
         {
-          userId: inviter[0]!.id,
+          userId: inviterRecord.id,
           eventType: "successful_invite",
           delta: 10 as any,
           sourceId: userId,
@@ -252,6 +316,22 @@ router.post("/invites/claim", requireAuth, async (req, res) => {
       ]);
     });
   } catch (err: any) {
+    if (err?.message === "INVITER_NOT_ACTIVE") {
+      res.status(400).json({
+        error: "invalid_inviter",
+        code: "INVITE_OWNER_NOT_ACTIVE",
+        message: "This invite code is not currently active.",
+      });
+      return;
+    }
+    if (err?.message === "MUTUAL_INVITE_LOOP") {
+      res.status(400).json({
+        error: "mutual_loop",
+        code: "INVITE_MUTUAL_LOOP",
+        message: "Mutual invite loops are not allowed.",
+      });
+      return;
+    }
     if (err?.message === "MAX_CLAIMS_REACHED") {
       res.status(400).json({
         error: "limit_reached",
