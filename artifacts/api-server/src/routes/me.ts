@@ -2,6 +2,7 @@ import { Router } from "express";
 import { eq, and, sql } from "drizzle-orm";
 import { db, profilesTable, vouchesTable } from "@workspace/db";
 import { requireAuth, type AuthedRequest } from "../middlewares/auth.js";
+import { getStorageAdmin } from "../lib/storage.js";
 import type { Request } from "express";
 
 import { generateInviteCode } from "../lib/inviteCode.js";
@@ -662,6 +663,23 @@ router.delete("/me/voice-intro", requireAuth, async (req, res) => {
   const userId = (req as AuthedRequest).userId;
 
   try {
+    const [existing] = await db
+      .select({ voiceIntroPath: profilesTable.voiceIntroPath })
+      .from(profilesTable)
+      .where(eq(profilesTable.id, userId))
+      .limit(1);
+
+    if (existing?.voiceIntroPath) {
+      try {
+        const admin = getStorageAdmin();
+        if (admin) {
+          await admin.storage.from("voice-intros").remove([existing.voiceIntroPath]);
+        }
+      } catch (err) {
+        console.warn("[DELETE /me/voice-intro] storage removal failed:", err);
+      }
+    }
+
     const [updated] = await db
       .update(profilesTable)
       .set({

@@ -2,6 +2,7 @@ import { Router } from "express";
 import { eq, and } from "drizzle-orm";
 import { db, profilePhotosTable } from "@workspace/db";
 import { requireAuth, type AuthedRequest } from "../middlewares/auth.js";
+import { getStorageAdmin } from "../lib/storage.js";
 
 const router = Router();
 
@@ -99,6 +100,18 @@ router.delete("/me/photos/:photoId", requireAuth, async (req, res) => {
     res.status(404).json({ error: "not_found", message: "Photo not found" });
     return;
   }
+
+  if (deleted[0]?.storagePath) {
+    try {
+      const admin = getStorageAdmin();
+      if (admin) {
+        await admin.storage.from("profile-photos").remove([deleted[0].storagePath]);
+      }
+    } catch (err) {
+      console.warn("[DELETE /me/photos] storage removal failed:", err);
+    }
+  }
+
   res.json({ message: "Photo deleted" });
 });
 
