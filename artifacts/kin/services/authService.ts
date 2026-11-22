@@ -175,6 +175,133 @@ export async function signInWithGoogle(): Promise<AuthResult> {
 }
 
 /**
+ * Sign up a new user with Email and Password.
+ * Since auto-confirm is enabled, session and user are returned immediately.
+ */
+export async function signUpWithPassword(
+  email: string,
+  password: string,
+  role?: string
+): Promise<AuthResult> {
+  const normalized = email.trim().toLowerCase();
+
+  if (!isValidEmail(normalized)) {
+    return {
+      success: false,
+      error: 'Invalid email format',
+    };
+  }
+
+  if (!password || password.length < 6) {
+    return {
+      success: false,
+      error: 'Password must be at least 6 characters',
+    };
+  }
+
+  try {
+    const lang = getCurrentLanguage();
+    const { data, error } = await supabase.auth.signUp({
+      email: normalized,
+      password,
+      options: {
+        data: {
+          lang,
+          role: role || 'student',
+        },
+      },
+    });
+
+    if (error) {
+      return {
+        success: false,
+        error: error.message,
+      };
+    }
+
+    if (data.user) {
+      try {
+        await supabase.from('profiles').upsert(
+          {
+            id: data.user.id,
+            language: lang,
+          },
+          { onConflict: 'id' }
+        );
+      } catch {
+        // non-fatal
+      }
+    }
+
+    return {
+      success: true,
+      user: data.user,
+      session: data.session,
+    };
+  } catch (err: any) {
+    return {
+      success: false,
+      error: err?.message || 'Failed to sign up.',
+    };
+  }
+}
+
+/**
+ * Sign in an existing user with Email and Password.
+ */
+export async function signInWithPassword(
+  email: string,
+  password: string
+): Promise<AuthResult> {
+  const normalized = email.trim().toLowerCase();
+
+  if (!isValidEmail(normalized)) {
+    return {
+      success: false,
+      error: 'Invalid email format',
+    };
+  }
+
+  if (!password) {
+    return {
+      success: false,
+      error: 'Enter your password',
+    };
+  }
+
+  try {
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email: normalized,
+      password,
+    });
+
+    if (error) {
+      const msg = error.message?.toLowerCase() || '';
+      const isInvalid =
+        msg.includes('invalid login credentials') ||
+        msg.includes('invalid_grant') ||
+        error.status === 400;
+
+      return {
+        success: false,
+        error: isInvalid ? 'Invalid login credentials' : error.message,
+      };
+    }
+
+    return {
+      success: true,
+      user: data.user,
+      session: data.session,
+    };
+  } catch (err: any) {
+    return {
+      success: false,
+      error: err?.message || 'Failed to sign in.',
+    };
+  }
+}
+
+/**
  * Task 2.1: Send 6-digit OTP for new Account Creation (shouldCreateUser: true).
  */
 export async function sendOtpForSignUp(email: string): Promise<SendOtpResult> {
