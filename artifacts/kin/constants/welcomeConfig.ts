@@ -11,7 +11,7 @@ export const WELCOME_CONFIG = {
   },
   shadow: {
     scale:             1.0,
-    groundYRatio:      0.72,
+    groundYRatio:      0.65,
     entryXRatioA:      0.35,
     entryXRatioB:      0.65,
     blurOuter:         22,
@@ -51,9 +51,10 @@ export const WELCOME_CONFIG = {
     alphaMax:       0.80,
   },
   kForm: {
-    heightRatio:          0.22,
-    yOffsetAboveGround:    80,
-    strokeWidth:           14,
+    centerRatio:          0.33,
+    heightRatio:          0.16,
+    yOffsetAboveGround:    250,
+    strokeWidth:           12,
     stemPoints:            24,
     armPoints:             18,
     branchPoints:          14,

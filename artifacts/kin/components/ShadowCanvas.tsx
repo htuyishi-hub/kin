@@ -43,6 +43,8 @@ const SHADOW_COLOR = '#D8D0C8';
 export function ShadowCanvas({ textOpacity, screenWidth: W, screenHeight: H }: ShadowCanvasProps) {
   const centerX = W / 2;
   const groundY = H * WELCOME_CONFIG.shadow.groundYRatio;
+  const logoCenterY = H * WELCOME_CONFIG.kForm.centerRatio;
+  const logoSize = H * WELCOME_CONFIG.kForm.heightRatio;
 
   const animPhase = useRef<AnimPhase>('dark');
   const looping   = useRef(true);
@@ -73,9 +75,8 @@ export function ShadowCanvas({ textOpacity, screenWidth: W, screenHeight: H }: S
 
   const shadowPath = useMemo(() => buildShadowPath(0, groundY, 1.0), [groundY]);
   const kData = useMemo(() => {
-    const size = H * WELCOME_CONFIG.kForm.heightRatio;
-    return buildKPath(centerX, groundY - WELCOME_CONFIG.kForm.yOffsetAboveGround, size);
-  }, [centerX, groundY, H]);
+    return buildKPath(centerX, logoCenterY, logoSize);
+  }, [centerX, logoCenterY, logoSize]);
 
   const particles = useRef<Particle[]>([]);
 
@@ -130,8 +131,8 @@ export function ShadowCanvas({ textOpacity, screenWidth: W, screenHeight: H }: S
         shadowOpacity.value  = withTiming(0, { duration: 250 });
         bloomIntensity.value = withTiming(0.3, { duration: 400 });
         particles.current    = initParticles(
-          { x: centerX, y: groundY - 80 },
-          { x: centerX, y: groundY - 80 }
+          { x: centerX, y: groundY - 70 },
+          { x: centerX, y: groundY - 70 }
         );
         assignParticlesToTargets(particles.current, kData.targets);
         setTimeout(() => { animPhase.current = 'gather'; }, C.scatterDuration);
@@ -269,8 +270,8 @@ export function ShadowCanvas({ textOpacity, screenWidth: W, screenHeight: H }: S
           strokeJoin="round"
         >
           <LinearGradient
-            start={{ x: centerX - H * WELCOME_CONFIG.kForm.heightRatio * 0.7, y: groundY - WELCOME_CONFIG.kForm.yOffsetAboveGround }}
-            end={{ x: centerX + H * WELCOME_CONFIG.kForm.heightRatio * 0.7, y: groundY - WELCOME_CONFIG.kForm.yOffsetAboveGround }}
+            start={{ x: centerX - logoSize * 0.7, y: logoCenterY }}
+            end={{ x: centerX + logoSize * 0.7, y: logoCenterY }}
             colors={['#38BDF8', '#2563EB']}
           />
         </Path>

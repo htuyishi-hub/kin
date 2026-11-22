@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useLocation } from 'wouter';
 import { useTranslation, changeLanguage, getCurrentLanguage, type SupportedLanguage } from '@workspace/i18n';
-import { KinnLogo } from '@/components/KinnLogo';
+import { WelcomeAnimation } from '@/components/WelcomeAnimation';
 
 export default function WelcomeScreen() {
   const [, setLocation] = useLocation();
@@ -19,18 +19,18 @@ export default function WelcomeScreen() {
   }
 
   return (
-    <div className="flex-1 flex flex-col justify-between px-6 py-8 relative bg-[#0D1117] text-[#F0EDE6] select-none">
+    <div className="flex-1 flex flex-col justify-between px-6 py-8 relative bg-[#0D1117] text-[#F0EDE6] select-none overflow-hidden">
       {/* Background Radial Ambient Glow */}
       <div
         className="absolute inset-0 pointer-events-none"
         style={{
           background:
-            'radial-gradient(circle 280px at 50% 40%, rgba(37,99,235,0.18) 0%, rgba(201,168,76,0.08) 50%, transparent 80%)',
+            'radial-gradient(circle 280px at 50% 35%, rgba(37,99,235,0.18) 0%, rgba(201,168,76,0.08) 50%, transparent 80%)',
         }}
       />
 
       {/* Language Picker Header */}
-      <div className="absolute top-4 right-6 z-20 flex items-center bg-[#161B22] border border-[#30363D] rounded-full p-1 gap-1">
+      <div className="absolute top-4 right-6 z-30 flex items-center bg-[#161B22]/90 backdrop-blur border border-[#30363D] rounded-full p-1 gap-1">
         <button
           type="button"
           onClick={() => handleLanguageSelect('en')}
@@ -57,20 +57,13 @@ export default function WelcomeScreen() {
         </button>
       </div>
 
-      {/* Kin Wordmark Brand */}
-      <div className="pt-8 flex flex-col items-center relative z-10 gap-2">
-        <KinnLogo size={52} />
-        <span className="font-serif text-3xl font-bold tracking-tight text-[#F0EDE6]">
-          kinn
-        </span>
+      {/* Interactive Shadow -> kn Animation Canvas */}
+      <div className="absolute inset-0 z-0 pointer-events-none">
+        <WelcomeAnimation tagline={t('welcome.tagline')} />
       </div>
 
-      {/* Central Tagline */}
-      <div className="flex flex-col items-center text-center px-4 my-auto relative z-10 gap-2">
-        <h1 className="font-serif text-3xl font-bold text-[#F0EDE6] leading-snug">
-          {t('welcome.tagline')}
-        </h1>
-      </div>
+      {/* Flexible Spacer keeping upper area dedicated to raised kn logo and tagline */}
+      <div className="flex-1 min-h-[380px]" />
 
       {/* Bottom Action Buttons */}
       <div className="flex flex-col items-center gap-3 w-full relative z-10 pb-4">

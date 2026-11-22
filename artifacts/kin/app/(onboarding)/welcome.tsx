@@ -103,7 +103,7 @@ export default function WelcomeScreen() {
       </SafeShadowCanvas>
 
       <Animated.View
-        style={[styles.taglineContainer, { top: height * 0.52 }, taglineStyle]}
+        style={[styles.taglineContainer, { top: height * 0.44 }, taglineStyle]}
         pointerEvents="none"
       >
         <Text style={styles.taglineEN}>{t('welcome.tagline')}</Text>
