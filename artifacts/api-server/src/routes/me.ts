@@ -205,7 +205,7 @@ router.patch("/me", requireAuth, async (req, res) => {
   const userId = (req as AuthedRequest).userId;
   const body = req.body as Record<string, unknown>;
 
-  const allowed = ["fullName", "gender", "dateOfBirth", "campusName", "faculty", "yearOfStudy", "hostelName", "city", "district", "proximityConsent", "language"];
+  const allowed = ["fullName", "gender", "dateOfBirth", "campusName", "faculty", "yearOfStudy", "hostelName", "city", "district", "proximityConsent", "language", "primaryIntent"];
   const updates: Record<string, unknown> = {};
   for (const key of allowed) {
     if (key in body) updates[camelToSnake(key)] = body[key];
@@ -253,7 +253,7 @@ router.patch("/me", requireAuth, async (req, res) => {
 // POST /me/onboarding — invisible tier classification
 router.post("/me/onboarding", requireAuth, async (req, res) => {
   const userId = (req as AuthedRequest).userId;
-  const { occupation, locationType, primaryGoal, campusName, fullName, gender, dateOfBirth } =
+  let { occupation, locationType, primaryGoal, campusName, fullName, gender, dateOfBirth } =
     req.body as {
       occupation?: string;
       locationType?: string;
@@ -263,6 +263,17 @@ router.post("/me/onboarding", requireAuth, async (req, res) => {
       gender?: string;
       dateOfBirth?: string;
     };
+
+  const [existingProfile] = await db
+    .select()
+    .from(profilesTable)
+    .where(eq(profilesTable.id, userId))
+    .limit(1);
+
+  fullName = fullName || existingProfile?.fullName || undefined;
+  gender = gender || existingProfile?.gender || undefined;
+  dateOfBirth = dateOfBirth || (existingProfile?.dateOfBirth ? String(existingProfile.dateOfBirth) : undefined);
+  locationType = locationType || (occupation === "Student" ? "Campus" : "City");
 
   if (!occupation || !locationType || !primaryGoal || !fullName || !gender || !dateOfBirth) {
     res.status(400).json({ error: "bad_request", message: "All onboarding fields are required" });
@@ -285,6 +296,12 @@ router.post("/me/onboarding", requireAuth, async (req, res) => {
     "Serious Marriage": "Marriage",
     "Long-term Relationship": "Serious",
     "Casual Dating": "Casual",
+    "marriage": "Marriage",
+    "long_term": "Serious",
+    "casual": "Casual",
+    "Marriage": "Marriage",
+    "Serious": "Serious",
+    "Casual": "Casual",
   };
   const primaryIntent = intentMap[primaryGoal] ?? "Serious";
 

@@ -174,11 +174,11 @@ router.post("/invites/claim", requireAuth, async (req, res) => {
 
   const normalized = code.trim().toUpperCase();
 
-  // Find inviter by code
+  // Find inviter by code (trimmed whitespace and case-insensitive)
   const inviter = await db
     .select()
     .from(profilesTable)
-    .where(eq(profilesTable.inviteCode, normalized))
+    .where(sql`upper(trim(${profilesTable.inviteCode})) = ${normalized}`)
     .limit(1);
 
   if (!inviter[0]) {
