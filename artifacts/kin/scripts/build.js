@@ -22,6 +22,33 @@ function findWorkspaceRoot(startDir) {
 const workspaceRoot = findWorkspaceRoot(projectRoot);
 const basePath = (process.env.BASE_PATH || "/").replace(/\/+$/, "");
 
+function assertNoServiceRoleKeyLeak(directories) {
+  const secret = "SUPABASE_SERVICE_ROLE_KEY";
+  for (const dir of directories) {
+    if (!fs.existsSync(dir)) continue;
+    const entries = fs.readdirSync(dir, { recursive: true, withFileTypes: true });
+    for (const entry of entries) {
+      if (entry.isFile()) {
+        const fullPath = path.join(entry.parentPath || entry.path || dir, entry.name);
+        if (fullPath.endsWith(".ts") || fullPath.endsWith(".tsx") || fullPath.endsWith(".js") || fullPath.endsWith(".json")) {
+          const content = fs.readFileSync(fullPath, "utf-8");
+          if (content.includes(secret)) {
+            exitWithError(`[SECURITY GATE] Forbidden token "${secret}" found in client file: ${fullPath}`);
+          }
+        }
+      }
+    }
+  }
+}
+
+assertNoServiceRoleKeyLeak([
+  path.join(projectRoot, "app"),
+  path.join(projectRoot, "components"),
+  path.join(projectRoot, "services"),
+  path.join(projectRoot, "lib"),
+  path.join(workspaceRoot, "artifacts", "kin-web", "src"),
+]);
+
 function exitWithError(message) {
   console.error(message);
   if (metroProcess) {
