@@ -52,7 +52,6 @@ export default function OnboardingPersonal() {
             full_name: fullName.trim(),
             date_of_birth: dob,
             gender,
-            verified_adult: true,
           })
           .eq('id', user.id);
       }

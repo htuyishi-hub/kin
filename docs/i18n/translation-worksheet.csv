@@ -247,3 +247,5 @@ errors.micPermission,errors,error,Microphone permission required.,Uruhushya rwo 
 errors.inviteMaxClaimsReached,errors,error,This invite code has reached its maximum uses.,Iyi kode y'ubutumire yageze ku mbibi zayo.,,,60,max invite claims reached error,needs_review
 errors.inviteOwnCode,errors,error,You cannot claim your own invite code.,Ntiwakoresha kode yawe bwite.,,,60,cannot claim own invite code error,needs_review
 errors.inviteRateLimited,errors,error,Too many attempts. Please wait.,Wagerageje inshuro nyinshi. Tegereza gato.,,,60,rate limit error for invite claims,needs_review
+errors.inviteOwnerNotActive,errors,error,This invite code is not currently active.,Iyi kode y'ubutumire ntabwo igikora.,,,60,invite owner not active error,needs_review
+errors.inviteMutualLoop,errors,error,Mutual invite loops are not allowed.,Ntibyemewe ko abantu batumirana hagati yabo.,,,60,mutual invite loop error,needs_review

@@ -14,7 +14,7 @@ export default function OnboardingWaiting() {
   const [claimSuccess, setClaimSuccess] = useState<string | null>(null);
   const [error, setError] = useState('');
   const [copied, setCopied] = useState(false);
-  const [inviteUrl, setInviteUrl] = useState(`https://kin.rw/invite/${user?.id?.slice(0, 8) || 'member'}`);
+  const [inviteUrl, setInviteUrl] = useState<string | null>(null);
 
   useEffect(() => {
     if (token) {
@@ -57,6 +57,14 @@ export default function OnboardingWaiting() {
           setError(t('errors.inviteAlreadyClaimed'));
           return;
         }
+        if (data?.code === 'INVITE_OWNER_NOT_ACTIVE') {
+          setError(t('errors.inviteOwnerNotActive'));
+          return;
+        }
+        if (data?.code === 'INVITE_MUTUAL_LOOP') {
+          setError(t('errors.inviteMutualLoop'));
+          return;
+        }
         if (data?.code === 'INVITE_MAX_CLAIMS_REACHED') {
           setError(t('errors.inviteMaxClaimsReached'));
           return;
@@ -93,9 +101,11 @@ export default function OnboardingWaiting() {
   }
 
   function handleCopy() {
-    navigator.clipboard.writeText(inviteUrl);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    if (inviteUrl) {
+      navigator.clipboard.writeText(inviteUrl);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
   }
 
   return (
@@ -151,28 +161,30 @@ export default function OnboardingWaiting() {
         </form>
 
         {/* Shareable Invite Link Card */}
-        <div className="p-4 bg-[#1A1A2E]/70 border border-[#21262D] rounded-2xl flex flex-col gap-2">
-          <label className="text-xs font-semibold uppercase tracking-wider text-[#A8A49E]">
-            {t('waiting.inviteLinkTitle')}
-          </label>
-          <div className="flex items-center gap-2 p-2.5 bg-[#0D1117] border border-[#21262D] rounded-xl">
-            <span className="text-xs text-[#F0EDE6] font-mono truncate flex-1 select-all">
-              {inviteUrl}
-            </span>
-            <button
-              type="button"
-              onClick={handleCopy}
-              className="p-1.5 bg-[#2563EB] text-white rounded-lg hover:bg-[#1A4DB8] transition-colors cursor-pointer"
-            >
-              {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-            </button>
+        {inviteUrl && (
+          <div className="p-4 bg-[#1A1A2E]/70 border border-[#21262D] rounded-2xl flex flex-col gap-2">
+            <label className="text-xs font-semibold uppercase tracking-wider text-[#A8A49E]">
+              {t('waiting.inviteLinkTitle')}
+            </label>
+            <div className="flex items-center gap-2 p-2.5 bg-[#0D1117] border border-[#21262D] rounded-xl">
+              <span className="text-xs text-[#F0EDE6] font-mono truncate flex-1 select-all">
+                {inviteUrl}
+              </span>
+              <button
+                type="button"
+                onClick={handleCopy}
+                className="p-1.5 bg-[#2563EB] text-white rounded-lg hover:bg-[#1A4DB8] transition-colors cursor-pointer"
+              >
+                {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+              </button>
+            </div>
+            {copied && (
+              <span className="text-[11px] text-[#3FB950] font-semibold text-center mt-0.5">
+                {t('waiting.copied')}
+              </span>
+            )}
           </div>
-          {copied && (
-            <span className="text-[11px] text-[#3FB950] font-semibold text-center mt-0.5">
-              {t('waiting.copied')}
-            </span>
-          )}
-        </div>
+        )}
 
         {/* UR Student Verification Pathway */}
         <button
@@ -191,16 +203,18 @@ export default function OnboardingWaiting() {
       </div>
 
       {/* Share Button */}
-      <div className="flex flex-col gap-2.5 pb-2">
-        <button
-          type="button"
-          onClick={handleCopy}
-          className="w-full h-13.5 bg-[#C9A84C] text-[#0D1117] rounded-full font-bold text-[15px] flex items-center justify-center gap-2 hover:bg-[#C9A84C]/90 active:scale-[0.98] transition-all cursor-pointer shadow-lg"
-        >
-          <Share2 className="w-4 h-4" />
-          <span>{copied ? t('waiting.copied') : t('waiting.share')}</span>
-        </button>
-      </div>
+      {inviteUrl && (
+        <div className="flex flex-col gap-2.5 pb-2">
+          <button
+            type="button"
+            onClick={handleCopy}
+            className="w-full h-13.5 bg-[#C9A84C] text-[#0D1117] rounded-full font-bold text-[15px] flex items-center justify-center gap-2 hover:bg-[#C9A84C]/90 active:scale-[0.98] transition-all cursor-pointer shadow-lg"
+          >
+            <Share2 className="w-4 h-4" />
+            <span>{copied ? t('waiting.copied') : t('waiting.share')}</span>
+          </button>
+        </div>
+      )}
     </div>
   );
 }

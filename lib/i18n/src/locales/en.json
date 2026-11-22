@@ -277,7 +277,9 @@
     "micPermission": "Microphone permission required.",
     "inviteMaxClaimsReached": "This invite code has reached its maximum uses.",
     "inviteOwnCode": "You cannot claim your own invite code.",
-    "inviteRateLimited": "Too many attempts. Please wait."
+    "inviteRateLimited": "Too many attempts. Please wait.",
+    "inviteOwnerNotActive": "This invite code is not currently active.",
+    "inviteMutualLoop": "Mutual invite loops are not allowed."
   },
   "moderation": {
     "title": "Community Moderation",

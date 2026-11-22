@@ -3,7 +3,6 @@ import { useLocation } from 'wouter';
 import { Loader2, GraduationCap, CheckCircle } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/lib/supabase';
 
 const CAMPUSES = [
   'Huye',
@@ -19,7 +18,7 @@ const CAMPUSES = [
 export default function OnboardingUr() {
   const [, setLocation] = useLocation();
   const { t } = useTranslation();
-  const { user } = useAuth();
+  const { token } = useAuth();
 
   const [campus, setCampus] = useState('Huye');
   const [regNumber, setRegNumber] = useState('');
@@ -45,27 +44,48 @@ export default function OnboardingUr() {
     setIsPending(true);
 
     try {
-      if (user?.id) {
-        // Update user profile as verified UR student
-        await supabase
-          .from('profiles')
-          .update({
-            institution: 'university_of_rwanda',
-            campus: campus,
-            registration_number: cleanReg,
-            institution_verified: true,
-            is_verified: true,
-            verification_method: 'ur_registration',
-            onboarding_complete: true,
-            account_status: 'active',
-          })
-          .eq('id', user.id);
+      const res = await fetch('/api/me/ur/verify-registration', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({
+          registration_number: cleanReg,
+          campus: campus.trim(),
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        if (data?.code === 'UR_REGISTRATION_INVALID') {
+          setError(t('errors.urRegistrationInvalid'));
+          return;
+        }
+        setError(data?.message || t('errors.generic'));
+        return;
       }
 
-      setVerifiedSuccess(true);
-      setTimeout(() => {
-        setLocation('/app');
-      }, 1000);
+      if (data?.status === 'already_claimed') {
+        setError(t('onboarding.ur.alreadyClaimed'));
+        return;
+      }
+
+      if (data?.verified === true || data?.status === 'verified') {
+        setVerifiedSuccess(true);
+        setTimeout(() => {
+          setLocation('/app');
+        }, 1000);
+        return;
+      }
+
+      if (data?.code === 'UR_REGISTRATION_INVALID') {
+        setError(t('errors.urRegistrationInvalid'));
+        return;
+      }
+
+      setError(data?.message || t('errors.generic'));
     } catch (err: any) {
       setError(err?.message || t('common.networkError'));
     } finally {

@@ -276,7 +276,9 @@
     "micPermission": "Uruhushya rwo gufata amajwi rurakenewe.",
     "inviteMaxClaimsReached": "Iyi kode y'ubutumire yageze ku mbibi zayo.",
     "inviteOwnCode": "Ntiwakoresha kode yawe bwite.",
-    "inviteRateLimited": "Wagerageje inshuro nyinshi. Tegereza gato."
+    "inviteRateLimited": "Wagerageje inshuro nyinshi. Tegereza gato.",
+    "inviteOwnerNotActive": "Iyi kode y'ubutumire ntabwo igikora.",
+    "inviteMutualLoop": "Ntibyemewe ko abantu batumirana hagati yabo."
   },
   "moderation": {
     "title": "Igenzura ry'umuryango",

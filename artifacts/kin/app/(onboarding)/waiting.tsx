@@ -47,9 +47,8 @@ export default function WaitingScreen() {
   );
 
   const accountStatus = p?.account_status ?? p?.accountStatus ?? (isVerified || earlyAccess ? "active" : "waitlisted");
-  const isWaitlisted = accountStatus === "waitlisted";
-  const myInviteCode = p?.invite_code ?? p?.inviteCode ?? "KIN-MEMBER";
-  const myInviteLink = p?.invite_link ?? `https://kin.rw/invite/${myInviteCode}`;
+  const myInviteCode = p?.invite_code ?? p?.inviteCode ?? null;
+  const myInviteLink = p?.invite_link ?? (myInviteCode ? `https://kin.rw/invite/${myInviteCode}` : null);
 
   const apiBaseUrl =
     process.env.EXPO_PUBLIC_API_URL ??
@@ -88,6 +87,12 @@ export default function WaitingScreen() {
       if (!res.ok) {
         if (data?.code === "INVITE_ALREADY_CLAIMED") {
           throw new Error(t("errors.inviteAlreadyClaimed"));
+        }
+        if (data?.code === "INVITE_OWNER_NOT_ACTIVE") {
+          throw new Error(t("errors.inviteOwnerNotActive"));
+        }
+        if (data?.code === "INVITE_MUTUAL_LOOP") {
+          throw new Error(t("errors.inviteMutualLoop"));
         }
         if (data?.code === "INVITE_MAX_CLAIMS_REACHED") {
           throw new Error(t("errors.inviteMaxClaimsReached"));
@@ -234,40 +239,42 @@ export default function WaitingScreen() {
         </View>
 
         {/* SHARE LINK */}
-        <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
-          <View style={styles.cardHeader}>
-            <Feather name="share-2" size={18} color={colors.primary} />
-            <Text style={[styles.cardTitle, { color: colors.foreground }]}>{t("waiting.inviteLinkTitle")}</Text>
-          </View>
+        {myInviteLink ? (
+          <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <View style={styles.cardHeader}>
+              <Feather name="share-2" size={18} color={colors.primary} />
+              <Text style={[styles.cardTitle, { color: colors.foreground }]}>{t("waiting.inviteLinkTitle")}</Text>
+            </View>
 
-          <View style={[styles.linkBox, { backgroundColor: colors.secondary, borderColor: colors.border }]}>
-            <Text style={[styles.linkText, { color: colors.foreground }]} numberOfLines={1}>
-              {myInviteLink}
-            </Text>
-          </View>
-
-          <View style={styles.buttonRow}>
-            <TouchableOpacity
-              style={[styles.shareBtn, { backgroundColor: colors.primary }]}
-              onPress={handleShare}
-              activeOpacity={0.85}
-            >
-              <Feather name="send" size={16} color={colors.primaryForeground} />
-              <Text style={[styles.shareBtnText, { color: colors.primaryForeground }]}>{t("waiting.share")}</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[styles.copyBtn, { borderColor: colors.border, backgroundColor: colors.secondary }]}
-              onPress={handleCopy}
-              activeOpacity={0.85}
-            >
-              <Feather name={copied ? "check" : "copy"} size={16} color={copied ? colors.accent : colors.foreground} />
-              <Text style={[styles.copyBtnText, { color: copied ? colors.accent : colors.foreground }]}>
-                {copied ? t("waiting.copied") : t("waiting.copy")}
+            <View style={[styles.linkBox, { backgroundColor: colors.secondary, borderColor: colors.border }]}>
+              <Text style={[styles.linkText, { color: colors.foreground }]} numberOfLines={1}>
+                {myInviteLink}
               </Text>
-            </TouchableOpacity>
+            </View>
+
+            <View style={styles.buttonRow}>
+              <TouchableOpacity
+                style={[styles.shareBtn, { backgroundColor: colors.primary }]}
+                onPress={handleShare}
+                activeOpacity={0.85}
+              >
+                <Feather name="send" size={16} color={colors.primaryForeground} />
+                <Text style={[styles.shareBtnText, { color: colors.primaryForeground }]}>{t("waiting.share")}</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.copyBtn, { borderColor: colors.border, backgroundColor: colors.secondary }]}
+                onPress={handleCopy}
+                activeOpacity={0.85}
+              >
+                <Feather name={copied ? "check" : "copy"} size={16} color={copied ? colors.accent : colors.foreground} />
+                <Text style={[styles.copyBtnText, { color: copied ? colors.accent : colors.foreground }]}>
+                  {copied ? t("waiting.copied") : t("waiting.copy")}
+                </Text>
+              </TouchableOpacity>
+            </View>
           </View>
-        </View>
+        ) : null}
 
         {/* UR STUDENT VERIFICATION PATHWAY */}
         <TouchableOpacity

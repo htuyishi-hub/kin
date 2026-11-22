@@ -32,7 +32,6 @@ export default function OnboardingOccupation() {
           .update({
             faculty: occupation.trim(),
             primary_intent: intent,
-            onboarding_complete: true,
           })
           .eq('id', user.id);
       }
