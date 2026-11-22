@@ -456,7 +456,12 @@ export async function sendPhoneOtp(phone: string): Promise<SendOtpResult> {
   try {
     const { error } = await supabase.auth.signInWithOtp({
       phone: formatted,
-      options: { shouldCreateUser: true },
+      options: {
+        shouldCreateUser: true,
+        data: {
+          lang: getCurrentLanguage(),
+        },
+      },
     });
 
     if (error) {
