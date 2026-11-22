@@ -3,6 +3,7 @@ import type { Request, Response } from "express";
 import { eq, sql } from "drizzle-orm";
 import { db, profilesTable } from "@workspace/db";
 import { studentRegistryTable, urVerificationAttemptsTable } from "@workspace/db/schema";
+import { generateInviteCode } from "../lib/inviteCode.js";
 
 
 const ALLOWED_UR_PREFIXES = [
@@ -121,6 +122,14 @@ export async function verifyURRegistration(req: Request, res: Response) {
         });
       }
 
+      const [currProfile] = await tx
+        .select({ inviteCode: profilesTable.inviteCode })
+        .from(profilesTable)
+        .where(eq(profilesTable.id, profileId))
+        .limit(1);
+
+      const assignedInviteCode = currProfile?.inviteCode ?? generateInviteCode();
+
       // Profile trust & verification binding
       await tx
         .update(profilesTable)
@@ -132,6 +141,7 @@ export async function verifyURRegistration(req: Request, res: Response) {
           isVerified: true,
           accountStatus: "active",
           verificationMethod: "ur_registry",
+          inviteCode: assignedInviteCode,
         } as any)
         .where(eq(profilesTable.id, profileId));
 

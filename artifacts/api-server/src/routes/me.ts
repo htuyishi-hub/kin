@@ -216,6 +216,15 @@ router.patch("/me", requireAuth, async (req, res) => {
     return;
   }
 
+  if (body.dateOfBirth) {
+    const age = calculateAge(String(body.dateOfBirth));
+    if (isNaN(age) || age < 18) {
+      res.status(400).json({ error: "underage", code: "UNDERAGE", message: "Must be at least 18 years old" });
+      return;
+    }
+    updates["verified_adult"] = true;
+  }
+
   try {
     // Debugging: helps identify why PATCH /me is failing with 500
     console.error("[PATCH /me] userId", { userId });
@@ -260,6 +269,12 @@ router.post("/me/onboarding", requireAuth, async (req, res) => {
     return;
   }
 
+  const age = calculateAge(dateOfBirth);
+  if (isNaN(age) || age < 18) {
+    res.status(400).json({ error: "underage", code: "UNDERAGE", message: "Must be at least 18 years old" });
+    return;
+  }
+
   // Invisible tier classification
   let hiddenTier = 1;
   if (occupation === "Student") hiddenTier = 1;
@@ -283,6 +298,7 @@ router.post("/me/onboarding", requireAuth, async (req, res) => {
       fullName,
       gender,
       dateOfBirth,
+      verifiedAdult: true,
       onboardingComplete: true,
     })
     .where(eq(profilesTable.id, userId))
