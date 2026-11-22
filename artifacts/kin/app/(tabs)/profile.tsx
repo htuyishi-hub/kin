@@ -16,7 +16,7 @@ import {
   useAudioPlayer,
   useAudioPlayerStatus,
 } from "expo-audio";
-import { uploadVoiceIntroFile, resolveAudioUrl } from "@/services/voiceIntroService";
+import { uploadVoiceIntroFile, resolveAudioUrl, getVoiceSignedUrl } from "@/services/voiceIntroService";
 import {
   ActivityIndicator,
   Platform,
@@ -112,7 +112,29 @@ function ProfileVoiceSection({
     },
   });
 
-  const audioUri = resolveAudioUrl(voiceIntroPath);
+  const [audioUri, setAudioUri] = useState<string | null>(() => {
+    if (!voiceIntroPath) return null;
+    if (voiceIntroPath.startsWith("http://") || voiceIntroPath.startsWith("https://")) return voiceIntroPath;
+    return resolveAudioUrl(voiceIntroPath);
+  });
+
+  const loadAudio = async (forceRefresh = false) => {
+    if (!voiceIntroPath) {
+      setAudioUri(null);
+      return;
+    }
+    if (voiceIntroPath.startsWith("http://") || voiceIntroPath.startsWith("https://")) {
+      setAudioUri(voiceIntroPath);
+      return;
+    }
+    const signed = await getVoiceSignedUrl("me", forceRefresh);
+    if (signed) setAudioUri(signed);
+  };
+
+  useEffect(() => {
+    loadAudio();
+  }, [voiceIntroPath]);
+
   const player = useAudioPlayer(audioUri);
   const playerStatus = useAudioPlayerStatus(player);
   const isPlaying = Boolean(playerStatus.playing);
@@ -121,7 +143,11 @@ function ProfileVoiceSection({
     if (isPlaying) {
       player.pause();
     } else {
-      player.play();
+      if (!audioUri) {
+        loadAudio(true).then(() => player.play());
+      } else {
+        player.play();
+      }
     }
   };
 
@@ -148,7 +174,7 @@ function ProfileVoiceSection({
         setVoiceError(t("errors.voiceTooShort"));
         return;
       }
-      if (durMs > 30000) {
+      if (durMs > 20000) {
         setVoiceError(t("errors.voiceTooLong"));
         return;
       }
@@ -160,12 +186,19 @@ function ProfileVoiceSection({
         return;
       }
       const res = await uploadVoiceIntroFile(userId, uri);
-      uploadVoiceIntro({
-        data: {
-          storagePath: res.storagePath,
-          durationMs: durMs,
-        },
-      });
+      if (!res.success) {
+        if (res.error === "VOICE_INTRO_TOO_SHORT") {
+          setVoiceError(t("errors.voiceTooShort"));
+        } else if (res.error === "VOICE_INTRO_TOO_LONG") {
+          setVoiceError(t("errors.voiceTooLong"));
+        } else {
+          setVoiceError(t("errors.generic"));
+        }
+        setIsUploading(false);
+        return;
+      }
+      setIsUploading(false);
+      onRefetch();
     } catch {
       setVoiceError(t("errors.generic"));
       setIsUploading(false);

@@ -3,9 +3,63 @@ import * as ImageManipulator from 'expo-image-manipulator';
 import * as FileSystem from 'expo-file-system';
 import { getSupabaseClient } from '../lib/supabase';
 
+const API_URL =
+  process.env.EXPO_PUBLIC_API_URL ??
+  process.env.VITE_API_URL ??
+  'https://kinn-api.fly.dev';
+
 export type PhotoUploadResult =
-  | { success: true;  publicUrl: string; storagePath: string }
+  | { success: true; photoId?: string; signedUrl: string; publicUrl: string; storagePath: string }
   | { success: false; error: string; code: 'permission_denied' | 'cancelled' | 'compression_failed' | 'upload_failed' | 'db_failed' | 'not_configured' };
+
+interface CachedUrl {
+  url: string;
+  expiresAt: number;
+}
+
+const photoSignedUrlCache = new Map<string, CachedUrl>();
+
+export async function getPhotoSignedUrl(photoId: string, forceRefresh = false): Promise<string | null> {
+  if (!photoId) return null;
+  if (photoId.startsWith('http://') || photoId.startsWith('https://')) {
+    return photoId;
+  }
+
+  const cached = photoSignedUrlCache.get(photoId);
+  if (!forceRefresh && cached && cached.expiresAt > Date.now()) {
+    return cached.url;
+  }
+
+  try {
+    const client = getSupabaseClient();
+    const { data: sessionData } = await client.auth.getSession();
+    const token = sessionData?.session?.access_token;
+    if (!token) return null;
+
+    const res = await fetch(`${API_URL}/media/photo/${encodeURIComponent(photoId)}/url`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    if (!res.ok) {
+      photoSignedUrlCache.delete(photoId);
+      return null;
+    }
+
+    const data = await res.json();
+    if (data?.url) {
+      photoSignedUrlCache.set(photoId, {
+        url: data.url,
+        expiresAt: Date.now() + Math.max(30, (data.expiresIn || 300) - 30) * 1000,
+      });
+      return data.url;
+    }
+  } catch (err) {
+    console.warn('[getPhotoSignedUrl] Failed to fetch signed URL:', err);
+  }
+  return null;
+}
 
 export async function requestMediaPermission(): Promise<boolean> {
   const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -42,14 +96,32 @@ export async function uploadToStorage(
   compressedUri: string,
   isPrimary: boolean,
   slotIndex: number = 0
-): Promise<{ publicUrl: string; storagePath: string }> {
+): Promise<{ signedUrl: string; publicUrl: string; storagePath: string; photoId?: string }> {
   const client = getSupabaseClient();
-  if (!client) throw new Error('Storage upload failed: Supabase not configured');
+  if (!client) throw new Error('Supabase not configured');
 
-  const timestamp   = Date.now();
-  const slot        = isPrimary ? 'primary' : `photo_${slotIndex}`;
-  const storagePath = `${userId}/${slot}_${timestamp}.jpg`;
+  const { data: sessionData } = await client.auth.getSession();
+  const token = sessionData?.session?.access_token;
+  if (!token) throw new Error('Not authenticated');
 
+  // 1. Request short-lived signed upload URL from server
+  const uploadUrlRes = await fetch(`${API_URL}/media/photo/upload-url`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ slotIndex }),
+  });
+
+  if (!uploadUrlRes.ok) {
+    const err = await uploadUrlRes.json().catch(() => ({}));
+    throw new Error(`Upload request failed: ${err.message || uploadUrlRes.statusText}`);
+  }
+
+  const { uploadUrl, path, slotIndex: returnedSlot } = await uploadUrlRes.json();
+
+  // 2. Read compressed file binary
   const fileBase64 = await FileSystem.readAsStringAsync(compressedUri, {
     encoding: 'base64',
   });
@@ -58,21 +130,45 @@ export async function uploadToStorage(
     atob(fileBase64).split('').map(c => c.charCodeAt(0))
   );
 
-  const { error } = await client.storage
-    .from('profile-photos')
-    .upload(storagePath, binary, {
-      contentType:  'image/jpeg',
-      cacheControl: '3600',
-      upsert:       false,
-    });
+  // 3. Upload binary directly to signed upload URL
+  const uploadRes = await fetch(uploadUrl, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'image/jpeg',
+    },
+    body: binary,
+  });
 
-  if (error) throw new Error(`Storage upload failed: ${error.message}`);
+  if (!uploadRes.ok) {
+    throw new Error(`Storage upload failed: ${uploadRes.statusText}`);
+  }
 
-  const { data: urlData } = client.storage
-    .from('profile-photos')
-    .getPublicUrl(storagePath);
+  // 4. Confirm upload with server (checks prefix, size <= 500KB, magic bytes)
+  const confirmRes = await fetch(`${API_URL}/media/photo/confirm`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ path, slotIndex: returnedSlot }),
+  });
 
-  return { publicUrl: urlData.publicUrl, storagePath };
+  if (!confirmRes.ok) {
+    const err = await confirmRes.json().catch(() => ({}));
+    throw new Error(`Confirmation failed: ${err.message || confirmRes.statusText}`);
+  }
+
+  const confirmed = await confirmRes.json();
+
+  // 5. Fetch signed playback URL
+  const signedUrl = (await getPhotoSignedUrl(confirmed.id, true)) || '';
+
+  return {
+    photoId: confirmed.id,
+    signedUrl,
+    publicUrl: signedUrl,
+    storagePath: path,
+  };
 }
 
 export async function handlePhotoUpload(
@@ -97,13 +193,18 @@ export async function handlePhotoUpload(
 
     const compressedUri = await compressImage(localUri);
 
-    const { publicUrl, storagePath } =
-      await uploadToStorage(userId, compressedUri, isPrimary, slotIndex);
+    const result = await uploadToStorage(userId, compressedUri, isPrimary, slotIndex);
 
-    return { success: true, publicUrl, storagePath };
+    return {
+      success: true,
+      photoId: result.photoId,
+      signedUrl: result.signedUrl,
+      publicUrl: result.publicUrl,
+      storagePath: result.storagePath,
+    };
 
   } catch (err: any) {
-    if (err.message?.includes('Storage upload')) {
+    if (err.message?.includes('Storage upload') || err.message?.includes('Upload request')) {
       return { success: false, error: err.message, code: 'upload_failed' };
     }
     return { success: false, error: err.message, code: 'compression_failed' };

@@ -2,9 +2,14 @@ import React, { useState } from 'react';
 import { View, TouchableOpacity, Alert, StyleSheet, ActivityIndicator } from 'react-native';
 import { Image } from 'expo-image';
 import { Feather } from '@expo/vector-icons';
-import { handlePhotoUpload } from '../services/photoUploadService';
+import { handlePhotoUpload, getPhotoSignedUrl } from '../services/photoUploadService';
 import { useAuth } from '../contexts/AuthContext';
 import { Colors } from '../constants/colors';
+
+const API_URL =
+  process.env.EXPO_PUBLIC_API_URL ??
+  process.env.VITE_API_URL ??
+  'https://kinn-api.fly.dev';
 
 export type PhotoSlot = {
   id:          string | null;
@@ -20,6 +25,40 @@ type Props = {
 };
 
 const SLOT_SIZE = 110;
+
+function SlotImage({
+  slot,
+  token,
+  onUrlRefreshed,
+}: {
+  slot: PhotoSlot;
+  token: string | null;
+  onUrlRefreshed: (newUrl: string) => void;
+}) {
+  const [imgUrl, setImgUrl] = useState<string | null>(slot.publicUrl);
+
+  const handleRefresh = async () => {
+    if (slot.id) {
+      const refreshed = await getPhotoSignedUrl(slot.id, true);
+      if (refreshed) {
+        setImgUrl(refreshed);
+        onUrlRefreshed(refreshed);
+      }
+    }
+  };
+
+  if (!imgUrl) return null;
+
+  return (
+    <Image
+      source={{ uri: imgUrl }}
+      style={styles.photo}
+      contentFit="cover"
+      cachePolicy="memory-disk"
+      onError={handleRefresh}
+    />
+  );
+}
 
 export function PhotoGrid({ slots, onChange }: Props) {
   const { token } = useAuth();
@@ -37,7 +76,7 @@ export function PhotoGrid({ slots, onChange }: Props) {
     const userId = getUserId();
     if (!userId) return;
 
-    if (slot.publicUrl) {
+    if (slot.publicUrl || slot.storagePath) {
       Alert.alert('Remove Photo', 'Remove this photo from your profile?', [
         { text: 'Cancel', style: 'cancel' },
         { text: 'Remove', style: 'destructive', onPress: () => clearSlot(slot) },
@@ -52,13 +91,31 @@ export function PhotoGrid({ slots, onChange }: Props) {
     if (result.success) {
       onChange(slots.map(s =>
         s.sortOrder === slot.sortOrder
-          ? { ...s, publicUrl: result.publicUrl, storagePath: result.storagePath }
+          ? {
+              ...s,
+              id: result.photoId ?? s.id,
+              publicUrl: result.signedUrl || result.publicUrl,
+              storagePath: result.storagePath,
+            }
           : s
       ));
     }
   };
 
-  const clearSlot = (slot: PhotoSlot) => {
+  const clearSlot = async (slot: PhotoSlot) => {
+    if (slot.id && token) {
+      try {
+        await fetch(`${API_URL}/media/photo/${slot.id}`, {
+          method: 'DELETE',
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+      } catch (err) {
+        console.warn('Failed to delete photo on server:', err);
+      }
+    }
+
     onChange(slots.map(s =>
       s.sortOrder === slot.sortOrder
         ? { ...s, publicUrl: null, storagePath: null, id: null }
@@ -70,6 +127,7 @@ export function PhotoGrid({ slots, onChange }: Props) {
     <View style={styles.grid}>
       {slots.map(slot => {
         const isLoading = loadingSlot === slot.sortOrder;
+        const hasPhoto = Boolean(slot.publicUrl || slot.storagePath);
         return (
           <TouchableOpacity
             key={slot.sortOrder}
@@ -77,15 +135,16 @@ export function PhotoGrid({ slots, onChange }: Props) {
             activeOpacity={0.75}
             style={[
               styles.slot,
-              slot.isPrimary && slot.publicUrl && styles.slotPrimary,
+              slot.isPrimary && hasPhoto && styles.slotPrimary,
             ]}
           >
-            {slot.publicUrl ? (
-              <Image
-                source={{ uri: slot.publicUrl }}
-                style={styles.photo}
-                contentFit="cover"
-                cachePolicy="memory-disk"
+            {hasPhoto ? (
+              <SlotImage
+                slot={slot}
+                token={token}
+                onUrlRefreshed={(newUrl) => {
+                  onChange(slots.map(s => s.sortOrder === slot.sortOrder ? { ...s, publicUrl: newUrl } : s));
+                }}
               />
             ) : (
               <View style={styles.empty}>
@@ -97,7 +156,7 @@ export function PhotoGrid({ slots, onChange }: Props) {
                 <ActivityIndicator color={Colors.bone} />
               </View>
             )}
-            {slot.isPrimary && slot.publicUrl && (
+            {slot.isPrimary && hasPhoto && (
               <View style={styles.primaryBadge}>
                 <Feather name="star" size={10} color={Colors.bone} />
               </View>

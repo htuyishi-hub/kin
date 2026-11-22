@@ -1,11 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View, TouchableOpacity, ActivityIndicator,
   StyleSheet, Alert, Linking, Text,
 } from 'react-native';
 import { Image } from 'expo-image';
 import { Feather } from '@expo/vector-icons';
-import { handlePhotoUpload } from '../services/photoUploadService';
+import { handlePhotoUpload, getPhotoSignedUrl } from '../services/photoUploadService';
 import { useAuth } from '../contexts/AuthContext';
 import { Colors } from '../constants/colors';
 
@@ -15,6 +15,46 @@ type Props = {
   onUploadSuccess: (publicUrl: string, storagePath: string) => void;
   size?:           number;
 };
+
+function AvatarImage({
+  photoRef,
+  size,
+}: {
+  photoRef: string;
+  size: number;
+}) {
+  const [url, setUrl] = useState<string | null>(() => {
+    if (photoRef.startsWith('http://') || photoRef.startsWith('https://')) return photoRef;
+    return null;
+  });
+
+  const loadUrl = async (forceRefresh = false) => {
+    if (!photoRef) return;
+    if (photoRef.startsWith('http://') || photoRef.startsWith('https://')) {
+      setUrl(photoRef);
+      return;
+    }
+    const signed = await getPhotoSignedUrl(photoRef, forceRefresh);
+    if (signed) setUrl(signed);
+  };
+
+  useEffect(() => {
+    loadUrl();
+  }, [photoRef]);
+
+  if (!url) return null;
+
+  return (
+    <Image
+      source={{ uri: url }}
+      style={{ width: size, height: size, borderRadius: size / 2 }}
+      contentFit="cover"
+      transition={300}
+      cachePolicy="memory-disk"
+      onError={() => loadUrl(true)}
+    />
+  );
+}
 
 export function AvatarUpload({
   currentPhotoUrl,
@@ -52,7 +92,7 @@ export function AvatarUpload({
       return;
     }
 
-    onUploadSuccess(result.publicUrl, result.storagePath);
+    onUploadSuccess(result.signedUrl, result.storagePath);
   };
 
   return (
@@ -66,13 +106,7 @@ export function AvatarUpload({
       ]}
     >
       {currentPhotoUrl ? (
-        <Image
-          source={{ uri: currentPhotoUrl }}
-          style={{ width: size, height: size, borderRadius: size / 2 }}
-          contentFit="cover"
-          transition={300}
-          cachePolicy="memory-disk"
-        />
+        <AvatarImage photoRef={currentPhotoUrl} size={size} />
       ) : (
         <View style={[styles.placeholder, { width: size, height: size, borderRadius: size / 2 }]}>
           {initials ? (

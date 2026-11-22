@@ -1,6 +1,6 @@
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Dimensions,
   Image,
@@ -24,7 +24,8 @@ import { useTranslation } from "@workspace/i18n";
 import { useAudioPlayer, useAudioPlayerStatus } from "expo-audio";
 
 import { Colors } from "@/constants/colors";
-import { resolveAudioUrl } from "@/services/voiceIntroService";
+import { resolveAudioUrl, getVoiceSignedUrl } from "@/services/voiceIntroService";
+import { getPhotoSignedUrl } from "@/services/photoUploadService";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 const SWIPE_THRESHOLD = 120;
@@ -58,15 +59,83 @@ interface TeaserSwipeDeckProps {
   onRefresh?: () => void;
 }
 
+function TeaserCardImage({
+  photoRef,
+  style,
+}: {
+  photoRef: string | null | undefined;
+  style: any;
+}) {
+  const [uri, setUri] = useState<string | null>(() => {
+    if (!photoRef) return null;
+    if (photoRef.startsWith("http://") || photoRef.startsWith("https://")) return photoRef;
+    return null;
+  });
+
+  const loadUrl = async (forceRefresh = false) => {
+    if (!photoRef) {
+      setUri(null);
+      return;
+    }
+    if (photoRef.startsWith("http://") || photoRef.startsWith("https://")) {
+      setUri(photoRef);
+      return;
+    }
+    const signed = await getPhotoSignedUrl(photoRef, forceRefresh);
+    if (signed) setUri(signed);
+  };
+
+  useEffect(() => {
+    loadUrl();
+  }, [photoRef]);
+
+  if (!uri) {
+    return (
+      <View style={[style, styles.noPhotoPlaceholder]}>
+        <Feather name="user" size={64} color={Colors.boneDim} />
+      </View>
+    );
+  }
+
+  return (
+    <Image
+      source={{ uri }}
+      style={style}
+      resizeMode="cover"
+      onError={() => loadUrl(true)}
+    />
+  );
+}
+
 function CandidateVoicePlayer({
+  candidateId,
   path,
   durationMs,
 }: {
+  candidateId?: string;
   path: string;
   durationMs?: number | null;
 }) {
   const { t } = useTranslation();
-  const audioUri = resolveAudioUrl(path);
+  const [audioUri, setAudioUri] = useState<string | null>(() => {
+    if (path.startsWith("http://") || path.startsWith("https://")) return path;
+    return resolveAudioUrl(path);
+  });
+
+  const loadVoice = async (forceRefresh = false) => {
+    if (path.startsWith("http://") || path.startsWith("https://")) {
+      setAudioUri(path);
+      return;
+    }
+    const target = candidateId || path;
+    const signed = await getVoiceSignedUrl(target, forceRefresh);
+    if (signed) setAudioUri(signed);
+  };
+
+  useEffect(() => {
+    loadVoice();
+  }, [candidateId, path]);
+
   const player = useAudioPlayer(audioUri);
   const status = useAudioPlayerStatus(player);
   const isPlaying = Boolean(status.playing);
@@ -75,7 +144,11 @@ function CandidateVoicePlayer({
     if (isPlaying) {
       player.pause();
     } else {
-      player.play();
+      if (!audioUri) {
+        loadVoice(true).then(() => player.play());
+      } else {
+        player.play();
+      }
     }
   };
 
@@ -254,10 +327,9 @@ export function TeaserSwipeDeck({
       {/* Background card preview */}
       {nextCandidate && (
         <View style={[styles.card, styles.nextCard]}>
-          <Image
-            source={{ uri: nextCandidate.photos[0] ?? nextCandidate.primaryPhotoPath ?? "" }}
+          <TeaserCardImage
+            photoRef={nextCandidate.photos[0] ?? nextCandidate.primaryPhotoPath}
             style={styles.cardImage}
-            resizeMode="cover"
           />
           <View style={styles.cardOverlay}>
             <Text style={styles.candidateName}>{nextCandidate.firstName}</Text>
@@ -275,13 +347,10 @@ export function TeaserSwipeDeck({
           ]}
         >
           {/* Photos (Strict Maximum 2 photos) */}
-          {currentPhotoUrl ? (
-            <Image source={{ uri: currentPhotoUrl }} style={styles.cardImage} resizeMode="cover" />
-          ) : (
-            <View style={styles.noPhotoPlaceholder}>
-              <Feather name="user" size={64} color={Colors.boneDim} />
-            </View>
-          )}
+          <TeaserCardImage
+            photoRef={currentPhotoUrl}
+            style={styles.cardImage}
+          />
 
           {/* Photo Pagination Indicator (If 2 photos exist) */}
           {photos.length > 1 && (
@@ -364,6 +433,7 @@ export function TeaserSwipeDeck({
             {!!currentCandidate.voiceIntroPath && (
               <CandidateVoicePlayer
                 key={currentCandidate.id + "_" + currentCandidate.voiceIntroPath}
+                candidateId={currentCandidate.id}
                 path={currentCandidate.voiceIntroPath}
                 durationMs={currentCandidate.voiceIntroDurationMs}
               />

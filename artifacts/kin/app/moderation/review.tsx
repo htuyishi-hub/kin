@@ -26,6 +26,55 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAuth } from "@/contexts/AuthContext";
 import { Colors } from "@/constants/colors";
 import { useTranslation } from "@workspace/i18n";
+import { getPhotoSignedUrl } from "@/services/photoUploadService";
+
+function ReviewCardImage({
+  photoRef,
+  style,
+}: {
+  photoRef: string | null | undefined;
+  style: any;
+}) {
+  const [uri, setUri] = useState<string | null>(() => {
+    if (!photoRef) return null;
+    if (photoRef.startsWith("http://") || photoRef.startsWith("https://")) return photoRef;
+    return null;
+  });
+
+  const loadUrl = async (forceRefresh = false) => {
+    if (!photoRef) {
+      setUri(null);
+      return;
+    }
+    if (photoRef.startsWith("http://") || photoRef.startsWith("https://")) {
+      setUri(photoRef);
+      return;
+    }
+    const signed = await getPhotoSignedUrl(photoRef, forceRefresh);
+    if (signed) setUri(signed);
+  };
+
+  useEffect(() => {
+    loadUrl();
+  }, [photoRef]);
+
+  if (!uri) {
+    return (
+      <View style={[style, styles.noPhotoPlaceholder]}>
+        <Feather name="user" size={64} color={Colors.boneDim} />
+      </View>
+    );
+  }
+
+  return (
+    <Image
+      source={{ uri }}
+      style={style}
+      resizeMode="cover"
+      onError={() => loadUrl(true)}
+    />
+  );
+}
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 const SWIPE_THRESHOLD = 120;
@@ -267,10 +316,9 @@ export default function ModerationReviewScreen() {
           {/* Background Card */}
           {nextCandidate && (
             <View style={[styles.card, styles.nextCard]}>
-              <Image
-                source={{ uri: nextCandidate.photos[0] ?? "" }}
+              <ReviewCardImage
+                photoRef={nextCandidate.photos[0]}
                 style={styles.cardImage}
-                resizeMode="cover"
               />
               <View style={styles.cardOverlay}>
                 <Text style={styles.candidateName}>{nextCandidate.firstName}</Text>
@@ -281,17 +329,10 @@ export default function ModerationReviewScreen() {
           {/* Active Card */}
           <GestureDetector gesture={panGesture}>
             <Animated.View style={[styles.card, cardAnimatedStyle]}>
-              {currentCandidate.photos[photoIndex] ? (
-                <Image
-                  source={{ uri: currentCandidate.photos[photoIndex] }}
-                  style={styles.cardImage}
-                  resizeMode="cover"
-                />
-              ) : (
-                <View style={styles.noPhotoPlaceholder}>
-                  <Feather name="user" size={64} color={Colors.boneDim} />
-                </View>
-              )}
+              <ReviewCardImage
+                photoRef={currentCandidate.photos[photoIndex]}
+                style={styles.cardImage}
+              />
 
               {/* Photo Pagination (Strictly max 2 photos) */}
               {currentCandidate.photos.length > 1 && (

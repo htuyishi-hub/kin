@@ -279,25 +279,89 @@ export default function AppScreen() {
     setIsRecording(false);
   }
 
+  const webVoiceUrlCache = useRef<Map<string, { url: string; expiresAt: number }>>(new Map());
+
+  async function getWebVoiceSignedUrl(userIdOrPath: string, forceRefresh = false): Promise<string | null> {
+    if (!userIdOrPath) return null;
+    if (userIdOrPath.startsWith('http://') || userIdOrPath.startsWith('https://')) {
+      return userIdOrPath;
+    }
+    const cached = webVoiceUrlCache.current.get(userIdOrPath);
+    if (!forceRefresh && cached && cached.expiresAt > Date.now()) {
+      return cached.url;
+    }
+
+    try {
+      const target = userIdOrPath.includes('/') ? userIdOrPath.split('/')[1] || userIdOrPath : userIdOrPath;
+      const res = await fetch(`/api/media/voice/${encodeURIComponent(target)}/url`, {
+        headers: {
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+      });
+      if (!res.ok) {
+        webVoiceUrlCache.current.delete(userIdOrPath);
+        return null;
+      }
+      const data = await res.json();
+      if (data?.url) {
+        webVoiceUrlCache.current.set(userIdOrPath, {
+          url: data.url,
+          expiresAt: Date.now() + Math.max(30, (data.expiresIn || 300) - 30) * 1000,
+        });
+        return data.url;
+      }
+    } catch (err) {
+      console.warn('Failed to get voice signed URL:', err);
+    }
+    return null;
+  }
+
   async function handleSaveVoice(blob: Blob, durationMs: number) {
     setIsSavingVoice(true);
     setVoiceError(null);
     try {
-      const storagePath = `${user?.id || 'user'}/voice_${Date.now()}.webm`;
-      const res = await fetch('/api/me/voice-intro', {
+      // 1. Get signed upload URL from server
+      const urlRes = await fetch('/api/media/voice/upload-url', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
-        body: JSON.stringify({
-          storagePath,
-          durationMs: Math.min(30000, Math.max(1000, durationMs)),
-        }),
       });
 
-      const data = await res.json();
-      if (!res.ok) {
+      if (!urlRes.ok) {
+        setVoiceError(t('errors.generic'));
+        return;
+      }
+
+      const { uploadUrl, path } = await urlRes.json();
+
+      // 2. Upload audio binary directly to signed URL
+      const putRes = await fetch(uploadUrl, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': blob.type || 'audio/m4a',
+        },
+        body: blob,
+      });
+
+      if (!putRes.ok) {
+        setVoiceError(t('errors.generic'));
+        return;
+      }
+
+      // 3. Confirm with server (server validates duration 1-20s using music-metadata)
+      const confirmRes = await fetch('/api/media/voice/confirm', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ path }),
+      });
+
+      const data = await confirmRes.json();
+      if (!confirmRes.ok) {
         if (data.code === 'VOICE_INTRO_TOO_LONG') {
           setVoiceError(t('errors.voiceTooLong'));
         } else if (data.code === 'VOICE_INTRO_TOO_SHORT') {
@@ -306,8 +370,8 @@ export default function AppScreen() {
           setVoiceError(t('errors.generic'));
         }
       } else {
-        setVoiceIntroPath(data.voiceIntroPath || storagePath);
-        setVoiceIntroDurationMs(data.voiceIntroDurationMs || durationMs);
+        setVoiceIntroPath(data.voiceIntroPath || path);
+        setVoiceIntroDurationMs(data.durationMs || durationMs);
       }
     } catch {
       setVoiceError(t('errors.generic'));
@@ -320,7 +384,7 @@ export default function AppScreen() {
     setVoiceError(null);
     setIsSavingVoice(true);
     try {
-      const res = await fetch('/api/me/voice-intro', {
+      const res = await fetch('/api/media/voice', {
         method: 'DELETE',
         headers: {
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
@@ -343,7 +407,7 @@ export default function AppScreen() {
     }
   }
 
-  function toggleProfileVoicePlay() {
+  async function toggleProfileVoicePlay() {
     if (!voiceIntroPath) return;
     if (isPlayingVoice) {
       if (profileAudioRef.current) {
@@ -351,29 +415,55 @@ export default function AppScreen() {
       }
       setIsPlayingVoice(false);
     } else {
+      let playUrl = await getWebVoiceSignedUrl('me');
+      if (!playUrl) {
+        playUrl = voiceIntroPath.startsWith('http') ? voiceIntroPath : null;
+      }
+      if (!playUrl) return;
+
       if (!profileAudioRef.current) {
-        profileAudioRef.current = new Audio(voiceIntroPath);
+        profileAudioRef.current = new Audio(playUrl);
         profileAudioRef.current.onended = () => setIsPlayingVoice(false);
+        profileAudioRef.current.onerror = async () => {
+          const refreshed = await getWebVoiceSignedUrl('me', true);
+          if (refreshed && profileAudioRef.current) {
+            profileAudioRef.current.src = refreshed;
+            profileAudioRef.current.play().catch(() => {});
+          }
+        };
       } else {
-        profileAudioRef.current.src = voiceIntroPath;
+        profileAudioRef.current.src = playUrl;
       }
       profileAudioRef.current.play().catch(() => {});
       setIsPlayingVoice(true);
     }
   }
 
-  function toggleCandidateVoice(path: string) {
+  async function toggleCandidateVoice(path: string) {
     if (playingCandidateAudio) {
       if (candidateAudioRef.current) {
         candidateAudioRef.current.pause();
       }
       setPlayingCandidateAudio(false);
     } else {
+      let playUrl = await getWebVoiceSignedUrl(path);
+      if (!playUrl) {
+        playUrl = path.startsWith('http') ? path : null;
+      }
+      if (!playUrl) return;
+
       if (!candidateAudioRef.current) {
-        candidateAudioRef.current = new Audio(path);
+        candidateAudioRef.current = new Audio(playUrl);
         candidateAudioRef.current.onended = () => setPlayingCandidateAudio(false);
+        candidateAudioRef.current.onerror = async () => {
+          const refreshed = await getWebVoiceSignedUrl(path, true);
+          if (refreshed && candidateAudioRef.current) {
+            candidateAudioRef.current.src = refreshed;
+            candidateAudioRef.current.play().catch(() => {});
+          }
+        };
       } else {
-        candidateAudioRef.current.src = path;
+        candidateAudioRef.current.src = playUrl;
       }
       candidateAudioRef.current.play().catch(() => {});
       setPlayingCandidateAudio(true);
