@@ -3,12 +3,11 @@ import { useLocation } from 'wouter';
 import { Loader2, KeyRound, Clock } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/lib/supabase';
 
 export default function OnboardingInvite() {
   const [, setLocation] = useLocation();
   const { t } = useTranslation();
-  const { user } = useAuth();
+  const { token } = useAuth();
 
   const [inviteCode, setInviteCode] = useState('');
   const [error, setError] = useState('');
@@ -27,34 +26,44 @@ export default function OnboardingInvite() {
     setIsPending(true);
 
     try {
-      if (user?.id) {
-        // Query if invite code belongs to another profile
-        const { data: inviter } = await supabase
-          .from('profiles')
-          .select('id, invite_code')
-          .eq('invite_code', cleanCode)
-          .maybeSingle();
+      const res = await fetch('/api/invites/claim', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ code: cleanCode }),
+      });
 
-        if (inviter) {
-          await supabase
-            .from('profiles')
-            .update({
-              invited_by_profile: inviter.id,
-              is_verified: true,
-              account_status: 'active',
-              onboarding_complete: true,
-            })
-            .eq('id', user.id);
-          setLocation('/app');
-          return;
-        } else {
-          setError(t('onboarding.invite.invalidCode'));
+      const data = await res.json();
+      if (!res.ok) {
+        if (data?.code === 'INVITE_ALREADY_CLAIMED') {
+          setError(t('errors.inviteAlreadyClaimed'));
           return;
         }
+        if (data?.code === 'INVITE_MAX_CLAIMS_REACHED') {
+          setError(t('errors.inviteMaxClaimsReached'));
+          return;
+        }
+        if (data?.code === 'INVITE_RATE_LIMITED') {
+          setError(t('errors.inviteRateLimited'));
+          return;
+        }
+        if (data?.code === 'INVITE_OWN_CODE') {
+          setError(t('errors.inviteOwnCode'));
+          return;
+        }
+        if (data?.code === 'INVITE_CODE_REQUIRED') {
+          setError(t('onboarding.invite.enterCodeError'));
+          return;
+        }
+        setError(data?.message || t('onboarding.invite.invalidCode'));
+        return;
       }
+
       setLocation('/app');
     } catch (err: any) {
-      setError(err?.message || t('onboarding.invite.invalidCode'));
+      setError(err?.message || t('common.networkError'));
     } finally {
       setIsPending(false);
     }

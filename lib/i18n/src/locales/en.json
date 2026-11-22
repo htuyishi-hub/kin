@@ -274,7 +274,10 @@
     "tagsLimitExceeded": "You can select up to 5 tags.",
     "voiceTooLong": "Voice intro must be 30 seconds or fewer.",
     "voiceTooShort": "Voice intro must be at least 1 second.",
-    "micPermission": "Microphone permission required."
+    "micPermission": "Microphone permission required.",
+    "inviteMaxClaimsReached": "This invite code has reached its maximum uses.",
+    "inviteOwnCode": "You cannot claim your own invite code.",
+    "inviteRateLimited": "Too many attempts. Please wait."
   },
   "moderation": {
     "title": "Community Moderation",

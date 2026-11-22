@@ -273,7 +273,10 @@
     "tagsLimitExceeded": "Wahitamo ibyiciro bitarenze 5.",
     "voiceTooLong": "Ijwi rigomba kuba amasegonda 30 cyangwa munsi.",
     "voiceTooShort": "Ijwi rigomba kuba byibuze isegonda 1.",
-    "micPermission": "Uruhushya rwo gufata amajwi rurakenewe."
+    "micPermission": "Uruhushya rwo gufata amajwi rurakenewe.",
+    "inviteMaxClaimsReached": "Iyi kode y'ubutumire yageze ku mbibi zayo.",
+    "inviteOwnCode": "Ntiwakoresha kode yawe bwite.",
+    "inviteRateLimited": "Wagerageje inshuro nyinshi. Tegereza gato."
   },
   "moderation": {
     "title": "Igenzura ry'umuryango",

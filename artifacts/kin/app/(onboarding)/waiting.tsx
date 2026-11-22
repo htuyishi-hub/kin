@@ -89,6 +89,21 @@ export default function WaitingScreen() {
         if (data?.code === "INVITE_ALREADY_CLAIMED") {
           throw new Error(t("errors.inviteAlreadyClaimed"));
         }
+        if (data?.code === "INVITE_MAX_CLAIMS_REACHED") {
+          throw new Error(t("errors.inviteMaxClaimsReached"));
+        }
+        if (data?.code === "INVITE_RATE_LIMITED") {
+          throw new Error(t("errors.inviteRateLimited"));
+        }
+        if (data?.code === "INVITE_OWN_CODE") {
+          throw new Error(t("errors.inviteOwnCode"));
+        }
+        if (data?.code === "INVITE_CODE_REQUIRED") {
+          throw new Error(t("onboarding.invite.enterCodeError"));
+        }
+        if (data?.code === "INVITE_INVALID") {
+          throw new Error(t("onboarding.invite.invalidCode"));
+        }
         throw new Error(data?.message || t("onboarding.invite.invalidCode"));
       }
 

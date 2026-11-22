@@ -244,3 +244,6 @@ profile.voiceLimit,profile,label,Max 30s,Amasegonda 30 gusa,,,20,voice intro max
 errors.voiceTooLong,errors,error,Voice intro must be 30 seconds or fewer.,Ijwi rigomba kuba amasegonda 30 cyangwa munsi.,,,70,voice intro duration too long error,needs_review
 errors.voiceTooShort,errors,error,Voice intro must be at least 1 second.,Ijwi rigomba kuba byibuze isegonda 1.,,,70,voice intro duration too short error,needs_review
 errors.micPermission,errors,error,Microphone permission required.,Uruhushya rwo gufata amajwi rurakenewe.,,,60,microphone permission required error,needs_review
+errors.inviteMaxClaimsReached,errors,error,This invite code has reached its maximum uses.,Iyi kode y'ubutumire yageze ku mbibi zayo.,,,60,max invite claims reached error,needs_review
+errors.inviteOwnCode,errors,error,You cannot claim your own invite code.,Ntiwakoresha kode yawe bwite.,,,60,cannot claim own invite code error,needs_review
+errors.inviteRateLimited,errors,error,Too many attempts. Please wait.,Wagerageje inshuro nyinshi. Tegereza gato.,,,60,rate limit error for invite claims,needs_review
