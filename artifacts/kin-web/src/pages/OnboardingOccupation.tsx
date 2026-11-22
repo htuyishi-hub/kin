@@ -3,12 +3,11 @@ import { useLocation } from 'wouter';
 import { Loader2, Heart, Sparkles, Coffee } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/lib/supabase';
 
 export default function OnboardingOccupation() {
   const [, setLocation] = useLocation();
   const { t } = useTranslation();
-  const { user } = useAuth();
+  const { user, token } = useAuth();
 
   const [occupation, setOccupation] = useState('');
   const [intent, setIntent] = useState<'marriage' | 'long_term' | 'casual'>('marriage');
@@ -26,15 +25,25 @@ export default function OnboardingOccupation() {
     setIsPending(true);
 
     try {
-      if (user?.id) {
-        await supabase
-          .from('profiles')
-          .update({
-            faculty: occupation.trim(),
-            primary_intent: intent,
-          })
-          .eq('id', user.id);
+      const res = await fetch('/api/me/onboarding', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({
+          occupation: occupation.trim(),
+          primaryGoal: intent,
+          locationType: occupation === 'Student' ? 'Campus' : 'City',
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data?.message || t('onboarding.personal.saveFailed'));
+        return;
       }
+
       setLocation('/onboarding/ur');
     } catch (err: any) {
       setError(err?.message || t('onboarding.personal.saveFailed'));

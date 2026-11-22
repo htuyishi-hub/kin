@@ -3,12 +3,11 @@ import { useLocation } from 'wouter';
 import { Loader2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/lib/supabase';
 
 export default function OnboardingPersonal() {
   const [, setLocation] = useLocation();
   const { t } = useTranslation();
-  const { user } = useAuth();
+  const { user, token } = useAuth();
 
   const [fullName, setFullName] = useState('');
   const [dob, setDob] = useState('');
@@ -45,16 +44,29 @@ export default function OnboardingPersonal() {
     setIsPending(true);
 
     try {
-      if (user?.id) {
-        await supabase
-          .from('profiles')
-          .update({
-            full_name: fullName.trim(),
-            date_of_birth: dob,
-            gender,
-          })
-          .eq('id', user.id);
+      const res = await fetch('/api/me', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({
+          fullName: fullName.trim(),
+          dateOfBirth: dob,
+          gender,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        if (data?.code === 'UNDERAGE') {
+          setError(t('onboarding.personal.mustBe18'));
+          return;
+        }
+        setError(data?.message || t('onboarding.personal.saveFailed'));
+        return;
       }
+
       setLocation('/onboarding/occupation');
     } catch (err: any) {
       setError(err?.message || t('onboarding.personal.saveFailed'));
