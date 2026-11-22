@@ -60,6 +60,7 @@ function mapProfile(p: typeof profilesTable.$inferSelect) {
     tags: (p.tags as string[]) ?? [],
     voiceIntroPath: p.voiceIntroPath ?? null,
     voiceIntroDurationMs: p.voiceIntroDurationMs ?? null,
+    communityVotingEnabled: process.env.COMMUNITY_VOTING_ENABLED === "true",
     createdAt: p.createdAt?.toISOString() ?? new Date().toISOString(),
     lastActive: p.lastActive?.toISOString() ?? new Date().toISOString(),
   };

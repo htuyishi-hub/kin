@@ -74,6 +74,9 @@ export default function DiscoverScreen() {
     (myProfile as any)?.isVerified ||
     (myProfile as any)?.accountStatus === "active"
   );
+  const isCommunityVotingEnabled =
+    process.env.EXPO_PUBLIC_COMMUNITY_VOTING_ENABLED === "true" ||
+    Boolean((myProfile as any)?.communityVotingEnabled);
 
   // Swipe Right = Categorized Like & Golden Bid
   async function handleSwipeRight(
@@ -163,7 +166,7 @@ export default function DiscoverScreen() {
 
         <View style={styles.headerRight}>
           {/* Community Review Deck Shortcut for active users */}
-          {isApproverActive && (
+          {isApproverActive && isCommunityVotingEnabled && (
             <TouchableOpacity
               style={styles.moderationBtn}
               onPress={() => router.push("/moderation/review")}

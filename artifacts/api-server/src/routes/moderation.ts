@@ -5,6 +5,20 @@ import { requireAuth, type AuthedRequest } from "../middlewares/auth.js";
 
 const router = Router();
 
+// Feature Flag: COMMUNITY_VOTING_ENABLED (default: false)
+router.use((_req, res, next) => {
+  const isEnabled = process.env.COMMUNITY_VOTING_ENABLED === "true";
+  if (!isEnabled) {
+    res.status(404).json({
+      code: "FEATURE_DISABLED",
+      error: "not_found",
+      message: "Community voting is disabled.",
+    });
+    return;
+  }
+  next();
+});
+
 // GET /moderation/queue — Review deck of waitlisted users awaiting community approval
 router.get("/moderation/queue", requireAuth, async (req, res) => {
   const userId = (req as AuthedRequest).userId;

@@ -50,11 +50,28 @@ router.get("/invites/my-code", requireAuth, async (req, res) => {
   });
 });
 
+// Rate limiting store for invite claims: 10 attempts per hour per user and per IP
+const inviteClaimRateLimit = new Map<string, { count: number; resetAt: number }>();
+
+function checkAndIncrementInviteRateLimit(key: string): boolean {
+  const now = Date.now();
+  const entry = inviteClaimRateLimit.get(key);
+  if (!entry || now > entry.resetAt) {
+    inviteClaimRateLimit.set(key, { count: 1, resetAt: now + 60 * 60 * 1000 });
+    return true;
+  }
+  if (entry.count >= 10) {
+    return false;
+  }
+  entry.count += 1;
+  return true;
+}
+
 // GET /invites/validate/:code — public check for an invite link
 router.get("/invites/validate/:code", async (req, res) => {
   const { code } = req.params;
   if (!code || typeof code !== "string") {
-    res.status(400).json({ error: "bad_request", message: "Code is required" });
+    res.status(400).json({ error: "bad_request", code: "INVITE_CODE_REQUIRED", message: "Code is required" });
     return;
   }
 
@@ -70,7 +87,22 @@ router.get("/invites/validate/:code", async (req, res) => {
     .limit(1);
 
   if (!inviter[0]) {
-    res.status(404).json({ valid: false, message: "Invalid or expired invite code" });
+    res.status(404).json({ valid: false, code: "INVITE_INVALID", message: "Invalid or expired invite code" });
+    return;
+  }
+
+  const maxClaims = parseInt(process.env.INVITE_MAX_CLAIMS || "5", 10);
+  const [claimCount] = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(invitesTable)
+    .where(and(eq(invitesTable.inviterId, inviter[0].id), eq(invitesTable.status, "accepted")));
+
+  if (Number(claimCount?.count ?? 0) >= maxClaims) {
+    res.status(400).json({
+      valid: false,
+      code: "INVITE_MAX_CLAIMS_REACHED",
+      message: "This invite code has reached its maximum number of uses.",
+    });
     return;
   }
 
@@ -86,8 +118,30 @@ router.post("/invites/claim", requireAuth, async (req, res) => {
   const userId = (req as AuthedRequest).userId;
   const { code } = req.body as { code?: string };
 
+  // Rate-limit: 10 per hour per user and per IP
+  const clientIp =
+    (typeof req.headers["x-forwarded-for"] === "string"
+      ? req.headers["x-forwarded-for"].split(",")[0]?.trim()
+      : Array.isArray(req.headers["x-forwarded-for"])
+      ? req.headers["x-forwarded-for"][0]?.trim()
+      : req.ip) ||
+    req.socket?.remoteAddress ||
+    "unknown";
+
+  const userAllowed = checkAndIncrementInviteRateLimit(`user:${userId}`);
+  const ipAllowed = checkAndIncrementInviteRateLimit(`ip:${clientIp}`);
+
+  if (!userAllowed || !ipAllowed) {
+    res.status(429).json({
+      error: "too_many_requests",
+      code: "INVITE_RATE_LIMITED",
+      message: "Too many attempts. Please try again later.",
+    });
+    return;
+  }
+
   if (!code || typeof code !== "string" || !code.trim()) {
-    res.status(400).json({ error: "bad_request", message: "Invite code is required" });
+    res.status(400).json({ error: "bad_request", code: "INVITE_CODE_REQUIRED", message: "Invite code is required" });
     return;
   }
 
@@ -101,19 +155,19 @@ router.post("/invites/claim", requireAuth, async (req, res) => {
     .limit(1);
 
   if (!inviter[0]) {
-    res.status(404).json({ error: "not_found", message: "Invalid invite code" });
+    res.status(404).json({ error: "not_found", code: "INVITE_INVALID", message: "Invalid invite code" });
     return;
   }
 
   if (inviter[0].id === userId) {
-    res.status(400).json({ error: "bad_request", message: "You cannot claim your own invite code" });
+    res.status(400).json({ error: "bad_request", code: "INVITE_OWN_CODE", message: "You cannot claim your own invite code" });
     return;
   }
 
   // Get current user profile
   const me = await db.select().from(profilesTable).where(eq(profilesTable.id, userId)).limit(1);
   if (!me[0]) {
-    res.status(404).json({ error: "not_found", message: "Profile not found" });
+    res.status(404).json({ error: "not_found", code: "USER_NOT_FOUND", message: "Profile not found" });
     return;
   }
 
@@ -122,53 +176,92 @@ router.post("/invites/claim", requireAuth, async (req, res) => {
     return;
   }
 
-  // Atomic update within transaction
-  await db.transaction(async (tx) => {
-    // Update user profile to mark verified
-    await tx
-      .update(profilesTable)
-      .set({
-        invitedByProfile: inviter[0]!.id,
-        isVerified: true,
-        verificationMethod: "invite",
-        trustScore: Math.min(100, (me[0]!.trustScore ?? 50) + 15),
-      } as any)
-      .where(eq(profilesTable.id, userId));
+  // Check INVITE_MAX_CLAIMS (env, default 5, counted from existing invites table)
+  const maxClaims = parseInt(process.env.INVITE_MAX_CLAIMS || "5", 10);
+  const [claimCount] = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(invitesTable)
+    .where(and(eq(invitesTable.inviterId, inviter[0]!.id), eq(invitesTable.status, "accepted")));
 
-    // Update inviter's inviteCount and trust score
-    await tx
-      .update(profilesTable)
-      .set({
-        inviteCount: sql`${profilesTable.inviteCount} + 1`,
-        trustScore: Math.min(100, (inviter[0]!.trustScore ?? 50) + 10),
-      } as any)
-      .where(eq(profilesTable.id, inviter[0]!.id));
-
-    // Record in invites table
-    await tx.insert(invitesTable).values({
-      inviterId: inviter[0]!.id,
-      invitedUserId: userId,
-      inviteCode: normalized,
-      status: "accepted",
-      acceptedAt: new Date(),
+  if (Number(claimCount?.count ?? 0) >= maxClaims) {
+    res.status(400).json({
+      error: "limit_reached",
+      code: "INVITE_MAX_CLAIMS_REACHED",
+      message: "This invite code has reached its maximum number of uses.",
     });
+    return;
+  }
 
-    // Audit trust events
-    await tx.insert(trustEventsTable).values([
-      {
-        userId,
-        eventType: "invited_by_member",
-        delta: 15 as any,
-        sourceId: inviter[0]!.id,
-      },
-      {
-        userId: inviter[0]!.id,
-        eventType: "successful_invite",
-        delta: 10 as any,
-        sourceId: userId,
-      },
-    ]);
-  });
+  try {
+    // Atomic update within transaction
+    await db.transaction(async (tx) => {
+      // Re-verify limit inside transaction to prevent race conditions
+      const [txClaimCount] = await tx
+        .select({ count: sql<number>`count(*)` })
+        .from(invitesTable)
+        .where(and(eq(invitesTable.inviterId, inviter[0]!.id), eq(invitesTable.status, "accepted")));
+
+      if (Number(txClaimCount?.count ?? 0) >= maxClaims) {
+        throw new Error("MAX_CLAIMS_REACHED");
+      }
+
+      // Update user profile to mark verified and active
+      await tx
+        .update(profilesTable)
+        .set({
+          invitedByProfile: inviter[0]!.id,
+          isVerified: true,
+          accountStatus: "active",
+          verificationMethod: "invite",
+          trustScore: Math.min(100, (me[0]!.trustScore ?? 50) + 15),
+        } as any)
+        .where(eq(profilesTable.id, userId));
+
+      // Update inviter's inviteCount and trust score
+      await tx
+        .update(profilesTable)
+        .set({
+          inviteCount: sql`${profilesTable.inviteCount} + 1`,
+          trustScore: Math.min(100, (inviter[0]!.trustScore ?? 50) + 10),
+        } as any)
+        .where(eq(profilesTable.id, inviter[0]!.id));
+
+      // Record in invites table
+      await tx.insert(invitesTable).values({
+        inviterId: inviter[0]!.id,
+        invitedUserId: userId,
+        inviteCode: normalized,
+        status: "accepted",
+        acceptedAt: new Date(),
+      });
+
+      // Audit trust events
+      await tx.insert(trustEventsTable).values([
+        {
+          userId,
+          eventType: "invited_by_member",
+          delta: 15 as any,
+          sourceId: inviter[0]!.id,
+        },
+        {
+          userId: inviter[0]!.id,
+          eventType: "successful_invite",
+          delta: 10 as any,
+          sourceId: userId,
+        },
+      ]);
+    });
+  } catch (err: any) {
+    if (err?.message === "MAX_CLAIMS_REACHED") {
+      res.status(400).json({
+        error: "limit_reached",
+        code: "INVITE_MAX_CLAIMS_REACHED",
+        message: "This invite code has reached its maximum number of uses.",
+      });
+      return;
+    }
+    throw err;
+  }
 
   res.json({
     success: true,
