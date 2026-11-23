@@ -82,9 +82,9 @@ export default function Terms() {
 
             <Section id="tos-1" number="1" title="Acceptance of Terms">
               <p>
-                By creating an account on Kin, you agree to be bound by these Terms of Service and the Privacy
-                Policy below. If you do not agree, do not use Kin. These Terms apply to the Kin mobile
-                application and the kin.rw website (together, the Service), operated in Rwanda.
+                By creating an account on kinn, you agree to be bound by these Terms of Service and the Privacy
+                Policy below. If you do not agree, do not use kinn. These Terms apply to the kinn mobile
+                application and the kinn.ink website (together, the Service), operated in Rwanda.
               </p>
             </Section>
 
@@ -148,7 +148,7 @@ export default function Terms() {
                 through MTN Mobile Money.
               </p>
               <ul>
-                <li>Payments are non-refundable, except where a technical error on Kin's part resulted in a feature not being delivered after payment was confirmed. Such cases must be reported to <a href="mailto:support@kin.rw" className="text-trust hover:underline">support@kin.rw</a> within 7 days of the transaction.</li>
+                <li>Payments are non-refundable, except where a technical error on Kin's part resulted in a feature not being delivered after payment was confirmed. Such cases must be reported to <a href="mailto:support@kinn.ink" className="text-trust hover:underline">support@kinn.ink</a> within 7 days of the transaction.</li>
                 <li>Kin may change pricing for any feature with at least 14 days' notice communicated inside the app. Previously purchased tokens or features are not affected retroactively by a price change.</li>
                 <li>Subscription features, where offered, may be cancelled at any time; cancellation takes effect at the end of the current billing period.</li>
               </ul>
@@ -355,11 +355,11 @@ export default function Terms() {
                   </thead>
                   <tbody className="divide-y divide-divider">
                     {[
-                      ["Privacy questions",  "privacy@kin.rw",  "48 hours"],
-                      ["Payment issues",     "support@kin.rw",  "48 hours"],
-                      ["Safety emergencies", "safety@kin.rw",   "12 hours"],
-                      ["Report a bug",       "bugs@kin.rw",     "72 hours"],
-                      ["Legal notices",      "legal@kin.rw",    "5 business days"],
+                      ["Privacy questions",  "privacy@kinn.ink",  "48 hours"],
+                      ["Payment issues",     "support@kinn.ink",  "48 hours"],
+                      ["Safety emergencies", "safety@kinn.ink",   "12 hours"],
+                      ["Report a bug",       "bugs@kinn.ink",     "72 hours"],
+                      ["Legal notices",      "legal@kinn.ink",    "5 business days"],
                     ].map(([purpose, email, time]) => (
                       <tr key={email} className="hover:bg-ink/60 transition-colors">
                         <td className="px-5 py-4 text-bone">{purpose}</td>

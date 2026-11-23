@@ -152,7 +152,7 @@ export default function Home() {
           <div className="max-w-4xl mx-auto bg-night border border-divider rounded-3xl p-8 md:p-16 text-center">
             <h2 className="font-serif text-4xl md:text-5xl font-bold text-bone mb-6">Ready to meet your person?</h2>
             <p className="text-bone-dim text-lg mb-10 max-w-2xl mx-auto">
-              Kin is designed as a web app. Install it directly to your phone's home screen for the best experience.
+              kinn is designed as a web app. Install it directly to your phone's home screen for the best experience.
             </p>
             
             <div className="flex flex-col sm:flex-row items-center justify-center gap-6">
