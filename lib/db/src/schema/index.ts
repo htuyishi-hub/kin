@@ -10,6 +10,7 @@ export * from "./studentRegistry";
 export * from "./urVerification";
 export * from "./urVerificationUtil";
 export * from "./invites";
+export * from "./posts";
 
 
 

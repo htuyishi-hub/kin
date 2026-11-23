@@ -25,7 +25,8 @@ export const trustEventsTable = pgTable("trust_events", {
 export const reportsTable = pgTable("reports", {
   id: uuid("id").primaryKey().defaultRandom(),
   reporterId: uuid("reporter_id").notNull().references(() => profilesTable.id, { onDelete: "cascade" }),
-  reportedId: uuid("reported_id").notNull().references(() => profilesTable.id),
+  reportedId: uuid("reported_id").references(() => profilesTable.id),
+  postId: uuid("post_id"),
   reason: text("reason").notNull(),
   details: text("details"),
   status: text("status").default("pending").notNull(),
