@@ -82,13 +82,12 @@ export default function AuthCallback() {
           } catch {
             // non-fatal
           }
+          active = false;
           const routing = await fetchProfileRouting(session.user.id);
-          if (active) {
-            if (routing.onboardingComplete) {
-              setLocation('/app');
-            } else {
-              setLocation('/onboarding/personal');
-            }
+          if (routing.onboardingComplete) {
+            setLocation('/app');
+          } else {
+            setLocation('/onboarding/personal');
           }
           return;
         }
@@ -101,6 +100,7 @@ export default function AuthCallback() {
               activeSubscription = null;
             }
             if (timer) clearTimeout(timer);
+            active = false;
             await setSession(newSession);
             await signIn(newSession.access_token, newSession.user.id);
             try {
@@ -110,32 +110,43 @@ export default function AuthCallback() {
               );
             } catch {}
             const routing = await fetchProfileRouting(newSession.user.id);
-            if (active) {
-              if (routing.onboardingComplete) {
-                setLocation('/app');
-              } else {
-                setLocation('/onboarding/personal');
-              }
+            if (routing.onboardingComplete) {
+              setLocation('/app');
+            } else {
+              setLocation('/onboarding/personal');
             }
           }
         });
         activeSubscription = subscription;
 
         // 4. Timeout fallback only if still unauthenticated after 5s
-        timer = setTimeout(() => {
+        timer = setTimeout(async () => {
           if (active) {
+            active = false;
             if (activeSubscription) {
               activeSubscription.unsubscribe();
               activeSubscription = null;
+            }
+            // Double-check session before bouncing to signin
+            const { data: checkData } = await supabase.auth.getSession();
+            if (checkData?.session?.user) {
+              const routing = await fetchProfileRouting(checkData.session.user.id);
+              if (routing.onboardingComplete) {
+                setLocation('/app');
+              } else {
+                setLocation('/onboarding/personal');
+              }
+              return;
             }
             setLocation('/signin');
           }
         }, 5000);
       } catch (err: any) {
         if (active) {
+          active = false;
           setError(err?.message || 'Authentication error');
           timer = setTimeout(() => {
-            if (active) setLocation('/signin');
+            setLocation('/signin');
           }, 2000);
         }
       }

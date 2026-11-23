@@ -116,6 +116,7 @@ export default function Callback() {
           if (newSession?.user && active) {
             subscription.unsubscribe();
             if (timer) clearTimeout(timer);
+            active = false;
             await setSession(newSession);
             await signIn(newSession.access_token, newSession.user.id);
             try {
@@ -134,14 +135,26 @@ export default function Callback() {
         });
 
         // 4. Timeout fallback only if still unauthenticated after 5s
-        timer = setTimeout(() => {
+        timer = setTimeout(async () => {
           if (active) {
+            active = false;
             subscription.unsubscribe();
+            const { data: checkData } = await supabase.auth.getSession();
+            if (checkData?.session?.user) {
+              const routing = await fetchProfileRouting(checkData.session.user.id);
+              if (routing.onboardingComplete) {
+                router.replace("/(tabs)");
+              } else {
+                router.replace("/(onboarding)/personal");
+              }
+              return;
+            }
             router.replace("/(onboarding)/welcome");
           }
         }, 5000);
       } catch {
         if (active) {
+          active = false;
           router.replace("/(onboarding)/welcome");
         }
       }

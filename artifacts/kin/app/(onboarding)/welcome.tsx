@@ -20,6 +20,7 @@ import { useTranslation, changeLanguage, getCurrentLanguage, type SupportedLangu
 import { Colors }         from '@/constants/colors';
 import { Space, Radius }  from '@/constants/spacing';
 import { ensureSkiaReady } from '@/utils/loadSkia';
+import { useAuth }         from '@/contexts/AuthContext';
 
 const ShadowCanvas = lazy(async () => {
   await ensureSkiaReady();
@@ -44,10 +45,17 @@ export default function WelcomeScreen() {
   const insets            = useSafeAreaInsets();
   const { width, height } = useWindowDimensions();
   const { t, i18n }       = useTranslation();
+  const { token, isLoading: authLoading } = useAuth();
   const [currentLang, setCurrentLang] = useState<SupportedLanguage>(getCurrentLanguage());
 
   const textOpacity   = useSharedValue(0);
   const buttonOpacity = useSharedValue(0);
+
+  useEffect(() => {
+    if (!authLoading && token) {
+      router.replace('/(onboarding)/personal');
+    }
+  }, [authLoading, token]);
 
   useEffect(() => {
     textOpacity.value = withTiming(1, { duration: 600 });

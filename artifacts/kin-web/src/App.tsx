@@ -1,3 +1,4 @@
+import React, { useEffect } from "react";
 import { Switch, Route, Router as WouterRouter, useLocation } from "wouter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -30,16 +31,29 @@ import NotFound from "@/pages/not-found";
 const queryClient = new QueryClient();
 
 function Router() {
-  const [location] = useLocation();
+  const [location, setLocation] = useLocation();
   const isMarketingHost =
     typeof window !== "undefined" &&
     (window.location.hostname === "kinn.ink" || window.location.hostname === "www.kinn.ink");
 
+  const hasAuthParams =
+    typeof window !== "undefined" &&
+    (window.location.search.includes("code=") ||
+     window.location.search.includes("error=") ||
+     window.location.hash.includes("access_token="));
+
+  useEffect(() => {
+    if (hasAuthParams && (location === "/" || location === "/welcome")) {
+      setLocation("/auth/callback" + window.location.search + window.location.hash);
+    }
+  }, [hasAuthParams, location, setLocation]);
+
   const isMarketingRoute =
-    location === "/landing" ||
-    location === "/terms" ||
-    location === "/download" ||
-    (isMarketingHost && location === "/");
+    !hasAuthParams &&
+    (location === "/landing" ||
+     location === "/terms" ||
+     location === "/download" ||
+     (isMarketingHost && location === "/"));
 
   if (isMarketingRoute) {
     return (
