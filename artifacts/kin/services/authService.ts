@@ -664,46 +664,99 @@ export async function signOut(): Promise<{ error?: string }> {
   }
 }
 
-/**
- * Checks a verified user's profile to determine post-auth routing.
- */
-export async function fetchProfileRouting(userId: string): Promise<{
+export interface ProfileRoutingResult {
   onboardingComplete: boolean;
   hasName: boolean;
+  hasPersonal: boolean;
+  hasOccupation: boolean;
+  isUrStudent: boolean;
+  isVerified: boolean;
   accountStatus: string;
-}> {
+  nextRoute: string;
+}
+
+/**
+ * Checks a verified user's profile to determine exact post-auth resume route.
+ */
+export async function fetchProfileRouting(userId: string): Promise<ProfileRoutingResult> {
+  const fallback: ProfileRoutingResult = {
+    onboardingComplete: false,
+    hasName: false,
+    hasPersonal: false,
+    hasOccupation: false,
+    isUrStudent: false,
+    isVerified: false,
+    accountStatus: 'waitlisted',
+    nextRoute: '/(onboarding)/personal',
+  };
+
   try {
     const { data, error } = await supabase
       .from('profiles')
-      .select('id, full_name, date_of_birth, gender, faculty, primary_intent, onboarding_complete, account_status')
+      .select('id, full_name, date_of_birth, gender, faculty, primary_intent, onboarding_complete, campus_name, campus, institution, is_verified, institution_verified, vouch_count, account_status')
       .eq('id', userId)
       .maybeSingle();
 
     if (error || !data) {
-      return { onboardingComplete: false, hasName: false, accountStatus: 'waitlisted' };
+      return fallback;
     }
 
-    const hasAllFive = Boolean(
+    const hasPersonal = Boolean(
       data.full_name &&
       data.full_name.trim().length > 0 &&
       data.date_of_birth &&
       data.gender &&
-      data.gender.trim().length > 0 &&
+      data.gender.trim().length > 0
+    );
+
+    const hasOccupation = Boolean(
       data.faculty &&
       data.faculty.trim().length > 0 &&
       data.primary_intent &&
       data.primary_intent.trim().length > 0
     );
 
-    const onboardingComplete = Boolean(data.onboarding_complete && hasAllFive);
-    const hasName = Boolean(data.full_name && data.full_name.trim().length > 0);
+    const isUrStudent = Boolean(
+      data.faculty === 'Student' &&
+      (data.campus_name === 'University of Rwanda' || data.institution === 'university_of_rwanda')
+    );
+
+    const hasUrCampus = Boolean(data.campus && data.campus.trim().length > 0);
+
+    const onboardingComplete = Boolean(
+      data.onboarding_complete && hasPersonal && hasOccupation && (!isUrStudent || hasUrCampus)
+    );
+
+    const isVerified = Boolean(
+      data.is_verified ||
+      data.institution_verified ||
+      (data.vouch_count ?? 0) >= 1
+    );
+
+    let nextRoute = '/(onboarding)/personal';
+    if (!hasPersonal) {
+      nextRoute = '/(onboarding)/personal';
+    } else if (!hasOccupation) {
+      nextRoute = '/(onboarding)/occupation';
+    } else if (isUrStudent && !hasUrCampus) {
+      nextRoute = '/(onboarding)/ur-campus';
+    } else if (!isVerified) {
+      nextRoute = '/(onboarding)/invite';
+    } else {
+      nextRoute = '/(tabs)';
+    }
 
     return {
       onboardingComplete,
-      hasName,
+      hasName: Boolean(data.full_name && data.full_name.trim().length > 0),
+      hasPersonal,
+      hasOccupation,
+      isUrStudent,
+      isVerified,
       accountStatus: data.account_status || 'waitlisted',
+      nextRoute,
     };
   } catch {
-    return { onboardingComplete: false, hasName: false, accountStatus: 'waitlisted' };
+    return fallback;
   }
 }

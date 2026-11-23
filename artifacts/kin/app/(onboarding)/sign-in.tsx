@@ -103,11 +103,7 @@ export default function SignInScreen() {
       }
 
       const routing = await fetchProfileRouting(res.user.id);
-      if (routing.onboardingComplete) {
-        router.replace("/(tabs)");
-      } else {
-        router.replace("/(onboarding)/personal");
-      }
+      router.replace(routing.nextRoute as any);
     } catch (err: any) {
       setError(err?.message || t("auth.signIn.signInFailed"));
     } finally {

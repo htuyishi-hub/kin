@@ -49,11 +49,7 @@ export default function Callback() {
                   );
                 } catch {}
                 const routing = await fetchProfileRouting(data.session.user.id);
-                if (routing.onboardingComplete) {
-                  router.replace("/(tabs)");
-                } else {
-                  router.replace("/(onboarding)/personal");
-                }
+                router.replace(routing.nextRoute as any);
                 return;
               }
             } catch {
@@ -85,11 +81,7 @@ export default function Callback() {
                   );
                 } catch {}
                 const routing = await fetchProfileRouting(data.session.user.id);
-                if (routing.onboardingComplete) {
-                  router.replace("/(tabs)");
-                } else {
-                  router.replace("/(onboarding)/personal");
-                }
+                router.replace(routing.nextRoute as any);
                 return;
               }
             } catch (err: any) {
@@ -112,11 +104,7 @@ export default function Callback() {
             );
           } catch {}
           const routing = await fetchProfileRouting(session.user.id);
-          if (routing.onboardingComplete) {
-            router.replace("/(tabs)");
-          } else {
-            router.replace("/(onboarding)/personal");
-          }
+          router.replace(routing.nextRoute as any);
           return;
         }
 
@@ -135,11 +123,7 @@ export default function Callback() {
               );
             } catch {}
             const routing = await fetchProfileRouting(newSession.user.id);
-            if (routing.onboardingComplete) {
-              router.replace("/(tabs)");
-            } else {
-              router.replace("/(onboarding)/personal");
-            }
+            router.replace(routing.nextRoute as any);
           }
         });
 
@@ -151,11 +135,7 @@ export default function Callback() {
             if (checkData?.session?.user) {
               active = false;
               const routing = await fetchProfileRouting(checkData.session.user.id);
-              if (routing.onboardingComplete) {
-                router.replace("/(tabs)");
-              } else {
-                router.replace("/(onboarding)/personal");
-              }
+              router.replace(routing.nextRoute as any);
               return;
             }
             // If still no session after timeout, offer retry or back instead of blind redirect

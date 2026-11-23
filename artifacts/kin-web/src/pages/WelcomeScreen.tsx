@@ -14,11 +14,7 @@ export default function WelcomeScreen() {
   useEffect(() => {
     if (!isLoading && user) {
       fetchProfileRouting(user.id).then((routing) => {
-        if (routing.onboardingComplete) {
-          setLocation('/app');
-        } else {
-          setLocation('/onboarding/personal');
-        }
+        setLocation(routing.nextRoute);
       });
     }
   }, [user, isLoading, setLocation]);

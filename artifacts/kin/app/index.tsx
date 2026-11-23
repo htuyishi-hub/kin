@@ -42,11 +42,36 @@ export default function IndexScreen() {
       }
     }
 
-    if (!profile?.onboardingComplete) {
+    // Precise step-by-step onboarding progress resumption
+    const hasPersonal = Boolean(
+      profile?.fullName?.trim() &&
+      ((profile as any)?.dateOfBirth || (profile as any)?.age) &&
+      profile?.gender?.trim()
+    );
+
+    if (!hasPersonal) {
       router.replace("/(onboarding)/personal");
       return;
     }
 
+    const hasOccupation = Boolean(
+      profile?.faculty?.trim() &&
+      profile?.primaryIntent?.trim()
+    );
+
+    if (!hasOccupation && !profile?.onboardingComplete) {
+      router.replace("/(onboarding)/occupation");
+      return;
+    }
+
+    const isUrStudent =
+      profile?.faculty === "Student" &&
+      (profile?.campusName === "University of Rwanda" || (profile as any)?.institution === "university_of_rwanda");
+
+    if (isUrStudent && !(profile as any)?.campus) {
+      router.replace("/(onboarding)/ur-campus");
+      return;
+    }
 
     const earlyAccess = (profile as any).earlyAccess === true;
     const isVerified = Boolean(
@@ -62,7 +87,7 @@ export default function IndexScreen() {
     }
 
     router.replace("/(tabs)");
-  }, [authLoading, token, profileLoading, profile]);
+  }, [authLoading, token, profileLoading, profile, profileError, signOut]);
 
   return (
     <View style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: colors.background }}>

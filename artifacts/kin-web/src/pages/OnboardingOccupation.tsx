@@ -14,6 +14,53 @@ export default function OnboardingOccupation() {
   const [error, setError] = useState('');
   const [isPending, setIsPending] = useState(false);
 
+  // Restore saved profile or draft data
+  React.useEffect(() => {
+    let active = true;
+
+    async function loadSavedData() {
+      try {
+        const rawDraft = localStorage.getItem('kin_occupation_draft');
+        const draft = rawDraft ? JSON.parse(rawDraft) : null;
+
+        let profile: any = null;
+        if (token) {
+          const res = await fetch('/api/me', {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          if (res.ok) {
+            profile = await res.json();
+          }
+        }
+
+        if (!active) return;
+
+        const initialOcc = draft?.occupation || profile?.faculty || '';
+        let initialIntent = draft?.intent || '';
+        if (!initialIntent && profile?.primaryIntent) {
+          const pi = String(profile.primaryIntent).toLowerCase();
+          if (pi.includes('marriage')) initialIntent = 'marriage';
+          else if (pi.includes('serious') || pi.includes('long')) initialIntent = 'long_term';
+          else if (pi.includes('casual')) initialIntent = 'casual';
+        }
+
+        if (initialOcc && !occupation) setOccupation(initialOcc);
+        if (initialIntent && !intent) setIntent(initialIntent as any);
+      } catch {}
+    }
+
+    loadSavedData();
+    return () => {
+      active = false;
+    };
+  }, [token]);
+
+  function saveDraft(occ: string, int: string) {
+    try {
+      localStorage.setItem('kin_occupation_draft', JSON.stringify({ occupation: occ, intent: int }));
+    } catch {}
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!occupation.trim()) {
@@ -23,6 +70,7 @@ export default function OnboardingOccupation() {
 
     setError('');
     setIsPending(true);
+    saveDraft(occupation, intent);
 
     try {
       const res = await fetch('/api/me/onboarding', {
@@ -44,7 +92,14 @@ export default function OnboardingOccupation() {
         return;
       }
 
-      setLocation('/onboarding/ur');
+      localStorage.removeItem('kin_personal_draft');
+      localStorage.removeItem('kin_occupation_draft');
+
+      if (occupation === 'Student') {
+        setLocation('/onboarding/ur');
+      } else {
+        setLocation('/onboarding/invite');
+      }
     } catch (err: any) {
       setError(err?.message || t('onboarding.personal.saveFailed'));
     } finally {

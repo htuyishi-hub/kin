@@ -92,12 +92,7 @@ export default function OtpScreen() {
 
         // Post-verification profile routing check
         const routing = await fetchProfileRouting(res.user.id);
-
-        if (routing.onboardingComplete) {
-          router.replace("/(tabs)");
-        } else {
-          router.replace("/(onboarding)/personal");
-        }
+        router.replace(routing.nextRoute as any);
         return;
       }
 
@@ -109,11 +104,7 @@ export default function OtpScreen() {
           await signIn(res.session.access_token, res.user.id);
 
           const routing = await fetchProfileRouting(res.user.id);
-          if (routing.onboardingComplete) {
-            router.replace("/(tabs)");
-          } else {
-            router.replace("/(onboarding)/personal");
-          }
+          router.replace(routing.nextRoute as any);
           return;
         }
 

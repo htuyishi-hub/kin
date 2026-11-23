@@ -84,11 +84,7 @@ export default function AuthCallback() {
           }
           active = false;
           const routing = await fetchProfileRouting(session.user.id);
-          if (routing.onboardingComplete) {
-            setLocation('/app');
-          } else {
-            setLocation('/onboarding/personal');
-          }
+          setLocation(routing.nextRoute);
           return;
         }
 
@@ -110,11 +106,7 @@ export default function AuthCallback() {
               );
             } catch {}
             const routing = await fetchProfileRouting(newSession.user.id);
-            if (routing.onboardingComplete) {
-              setLocation('/app');
-            } else {
-              setLocation('/onboarding/personal');
-            }
+            setLocation(routing.nextRoute);
           }
         });
         activeSubscription = subscription;
@@ -131,11 +123,7 @@ export default function AuthCallback() {
             const { data: checkData } = await supabase.auth.getSession();
             if (checkData?.session?.user) {
               const routing = await fetchProfileRouting(checkData.session.user.id);
-              if (routing.onboardingComplete) {
-                setLocation('/app');
-              } else {
-                setLocation('/onboarding/personal');
-              }
+              setLocation(routing.nextRoute);
               return;
             }
             setLocation('/signin');

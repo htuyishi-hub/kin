@@ -98,11 +98,7 @@ export default function SignInScreen() {
       }
 
       const routing = await fetchProfileRouting(res.user.id);
-      if (routing.onboardingComplete) {
-        setLocation('/app');
-      } else {
-        setLocation('/onboarding/personal');
-      }
+      setLocation(routing.nextRoute);
     } catch (err: any) {
       setError(err?.message || t('auth.signIn.signInFailed'));
     } finally {

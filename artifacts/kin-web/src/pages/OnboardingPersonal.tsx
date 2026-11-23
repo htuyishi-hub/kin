@@ -35,6 +35,63 @@ export default function OnboardingPersonal() {
   const [error, setError] = useState('');
   const [isPending, setIsPending] = useState(false);
 
+  // Restore saved profile or draft data
+  React.useEffect(() => {
+    let active = true;
+
+    async function loadSavedData() {
+      try {
+        const rawDraft = localStorage.getItem('kin_personal_draft');
+        const draft = rawDraft ? JSON.parse(rawDraft) : null;
+
+        let profile: any = null;
+        if (token) {
+          const res = await fetch('/api/me', {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          if (res.ok) {
+            profile = await res.json();
+          }
+        }
+
+        if (!active) return;
+
+        const initialName = draft?.fullName || profile?.fullName || '';
+        const rawGender = (draft?.gender || profile?.gender || '').toLowerCase();
+        const initialGender = rawGender === 'male' || rawGender === 'female' ? rawGender : '';
+        const rawDob = draft?.dob || profile?.dateOfBirth || '';
+
+        if (initialName && !fullName) setFullName(initialName);
+        if (initialGender && !gender) setGender(initialGender as any);
+
+        if (rawDob && !dob) {
+          const match = String(rawDob).match(/^(\d{4})-(\d{2})-(\d{2})/);
+          if (match) {
+            setDob(`${match[1]}-${match[2]}-${match[3]}`);
+            setYear(match[1]);
+            setMonth(match[2]);
+            setDay(match[3]);
+          }
+        }
+      } catch {}
+    }
+
+    loadSavedData();
+    return () => {
+      active = false;
+    };
+  }, [token]);
+
+  function saveDraft(name: string, d: string, m: string, y: string, g: string) {
+    const dobStr = d && m && y ? `${y}-${m}-${d}` : '';
+    try {
+      localStorage.setItem(
+        'kin_personal_draft',
+        JSON.stringify({ fullName: name, dob: dobStr, gender: g })
+      );
+    } catch {}
+  }
+
   const maxYear = new Date().getFullYear() - 18;
   const minYear = 1940;
 
@@ -64,6 +121,7 @@ export default function OnboardingPersonal() {
   function updateDob(d: string, m: string, y: string) {
     if (d && m && y) {
       setDob(`${y}-${m}-${d}`);
+      saveDraft(fullName, d, m, y, gender);
       setError('');
     } else {
       setDob('');
@@ -158,7 +216,9 @@ export default function OnboardingPersonal() {
             placeholder={t('onboarding.personal.fullNamePlaceholder')}
             value={fullName}
             onChange={(e) => {
-              setFullName(e.target.value);
+              const val = e.target.value;
+              setFullName(val);
+              saveDraft(val, day, month, year, gender);
               setError('');
             }}
             className="w-full bg-[#1A1A2E] border-1.5 border-[#21262D] rounded-xl px-4 py-3 text-[#F0EDE6] placeholder-[#4A4742] outline-none focus:border-[#2563EB] font-medium"
@@ -244,6 +304,7 @@ export default function OnboardingPersonal() {
               type="button"
               onClick={() => {
                 setGender('female');
+                saveDraft(fullName, day, month, year, 'female');
                 setError('');
               }}
               className={`py-3 rounded-xl border-1.5 font-semibold text-sm transition-all cursor-pointer ${
@@ -258,6 +319,7 @@ export default function OnboardingPersonal() {
               type="button"
               onClick={() => {
                 setGender('male');
+                saveDraft(fullName, day, month, year, 'male');
                 setError('');
               }}
               className={`py-3 rounded-xl border-1.5 font-semibold text-sm transition-all cursor-pointer ${

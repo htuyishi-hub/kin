@@ -1,4 +1,5 @@
 import {
+  useGetMe,
   useCompleteOnboarding,
   OnboardingRequestOccupation,
   OnboardingRequestLocationType,
@@ -6,7 +7,7 @@ import {
   OnboardingRequestGender,
 } from "@workspace/api-client-react";
 import { router, useLocalSearchParams } from "expo-router";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Platform,
@@ -19,6 +20,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTranslation } from "@workspace/i18n";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 import { useColors } from "@/hooks/useColors";
 
@@ -27,6 +29,8 @@ export default function OccupationScreen() {
   const insets = useSafeAreaInsets();
   const isWeb = Platform.OS === "web";
   const { t } = useTranslation();
+
+  const { data: profile } = useGetMe();
 
   const occupations: { value: OnboardingRequestOccupation; label: string }[] = [
     { value: "Student", label: t("onboarding.occupation.occStudent") },
@@ -49,9 +53,48 @@ export default function OccupationScreen() {
   const [city, setCity] = useState("Kigali");
   const [error, setError] = useState("");
 
+  const finalFullName = fullName || profile?.fullName || "";
+  const finalGender = gender || profile?.gender || "Male";
+  const finalDob = dateOfBirth || (profile as any)?.dateOfBirth || "2000-01-01";
+
+  // Pre-fill occupation / intent if already present in profile or draft
+  useEffect(() => {
+    let active = true;
+
+    async function loadSavedData() {
+      try {
+        const rawDraft = await AsyncStorage.getItem("@kin_occupation_draft");
+        const draft = rawDraft ? JSON.parse(rawDraft) : null;
+        if (!active) return;
+
+        const initialOcc = draft?.occupation || profile?.faculty || "";
+        const initialIntent = draft?.intent || profile?.primaryIntent || "";
+        const initialCampus = draft?.campusName || profile?.campusName || "";
+
+        if (initialOcc && !occupation) setOccupation(initialOcc as any);
+        if (initialIntent && !intent) setIntent(initialIntent as any);
+        if (initialCampus && !campusName) setCampusName(initialCampus);
+      } catch {}
+    }
+
+    loadSavedData();
+    return () => {
+      active = false;
+    };
+  }, [profile]);
+
+  function saveDraft(occ: string, int: string, campus: string) {
+    AsyncStorage.setItem(
+      "@kin_occupation_draft",
+      JSON.stringify({ occupation: occ, intent: int, campusName: campus })
+    ).catch(() => {});
+  }
+
   const { mutate: complete, isPending } = useCompleteOnboarding({
     mutation: {
       onSuccess: () => {
+        AsyncStorage.removeItem("@kin_personal_draft").catch(() => {});
+        AsyncStorage.removeItem("@kin_occupation_draft").catch(() => {});
         router.push("/(onboarding)/invite");
       },
       onError: (err: any) => {
@@ -65,15 +108,17 @@ export default function OccupationScreen() {
     if (!intent) { setError(t("onboarding.occupation.selectIntent")); return; }
     if (occupation === "Student" && !campusName.trim()) { setError(t("onboarding.occupation.chooseCampus")); return; }
 
+    saveDraft(occupation, intent, campusName);
+
     // Phase 1: UR branch navigation (no verification logic yet)
     if (occupation === "Student" && (campusName === "University of Rwanda" || campusName === t("onboarding.occupation.urUniversity"))) {
       setError("");
       router.push({
         pathname: "/(onboarding)/ur-campus",
         params: {
-          dateOfBirth,
-          gender,
-          fullName,
+          dateOfBirth: finalDob,
+          gender: finalGender,
+          fullName: finalFullName,
           occupation,
           intent,
         },
@@ -92,9 +137,9 @@ export default function OccupationScreen() {
         locationType,
         primaryGoal: intent,
         campusName: occupation === "Student" ? campusName.trim() : undefined,
-        fullName: fullName ?? "",
-        gender: (gender ?? "Male") as OnboardingRequestGender,
-        dateOfBirth: dateOfBirth ?? "2000-01-01",
+        fullName: finalFullName,
+        gender: finalGender as OnboardingRequestGender,
+        dateOfBirth: finalDob,
       },
     });
   }

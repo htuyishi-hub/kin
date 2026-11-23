@@ -1,6 +1,6 @@
-import { useUpdateMe, UpdateProfileRequestGender } from "@workspace/api-client-react";
+import { useGetMe, useUpdateMe, UpdateProfileRequestGender } from "@workspace/api-client-react";
 import { router } from "expo-router";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Platform,
@@ -14,6 +14,7 @@ import {
 import { Feather } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTranslation } from "@workspace/i18n";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 import { useColors } from "@/hooks/useColors";
 import { DatePickerModal, getMonthDisplay } from "@/components/DatePickerModal";
@@ -23,6 +24,8 @@ export default function PersonalScreen() {
   const insets = useSafeAreaInsets();
   const isWeb = Platform.OS === "web";
   const { t } = useTranslation();
+
+  const { data: profile } = useGetMe();
 
   const [fullName, setFullName] = useState("");
   const [dateOfBirth, setDateOfBirth] = useState("");
@@ -38,9 +41,53 @@ export default function PersonalScreen() {
     { value: "Female", label: t("onboarding.personal.genderFemale") },
   ];
 
+  // Restore saved profile or draft data
+  useEffect(() => {
+    let active = true;
+
+    async function loadSavedData() {
+      try {
+        const rawDraft = await AsyncStorage.getItem("@kin_personal_draft");
+        const draft = rawDraft ? JSON.parse(rawDraft) : null;
+        if (!active) return;
+
+        const initialName = draft?.fullName || profile?.fullName || "";
+        const initialGender = draft?.gender || profile?.gender || "";
+        const rawDob = draft?.dateOfBirth || (profile as any)?.dateOfBirth || "";
+
+        if (initialName && !fullName) setFullName(initialName);
+        if (initialGender && !gender) setGender(initialGender);
+
+        if (rawDob && !dateOfBirth) {
+          const match = String(rawDob).match(/^(\d{4})-(\d{2})-(\d{2})/);
+          if (match) {
+            setDateOfBirth(`${match[1]}-${match[2]}-${match[3]}`);
+            setYear(match[1]);
+            setMonth(match[2]);
+            setDay(match[3]);
+          }
+        }
+      } catch {}
+    }
+
+    loadSavedData();
+    return () => {
+      active = false;
+    };
+  }, [profile]);
+
+  function saveDraft(name: string, d: string, m: string, y: string, g: string) {
+    const dobStr = d && m && y ? `${y}-${m}-${d}` : "";
+    AsyncStorage.setItem(
+      "@kin_personal_draft",
+      JSON.stringify({ fullName: name, dateOfBirth: dobStr, gender: g })
+    ).catch(() => {});
+  }
+
   const { mutate: updateMe, isPending } = useUpdateMe({
     mutation: {
       onSuccess: () => {
+        AsyncStorage.setItem("@kin_onboarding_step", "occupation").catch(() => {});
         router.push({ pathname: "/(onboarding)/occupation", params: { dateOfBirth, gender, fullName: fullName.trim() } });
       },
       onError: (err: any) => {
@@ -54,7 +101,9 @@ export default function PersonalScreen() {
     setMonth(m);
     setYear(y);
     if (d && m && y) {
-      setDateOfBirth(`${y}-${m}-${d}`);
+      const dobStr = `${y}-${m}-${d}`;
+      setDateOfBirth(dobStr);
+      saveDraft(fullName, d, m, y, gender);
       setError("");
     }
   }
@@ -105,7 +154,11 @@ export default function PersonalScreen() {
             placeholder={t("onboarding.personal.fullNamePlaceholder")}
             placeholderTextColor={colors.mutedForeground}
             value={fullName}
-            onChangeText={(t) => { setFullName(t); setError(""); }}
+            onChangeText={(t) => {
+              setFullName(t);
+              saveDraft(t, day, month, year, gender);
+              setError("");
+            }}
             autoCapitalize="words"
             returnKeyType="next"
           />
@@ -200,7 +253,11 @@ export default function PersonalScreen() {
                     backgroundColor: gender === g.value ? colors.primary : colors.card,
                   },
                 ]}
-                onPress={() => { setGender(g.value); setError(""); }}
+                onPress={() => {
+                  setGender(g.value);
+                  saveDraft(fullName, day, month, year, g.value);
+                  setError("");
+                }}
                 activeOpacity={0.8}
               >
                 <Text

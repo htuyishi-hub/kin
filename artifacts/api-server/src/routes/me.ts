@@ -31,6 +31,7 @@ function mapProfile(p: typeof profilesTable.$inferSelect) {
     fullName: p.fullName ?? null,
     gender: p.gender ?? null,
     age: p.dateOfBirth ? calculateAge(p.dateOfBirth) : null,
+    dateOfBirth: p.dateOfBirth ?? null,
     campusName: p.campusName ?? null,
     faculty: p.faculty ?? null,
     yearOfStudy: p.yearOfStudy ?? null,
