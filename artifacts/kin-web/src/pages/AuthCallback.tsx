@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useLocation } from 'wouter';
 import { Loader2 } from 'lucide-react';
-import { useTranslation } from '@workspace/i18n';
+import { useTranslation, getCurrentLanguage } from '@workspace/i18n';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
 import { fetchProfileRouting } from '@/lib/authService';
@@ -19,49 +19,69 @@ export default function AuthCallback() {
 
     async function handleAuth() {
       try {
-        // 1. Check for PKCE authorization code in URL query params
-        if (typeof window !== 'undefined' && window.location.search) {
+        // 1. Check if Supabase client already parsed and established a session
+        const { data: { session: existingSession } } = await supabase.auth.getSession();
+        let session = existingSession;
+
+        // 1b. Check for implicit grant tokens in hash fragment
+        if (!session && typeof window !== 'undefined' && window.location.hash) {
+          const hashParams = new URLSearchParams(window.location.hash.substring(1));
+          const accessToken = hashParams.get('access_token');
+          const refreshToken = hashParams.get('refresh_token');
+          if (accessToken && refreshToken) {
+            try {
+              const { data } = await supabase.auth.setSession({
+                access_token: accessToken,
+                refresh_token: refreshToken,
+              });
+              if (data?.session) {
+                session = data.session;
+              }
+            } catch {}
+          }
+        }
+
+        // 2. If no session yet, check for PKCE code in query params
+        if (!session && typeof window !== 'undefined' && window.location.search) {
           const params = new URLSearchParams(window.location.search);
-          const code = params.get('code');
           const errorParam = params.get('error_description') || params.get('error');
 
           if (errorParam) {
             if (active) setError(errorParam);
-            setTimeout(() => {
+            timer = setTimeout(() => {
               if (active) setLocation('/signin');
             }, 2500);
             return;
           }
 
+          const code = params.get('code');
           if (code) {
-            const { data, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
-            if (exchangeError) {
-              console.warn('[AuthCallback] exchangeCodeForSession error:', exchangeError.message);
-            } else if (data.session && active) {
-              await setSession(data.session);
-              await signIn(data.session.access_token, data.session.user.id);
-              const routing = await fetchProfileRouting(data.session.user.id);
-              if (active) {
-                if (routing.onboardingComplete) {
-                  setLocation('/app');
-                } else {
-                  setLocation('/onboarding/personal');
-                }
+            try {
+              const { data, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
+              if (data?.session) {
+                session = data.session;
+              } else if (exchangeError) {
+                console.warn('[AuthCallback] exchangeCodeForSession error:', exchangeError.message);
               }
-              return;
+            } catch {
+              // Might have already been exchanged
             }
           }
         }
 
-        // 2. Check for current session (e.g. from implicit hash #access_token)
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-        if (sessionError) {
-          console.warn('[AuthCallback] getSession error:', sessionError.message);
-        }
-
+        // If session is obtained now, process it
         if (session?.user && active) {
+          if (timer) clearTimeout(timer);
           await setSession(session);
           await signIn(session.access_token, session.user.id);
+          try {
+            await supabase.from('profiles').upsert(
+              { id: session.user.id, language: getCurrentLanguage() },
+              { onConflict: 'id' }
+            );
+          } catch {
+            // non-fatal
+          }
           const routing = await fetchProfileRouting(session.user.id);
           if (active) {
             if (routing.onboardingComplete) {
@@ -73,15 +93,22 @@ export default function AuthCallback() {
           return;
         }
 
-        // 3. Listen for onAuthStateChange in case token parsing is asynchronous
+        // 3. Listen for onAuthStateChange
         const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, newSession) => {
           if (newSession?.user && active) {
             if (activeSubscription) {
               activeSubscription.unsubscribe();
               activeSubscription = null;
             }
+            if (timer) clearTimeout(timer);
             await setSession(newSession);
             await signIn(newSession.access_token, newSession.user.id);
+            try {
+              await supabase.from('profiles').upsert(
+                { id: newSession.user.id, language: getCurrentLanguage() },
+                { onConflict: 'id' }
+              );
+            } catch {}
             const routing = await fetchProfileRouting(newSession.user.id);
             if (active) {
               if (routing.onboardingComplete) {
@@ -94,7 +121,7 @@ export default function AuthCallback() {
         });
         activeSubscription = subscription;
 
-        // 4. Fallback timeout if no session resolves within 4s
+        // 4. Timeout fallback only if still unauthenticated after 5s
         timer = setTimeout(() => {
           if (active) {
             if (activeSubscription) {
@@ -103,11 +130,11 @@ export default function AuthCallback() {
             }
             setLocation('/signin');
           }
-        }, 4000);
+        }, 5000);
       } catch (err: any) {
         if (active) {
           setError(err?.message || 'Authentication error');
-          setTimeout(() => {
+          timer = setTimeout(() => {
             if (active) setLocation('/signin');
           }, 2000);
         }

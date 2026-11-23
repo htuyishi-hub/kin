@@ -104,7 +104,28 @@ router.get("/me", requireAuth, async (req, res) => {
     db.select({ count: sql<number>`count(*)` }).from(profilesTable),
   ]);
 
-  if (!rows[0]) {
+  let p = rows[0] as any;
+
+  if (!p) {
+    try {
+      const [created] = await db
+        .insert(profilesTable)
+        .values({
+          id: userId,
+          inviteCode: generateInviteCode(),
+          tokensRemaining: 3,
+          profileActive: true,
+          accountStatus: "waitlisted",
+        })
+        .onConflictDoNothing()
+        .returning();
+      p = created || (await db.select().from(profilesTable).where(eq(profilesTable.id, userId)).limit(1))[0];
+    } catch {
+      p = (await db.select().from(profilesTable).where(eq(profilesTable.id, userId)).limit(1))[0];
+    }
+  }
+
+  if (!p) {
     try {
       (req as any).log?.warn?.({ userId }, "GET /me: profile not found");
     } catch {
@@ -114,8 +135,6 @@ router.get("/me", requireAuth, async (req, res) => {
     res.status(404).json({ error: "not_found", message: "Profile not found" });
     return;
   }
-
-  let p = rows[0] as any;
 
   // Lazily provide invite code for response without writing to database during GET
   if (!p.inviteCode) {
@@ -209,7 +228,7 @@ router.patch("/me", requireAuth, async (req, res) => {
   const allowed = ["fullName", "gender", "dateOfBirth", "campusName", "faculty", "yearOfStudy", "hostelName", "city", "district", "proximityConsent", "language", "primaryIntent"];
   const updates: Record<string, unknown> = {};
   for (const key of allowed) {
-    if (key in body) updates[camelToSnake(key)] = body[key];
+    if (key in body) updates[key] = body[key];
   }
 
   if (Object.keys(updates).length === 0) {
@@ -223,20 +242,31 @@ router.patch("/me", requireAuth, async (req, res) => {
       res.status(400).json({ error: "underage", code: "UNDERAGE", message: "Must be at least 18 years old" });
       return;
     }
-    updates["verified_adult"] = true;
+    updates["verifiedAdult"] = true;
   }
 
   try {
-    // Debugging: helps identify why PATCH /me is failing with 500
-    console.error("[PATCH /me] userId", { userId });
-    console.error("[PATCH /me] req.body", { body });
-    console.error("[PATCH /me] updates", { updates });
-
-    const [updated] = await db
+    let [updated] = await db
       .update(profilesTable)
       .set(updates as any)
       .where(eq(profilesTable.id, userId))
       .returning();
+
+    if (!updated) {
+      const [created] = await db
+        .insert(profilesTable)
+        .values({
+          id: userId,
+          inviteCode: generateInviteCode(),
+          tokensRemaining: 3,
+          profileActive: true,
+          accountStatus: "waitlisted",
+          ...updates,
+        } as any)
+        .onConflictDoNothing()
+        .returning();
+      updated = created || (await db.select().from(profilesTable).where(eq(profilesTable.id, userId)).limit(1))[0];
+    }
 
     if (!updated) {
       return res.status(404).json({ error: "not_found", message: "Profile not found" });
@@ -247,7 +277,6 @@ router.patch("/me", requireAuth, async (req, res) => {
     console.error("[PATCH /me] update failed", err);
     return res.status(500).json({ error: "server_error", message: "Failed to update profile" });
   }
-  // Ensure TS7030: all code paths return
   return;
 });
 
@@ -306,7 +335,7 @@ router.post("/me/onboarding", requireAuth, async (req, res) => {
   };
   const primaryIntent = intentMap[primaryGoal] ?? "Serious";
 
-  const [updated] = await db
+  let [updated] = await db
     .update(profilesTable)
     .set({
       hiddenTier: hiddenTier as any,
@@ -321,6 +350,30 @@ router.post("/me/onboarding", requireAuth, async (req, res) => {
     })
     .where(eq(profilesTable.id, userId))
     .returning();
+
+  if (!updated) {
+    const [created] = await db
+      .insert(profilesTable)
+      .values({
+        id: userId,
+        inviteCode: generateInviteCode(),
+        tokensRemaining: 3,
+        profileActive: true,
+        accountStatus: "waitlisted",
+        hiddenTier: hiddenTier as any,
+        primaryIntent,
+        faculty: occupation,
+        campusName: campusName ?? null,
+        fullName,
+        gender,
+        dateOfBirth,
+        verifiedAdult: true,
+        onboardingComplete: true,
+      } as any)
+      .onConflictDoNothing()
+      .returning();
+    updated = created || (await db.select().from(profilesTable).where(eq(profilesTable.id, userId)).limit(1))[0];
+  }
 
   res.json(mapProfile(updated!));
 });
