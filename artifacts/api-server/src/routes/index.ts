@@ -14,6 +14,7 @@ import mediaRouter from "./media.js";
 import invitesRouter from "./invites.js";
 import passesRouter from "./passes.js";
 import moderationRouter from "./moderation.js";
+import postsRouter from "./posts.js";
 import { requireAuth } from "../middlewares/auth.js";
 import { verifyURRegistration } from "./urVerification.js";
 
@@ -34,6 +35,7 @@ router.use(matchesRouter);
 router.use(messagesRouter);
 router.use(reportsRouter);
 router.use(paymentsRouter);
+router.use(postsRouter);
 
 // Phase 2: UR registration verification
 router.post("/me/ur/verify-registration", requireAuth, verifyURRegistration);

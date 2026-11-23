@@ -4,6 +4,7 @@ import pinoHttp from "pino-http";
 import router from "./routes";
 import mediaRouter from "./routes/media.js";
 import legalRouter from "./routes/legal.js";
+import postsRouter from "./routes/posts.js";
 import { logger } from "./lib/logger";
 
 const app: Express = express();
@@ -37,6 +38,7 @@ app.use(express.urlencoded({ extended: true }));
 
 app.use("/api", router);
 app.use(mediaRouter);
+app.use(postsRouter);
 app.use(legalRouter);
 
 export default app;
