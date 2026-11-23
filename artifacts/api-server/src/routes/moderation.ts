@@ -6,7 +6,7 @@ import { requireAuth, type AuthedRequest } from "../middlewares/auth.js";
 const router = Router();
 
 // Feature Flag: COMMUNITY_VOTING_ENABLED (default: false)
-router.use((_req, res, next) => {
+router.use("/moderation", (_req, res, next) => {
   const isEnabled = process.env.COMMUNITY_VOTING_ENABLED === "true";
   if (!isEnabled) {
     res.status(404).json({

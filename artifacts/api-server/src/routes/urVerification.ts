@@ -1,6 +1,6 @@
 // Phase 2 implementation: secure UR verification + atomic claim
 import type { Request, Response } from "express";
-import { eq, sql } from "drizzle-orm";
+import { eq, sql, or } from "drizzle-orm";
 import { db, profilesTable } from "@workspace/db";
 import { studentRegistryTable, urVerificationAttemptsTable } from "@workspace/db/schema";
 import { generateInviteCode } from "../lib/inviteCode.js";
@@ -122,12 +122,20 @@ export async function verifyURRegistration(req: Request, res: Response) {
         });
       }
 
+      const authed = req as AuthedRequest;
       const [currProfile] = await tx
-        .select({ inviteCode: profilesTable.inviteCode })
+        .select({ id: profilesTable.id, inviteCode: profilesTable.inviteCode })
         .from(profilesTable)
-        .where(eq(profilesTable.id, profileId))
+        .where(
+          or(
+            eq(profilesTable.id, profileId),
+            authed.userEmail ? eq(profilesTable.email, authed.userEmail) : sql`false`,
+            eq(profilesTable.googleId, profileId)
+          )
+        )
         .limit(1);
 
+      const targetId = currProfile?.id ?? profileId;
       const assignedInviteCode = currProfile?.inviteCode ?? generateInviteCode();
 
       // Profile trust & verification binding
@@ -143,7 +151,7 @@ export async function verifyURRegistration(req: Request, res: Response) {
           verificationMethod: "ur_registry",
           inviteCode: assignedInviteCode,
         } as any)
-        .where(eq(profilesTable.id, profileId));
+        .where(eq(profilesTable.id, targetId));
 
       // Audit log write
       await tx.insert(urVerificationAttemptsTable).values({
