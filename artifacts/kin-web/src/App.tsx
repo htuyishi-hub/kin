@@ -23,13 +23,14 @@ import AppScreen from "@/pages/AppScreen";
 // Marketing & Fallback Pages
 import Home from "@/pages/home";
 import Terms from "@/pages/terms";
+import DownloadPage from "@/pages/DownloadPage";
 import NotFound from "@/pages/not-found";
 
 const queryClient = new QueryClient();
 
 function Router() {
   const [location] = useLocation();
-  const isMarketingRoute = location === "/landing" || location === "/terms";
+  const isMarketingRoute = location === "/landing" || location === "/terms" || location === "/download";
 
   if (isMarketingRoute) {
     return (
@@ -39,6 +40,7 @@ function Router() {
           <Switch>
             <Route path="/landing" component={Home} />
             <Route path="/terms" component={Terms} />
+            <Route path="/download" component={DownloadPage} />
           </Switch>
         </div>
         <Footer />

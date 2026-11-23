@@ -1,4 +1,5 @@
 import { Link } from "wouter";
+import { Download } from "lucide-react";
 import { PwaInstallButton } from "@/components/pwa-install-button";
 import { RwandaMapAnimation } from "@/components/rwanda-map";
 import { Button } from "@/components/ui/button";
@@ -49,17 +50,23 @@ export default function Home() {
             Not a dating app. A warm, private introduction through a trusted elder.
             For serious people ready to find their person.
           </p>
-          <div className="flex flex-col sm:flex-row items-center gap-4">
+          <div className="flex flex-col sm:flex-row items-center gap-3.5">
+            <Link
+              href="/download"
+              className="bg-gold text-night hover:bg-gold/90 font-bold px-8 py-4 text-base rounded-full inline-flex items-center justify-center gap-2.5 transition-all shadow-xl hover:scale-[1.02]"
+            >
+              <Download className="w-5 h-5" />
+              <span>Download Android APK</span>
+            </Link>
             <Link
               href="/"
-              className="bg-gold text-night hover:bg-gold/90 font-bold px-8 py-4 text-base rounded-full inline-flex items-center justify-center transition-colors shadow-lg"
+              className="bg-ink-raised border border-divider text-bone hover:border-gold/50 font-semibold px-7 py-4 text-base rounded-full inline-flex items-center justify-center transition-colors backdrop-blur-sm"
             >
-              Open App
+              Open Web App
             </Link>
-            <PwaInstallButton className="px-8 py-4 text-base rounded-full" />
             <Button
               variant="outline"
-              className="px-8 py-4 text-base rounded-full border-bone-ghost/60 text-bone hover:bg-bone hover:text-night transition-colors backdrop-blur-sm"
+              className="px-6 py-4 text-sm rounded-full border-bone-ghost/40 text-bone hover:bg-bone hover:text-night transition-colors backdrop-blur-sm"
               onClick={() => document.getElementById("how")?.scrollIntoView({ behavior: "smooth" })}
             >
               Learn how it works
@@ -150,20 +157,34 @@ export default function Home() {
         
         <div className="container mx-auto px-4 relative z-10">
           <div className="max-w-4xl mx-auto bg-night border border-divider rounded-3xl p-8 md:p-16 text-center">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-mono mb-4">
+              v1.0.0 Android APK Ready
+            </div>
             <h2 className="font-serif text-4xl md:text-5xl font-bold text-bone mb-6">Ready to meet your person?</h2>
             <p className="text-bone-dim text-lg mb-10 max-w-2xl mx-auto">
-              kinn is designed as a web app. Install it directly to your phone's home screen for the best experience.
+              Download the official Android APK directly to your phone, or open the web app instantly in your browser.
             </p>
             
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-6">
-              <PwaInstallButton className="px-8 py-4 text-lg w-full sm:w-auto" />
-              <Button variant="outline" className="px-8 py-4 text-lg w-full sm:w-auto border-bone-ghost text-bone hover:bg-bone hover:text-night" onClick={() => window.location.href = '/'}>
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+              <Link
+                href="/download"
+                className="bg-gold text-night hover:bg-gold/90 font-bold px-8 py-4 text-base rounded-full inline-flex items-center justify-center gap-2.5 transition-all shadow-lg w-full sm:w-auto"
+              >
+                <Download className="w-5 h-5" />
+                <span>Download Android APK</span>
+              </Link>
+              <PwaInstallButton className="px-8 py-4 text-base w-full sm:w-auto rounded-full" />
+              <Button
+                variant="outline"
+                className="px-8 py-4 text-base w-full sm:w-auto rounded-full border-bone-ghost text-bone hover:bg-bone hover:text-night"
+                onClick={() => window.location.href = '/'}
+              >
                 Use in Browser
               </Button>
             </div>
             
             <p className="text-sm text-bone-ghost mt-8">
-              Available for iOS, Android, and Desktop.
+              Available for Android (Direct APK), iOS (PWA), and Desktop.
             </p>
           </div>
         </div>

@@ -153,10 +153,15 @@ router.post("/matches/:matchId/messages", requireAuth, async (req, res) => {
     const senderName = sender[0]?.fullName ?? (recipientLang === "rw" ? "Uwo mwahujwe" : "Your match");
     const token = recipient[0]?.pushNotificationToken;
 
+    const isEncrypted = content.trim().startsWith("e2ee:v1:");
+    const notificationBody = isEncrypted
+      ? (recipientLang === "rw" ? "Ubutumwa burinzwe mu buryo bw'ibanga" : "New encrypted message")
+      : (content.trim().length > 80 ? content.trim().slice(0, 80) + "…" : content.trim());
+
     await sendPushNotification({
       to: token,
       title: recipientLang === "rw" ? `Ubutumwa bushya buturuka kuri ${senderName}` : `New message from ${senderName}`,
-      body: content.trim().length > 80 ? content.trim().slice(0, 80) + "…" : content.trim(),
+      body: notificationBody,
       data: { matchId: String(matchId), screen: "chat" },
     });
   } catch {

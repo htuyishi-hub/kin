@@ -183,7 +183,10 @@
     "phaseFreeTalk": "Kuvugana kubuntu",
     "phase": "Icyiciro {{phase}}",
     "hoursLeft": "Hasigaye {{count}}h",
-    "waitingFirstMessage": "Tegereza ubutumwa bwa mbere"
+    "waitingFirstMessage": "Tegereza ubutumwa bwa mbere",
+    "e2eeBadge": "Biramaze gucungirwa ibanga",
+    "downloadApk": "Kura APK ya Android",
+    "downloadSubtitle": "Gushyira muri telefone ya Android"
   },
   "serious": {
     "tabTitle": "Abiyemeje",

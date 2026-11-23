@@ -20,10 +20,12 @@ import {
   Mic,
   Square,
   Trash2,
+  Lock,
 } from 'lucide-react';
 import { useTranslation, changeLanguage, getCurrentLanguage, type SupportedLanguage } from '@workspace/i18n';
 import { useAuth } from '@/contexts/AuthContext';
 import { getSupabaseClient } from '@/lib/supabase';
+import { encryptMessage, decryptMessage } from '@/lib/e2eeService';
 
 interface Candidate {
   id: string;
@@ -168,7 +170,13 @@ export default function AppScreen() {
       });
       if (res.ok) {
         const msgs = await res.json();
-        setChatMessages(msgs);
+        const decryptedMsgs = await Promise.all(
+          msgs.map(async (m: any) => ({
+            ...m,
+            content: await decryptMessage(m.content, match.id),
+          }))
+        );
+        setChatMessages(decryptedMsgs);
       }
     } catch {
       // fallback
@@ -193,13 +201,14 @@ export default function AppScreen() {
 
     try {
       setIsSendingMessage(true);
+      const encrypted = await encryptMessage(text, selectedMatch.id);
       await fetch(`/api/matches/${selectedMatch.id}/messages`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ content: text }),
+        body: JSON.stringify({ content: encrypted }),
       });
     } catch {
       // non-fatal
@@ -769,9 +778,15 @@ export default function AppScreen() {
                       <h3 className="font-bold text-sm text-[#F0EDE6] leading-tight">
                         {selectedMatch.otherUserName || selectedMatch.name}
                       </h3>
-                      <span className="text-[10px] font-semibold text-[#2563EB]">
-                        {t('matches.phase', { phase: selectedMatch.conversationPhase || 1 })}
-                      </span>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <span className="text-[10px] font-semibold text-[#2563EB]">
+                          {t('matches.phase', { phase: selectedMatch.conversationPhase || 1 })}
+                        </span>
+                        <span className="text-[9px] text-[#A8A49E] flex items-center gap-1">
+                          <Lock className="w-2.5 h-2.5 text-[#2563EB]" />
+                          {t('matches.e2eeBadge')}
+                        </span>
+                      </div>
                     </div>
                   </div>
 

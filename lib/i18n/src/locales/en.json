@@ -183,7 +183,10 @@
     "phaseFreeTalk": "Free talk",
     "phase": "Phase {{phase}}",
     "hoursLeft": "{{count}}h left",
-    "waitingFirstMessage": "Waiting for first message"
+    "waitingFirstMessage": "Waiting for first message",
+    "e2eeBadge": "End-to-End Encrypted",
+    "downloadApk": "Download Android APK",
+    "downloadSubtitle": "Direct install package for Android"
   },
   "serious": {
     "tabTitle": "Serious",

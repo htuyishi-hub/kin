@@ -23,8 +23,9 @@ export function Footer() {
         <div className="space-y-4">
           <h4 className="font-medium text-bone">Product</h4>
           <ul className="space-y-2 text-sm text-bone-dim">
-            <li><a href="#how" className="hover:text-gold transition-colors">How it works</a></li>
-            <li><a href="#install" className="hover:text-gold transition-colors">Get the app</a></li>
+            <li><Link href="/download" className="hover:text-gold transition-colors font-medium text-gold">Download Android APK</Link></li>
+            <li><a href="/landing#how" className="hover:text-gold transition-colors">How it works</a></li>
+            <li><Link href="/" className="hover:text-gold transition-colors">Web App</Link></li>
           </ul>
         </div>
         

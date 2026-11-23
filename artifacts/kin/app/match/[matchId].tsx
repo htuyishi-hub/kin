@@ -27,6 +27,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useColors } from "@/hooks/useColors";
 import { useAudioPlayer, useAudioPlayerStatus } from "expo-audio";
 import { getVoiceSignedUrl } from "@/services/voiceIntroService";
+import { encryptMessage, decryptMessage } from "@/services/e2eeService";
 
 type MessageItem = {
   id: string;
@@ -192,6 +193,7 @@ export default function MatchScreen() {
   };
 
   const [content, setContent] = useState("");
+  const [decryptedMap, setDecryptedMap] = useState<Record<string, string>>({});
   const flatRef = useRef<FlatList>(null);
 
   useMatchWebSocket(String(matchId), token);
@@ -204,6 +206,27 @@ export default function MatchScreen() {
     {},
     { query: { refetchInterval: 5000 } as any },
   );
+
+  useEffect(() => {
+    let isMounted = true;
+    async function decryptAll() {
+      const updates: Record<string, string> = {};
+      for (const m of messages) {
+        if (m.content && !decryptedMap[m.id]) {
+          updates[m.id] = await decryptMessage(m.content, String(matchId));
+        }
+      }
+      if (isMounted && Object.keys(updates).length > 0) {
+        setDecryptedMap((prev) => ({ ...prev, ...updates }));
+      }
+    }
+    if (messages.length > 0) {
+      decryptAll();
+    }
+    return () => {
+      isMounted = false;
+    };
+  }, [messages, matchId]);
 
   const { mutate: sendMessage, isPending: isSending } = useSendMessage({
     mutation: {
@@ -223,9 +246,11 @@ export default function MatchScreen() {
     },
   });
 
-  function handleSend() {
-    if (!content.trim()) return;
-    sendMessage({ matchId: String(matchId), data: { content: content.trim() } });
+  async function handleSend() {
+    const raw = content.trim();
+    if (!raw) return;
+    const encrypted = await encryptMessage(raw, String(matchId));
+    sendMessage({ matchId: String(matchId), data: { content: encrypted } });
   }
 
   if (matchLoading || !match) {
@@ -266,10 +291,18 @@ export default function MatchScreen() {
               />
             )}
           </View>
-          <View style={[styles.phasePill, { backgroundColor: colors.secondary }]}>
-            <Text style={[styles.phaseText, { color: colors.primary }]}>
-              {t("matches.phase", { phase })}: {phaseLabels[phase] ?? ""}
-            </Text>
+          <View style={styles.subHeaderRow}>
+            <View style={[styles.phasePill, { backgroundColor: colors.secondary }]}>
+              <Text style={[styles.phaseText, { color: colors.primary }]}>
+                {t("matches.phase", { phase })}: {phaseLabels[phase] ?? ""}
+              </Text>
+            </View>
+            <View style={styles.e2eePill}>
+              <Feather name="lock" size={10} color={colors.primary} />
+              <Text style={[styles.e2eeText, { color: colors.mutedForeground }]}>
+                {t("matches.e2eeBadge")}
+              </Text>
+            </View>
           </View>
         </View>
         <TouchableOpacity
@@ -303,6 +336,9 @@ export default function MatchScreen() {
           showsVerticalScrollIndicator={false}
           renderItem={({ item }) => {
             const isMe = item.senderId === userId;
+            const textContent =
+              decryptedMap[item.id] ??
+              (item.content.startsWith("e2ee:v1:") ? "..." : item.content);
             return (
               <View
                 style={[
@@ -318,7 +354,7 @@ export default function MatchScreen() {
                     { color: isMe ? colors.primaryForeground : colors.foreground },
                   ]}
                 >
-                  {item.content}
+                  {textContent}
                 </Text>
               </View>
             );
@@ -404,6 +440,22 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 3,
     borderRadius: 100,
+  },
+  subHeaderRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    flexWrap: "wrap",
+    marginTop: 2,
+  },
+  e2eePill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
+  e2eeText: {
+    fontFamily: "Inter_500Medium",
+    fontSize: 10,
   },
   phaseText: { fontFamily: "Inter_600SemiBold", fontSize: 11 },
   phaseBtn: {
