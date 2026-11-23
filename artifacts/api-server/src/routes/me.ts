@@ -64,6 +64,7 @@ function mapProfile(p: typeof profilesTable.$inferSelect) {
     phoneVerified: p.phoneVerified ?? false,
     idVerified: p.idVerified ?? false,
     proximityConsent: p.proximityConsent ?? false,
+    readReceiptsEnabled: Boolean(p.readReceiptsEnabled ?? false),
     language: (p as any).language ?? "en",
     bio: p.bio ?? null,
     tags: (p.tags as string[]) ?? [],
@@ -247,7 +248,7 @@ router.patch("/me", requireAuth, async (req, res) => {
   const userName = authed.userName;
   const body = req.body as Record<string, unknown>;
 
-  const allowed = ["fullName", "gender", "dateOfBirth", "campusName", "faculty", "yearOfStudy", "hostelName", "city", "district", "proximityConsent", "language", "primaryIntent"];
+  const allowed = ["fullName", "gender", "dateOfBirth", "campusName", "faculty", "yearOfStudy", "hostelName", "city", "district", "proximityConsent", "language", "primaryIntent", "readReceiptsEnabled"];
   const updates: Record<string, unknown> = {};
   for (const key of allowed) {
     if (key in body) updates[key] = body[key];

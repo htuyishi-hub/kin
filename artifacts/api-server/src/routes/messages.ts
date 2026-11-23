@@ -1,6 +1,6 @@
 import { Router } from "express";
-import { eq, and, or, desc } from "drizzle-orm";
-import { db, messagesTable, matchesTable, profilesTable } from "@workspace/db";
+import { eq, and, or, desc, ne, isNull, inArray } from "drizzle-orm";
+import { db, messagesTable, messageEditsTable, matchesTable, profilesTable } from "@workspace/db";
 import { requireAuth, type AuthedRequest } from "../middlewares/auth.js";
 import { broadcastToMatch } from "../lib/ws-manager.js";
 import { sendPushNotification } from "../lib/notifications.js";
@@ -19,17 +19,48 @@ const PHASE2_PROMPTS = [
   "What is one thing you want to build in your life?",
 ];
 
-function mapMessage(m: typeof messagesTable.$inferSelect) {
+interface ReplyPreview {
+  id: string;
+  senderId: string;
+  content: string;
+}
+
+function mapMessage(
+  m: typeof messagesTable.$inferSelect,
+  viewerId?: string,
+  bothReadReceiptsEnabled: boolean = false,
+  replyMap?: Map<string, ReplyPreview>
+) {
+  const isDeleted = Boolean(m.deletedAt);
+  const isSender = viewerId && m.senderId === viewerId;
+
+  // Read receipts: if viewing own message as sender, only reveal readAt if BOTH users have read receipts enabled
+  let exposedReadAt: string | null = null;
+  if (m.readAt) {
+    if (!isSender) {
+      exposedReadAt = m.readAt.toISOString();
+    } else if (bothReadReceiptsEnabled) {
+      exposedReadAt = m.readAt.toISOString();
+    }
+  }
+
+  const replyTo = m.replyToId ? replyMap?.get(m.replyToId) ?? null : null;
+
   return {
     id: m.id,
     matchId: m.matchId,
     senderId: m.senderId,
-    content: m.content,
+    content: isDeleted ? "" : m.content,
     phase: m.phase ?? 1,
     promptKey: m.promptKey ?? null,
     promptText: null as string | null,
     isSystem: m.isSystem ?? false,
-    readAt: m.readAt?.toISOString() ?? null,
+    readAt: exposedReadAt,
+    replyToId: m.replyToId ?? null,
+    replyTo,
+    editedAt: m.editedAt?.toISOString() ?? null,
+    deletedAt: m.deletedAt?.toISOString() ?? null,
+    deliveredAt: m.deliveredAt?.toISOString() ?? null,
     createdAt: m.createdAt?.toISOString() ?? new Date().toISOString(),
   };
 }
@@ -46,7 +77,7 @@ router.get("/matches/:matchId/messages", requireAuth, async (req, res) => {
     .where(
       and(
         eq(matchesTable.id, String(matchId)),
-        or(eq(matchesTable.userA, userId), eq(matchesTable.userB, userId)),
+        or(eq(matchesTable.userA, userId), eq(matchesTable.userB, userId))
       )
     )
     .limit(1);
@@ -56,6 +87,38 @@ router.get("/matches/:matchId/messages", requireAuth, async (req, res) => {
     return;
   }
 
+  // Fetch both users' profiles to determine mutual read receipt preference
+  const [profileA, profileB] = await Promise.all([
+    db.select({ readReceiptsEnabled: profilesTable.readReceiptsEnabled }).from(profilesTable).where(eq(profilesTable.id, match.userA)).limit(1),
+    db.select({ readReceiptsEnabled: profilesTable.readReceiptsEnabled }).from(profilesTable).where(eq(profilesTable.id, match.userB)).limit(1),
+  ]);
+
+  const bothReadReceiptsEnabled = Boolean(
+    profileA[0]?.readReceiptsEnabled && profileB[0]?.readReceiptsEnabled
+  );
+
+  // Delivery receipt: mark un-delivered messages sent to the current user as delivered
+  const now = new Date();
+  const deliveryResult = await db
+    .update(messagesTable)
+    .set({ deliveredAt: now })
+    .where(
+      and(
+        eq(messagesTable.matchId, String(matchId)),
+        ne(messagesTable.senderId, userId),
+        isNull(messagesTable.deliveredAt)
+      )
+    )
+    .returning({ id: messagesTable.id });
+
+  if (deliveryResult.length > 0) {
+    broadcastToMatch(String(matchId), {
+      type: "messages_delivered",
+      matchId: String(matchId),
+      deliveredAt: now.toISOString(),
+    });
+  }
+
   const messages = await db
     .select()
     .from(messagesTable)
@@ -63,14 +126,48 @@ router.get("/matches/:matchId/messages", requireAuth, async (req, res) => {
     .orderBy(desc(messagesTable.createdAt))
     .limit(limit);
 
-  res.json(messages.reverse().map(mapMessage));
+  // Collect replyToIds to resolve reply previews
+  const replyToIds = messages
+    .map((m) => m.replyToId)
+    .filter((id): id is string => Boolean(id));
+
+  const replyMap = new Map<string, ReplyPreview>();
+  if (replyToIds.length > 0) {
+    const parentMessages = await db
+      .select({
+        id: messagesTable.id,
+        senderId: messagesTable.senderId,
+        content: messagesTable.content,
+        deletedAt: messagesTable.deletedAt,
+      })
+      .from(messagesTable)
+      .where(inArray(messagesTable.id, replyToIds));
+
+    for (const pm of parentMessages) {
+      replyMap.set(pm.id, {
+        id: pm.id,
+        senderId: pm.senderId,
+        content: pm.deletedAt ? "" : pm.content,
+      });
+    }
+  }
+
+  res.json(
+    messages
+      .reverse()
+      .map((m) => mapMessage(m, userId, bothReadReceiptsEnabled, replyMap))
+  );
 });
 
 // POST /matches/:matchId/messages
 router.post("/matches/:matchId/messages", requireAuth, async (req, res) => {
   const userId = (req as AuthedRequest).userId;
   const { matchId } = req.params;
-  const { content, promptKey } = req.body as { content?: string; promptKey?: string };
+  const { content, promptKey, replyToId } = req.body as {
+    content?: string;
+    promptKey?: string;
+    replyToId?: string;
+  };
 
   if (!content || content.trim().length === 0) {
     res.status(400).json({ error: "bad_request", message: "content is required" });
@@ -89,7 +186,7 @@ router.post("/matches/:matchId/messages", requireAuth, async (req, res) => {
       and(
         eq(matchesTable.id, String(matchId)),
         or(eq(matchesTable.userA, userId), eq(matchesTable.userB, userId)),
-        eq(matchesTable.status, "active"),
+        eq(matchesTable.status, "active")
       )
     )
     .limit(1);
@@ -107,6 +204,30 @@ router.post("/matches/:matchId/messages", requireAuth, async (req, res) => {
     return;
   }
 
+  // Validate replyToId if provided
+  let parentReply: ReplyPreview | null = null;
+  if (replyToId) {
+    const [parent] = await db
+      .select({
+        id: messagesTable.id,
+        matchId: messagesTable.matchId,
+        senderId: messagesTable.senderId,
+        content: messagesTable.content,
+        deletedAt: messagesTable.deletedAt,
+      })
+      .from(messagesTable)
+      .where(and(eq(messagesTable.id, replyToId), eq(messagesTable.matchId, String(matchId))))
+      .limit(1);
+
+    if (parent) {
+      parentReply = {
+        id: parent.id,
+        senderId: parent.senderId,
+        content: parent.deletedAt ? "" : parent.content,
+      };
+    }
+  }
+
   const phase = match.conversationPhase ?? 1;
   const isFirstMessage = !match.firstMessageSent;
 
@@ -118,6 +239,7 @@ router.post("/matches/:matchId/messages", requireAuth, async (req, res) => {
       content: content.trim(),
       phase: phase as any,
       promptKey: promptKey ?? null,
+      replyToId: parentReply ? replyToId : null,
       isSystem: false,
     })
     .returning();
@@ -133,12 +255,25 @@ router.post("/matches/:matchId/messages", requireAuth, async (req, res) => {
 
   await db.update(matchesTable).set(updates as any).where(eq(matchesTable.id, String(matchId)));
 
-  const mapped = mapMessage(message!);
+  const replyMap = new Map<string, ReplyPreview>();
+  if (parentReply && message!.replyToId) {
+    replyMap.set(message!.replyToId, parentReply);
+  }
 
-  // Respond immediately, then do real-time + push in the background
+  const [profileA, profileB] = await Promise.all([
+    db.select({ readReceiptsEnabled: profilesTable.readReceiptsEnabled }).from(profilesTable).where(eq(profilesTable.id, match.userA)).limit(1),
+    db.select({ readReceiptsEnabled: profilesTable.readReceiptsEnabled }).from(profilesTable).where(eq(profilesTable.id, match.userB)).limit(1),
+  ]);
+  const bothReadReceiptsEnabled = Boolean(
+    profileA[0]?.readReceiptsEnabled && profileB[0]?.readReceiptsEnabled
+  );
+
+  const mapped = mapMessage(message!, userId, bothReadReceiptsEnabled, replyMap);
+
+  // Respond immediately
   res.status(201).json(mapped);
 
-  // Real-time: push to any open WebSocket subscribers for this match
+  // Broadcast over WebSocket to subscribers
   broadcastToMatch(String(matchId), { type: "new_message", message: mapped });
 
   // Push notification: send to the OTHER user if they have a token
@@ -172,6 +307,189 @@ router.post("/matches/:matchId/messages", requireAuth, async (req, res) => {
   }
 });
 
+// POST /matches/:matchId/read
+router.post("/matches/:matchId/read", requireAuth, async (req, res) => {
+  const userId = (req as AuthedRequest).userId;
+  const { matchId } = req.params;
+
+  const [match] = await db
+    .select()
+    .from(matchesTable)
+    .where(
+      and(
+        eq(matchesTable.id, String(matchId)),
+        or(eq(matchesTable.userA, userId), eq(matchesTable.userB, userId))
+      )
+    )
+    .limit(1);
+
+  if (!match) {
+    res.status(404).json({ error: "not_found", message: "Match not found" });
+    return;
+  }
+
+  const now = new Date();
+  await db
+    .update(messagesTable)
+    .set({ readAt: now })
+    .where(
+      and(
+        eq(messagesTable.matchId, String(matchId)),
+        ne(messagesTable.senderId, userId),
+        isNull(messagesTable.readAt)
+      )
+    );
+
+  const [profileA, profileB] = await Promise.all([
+    db.select({ readReceiptsEnabled: profilesTable.readReceiptsEnabled }).from(profilesTable).where(eq(profilesTable.id, match.userA)).limit(1),
+    db.select({ readReceiptsEnabled: profilesTable.readReceiptsEnabled }).from(profilesTable).where(eq(profilesTable.id, match.userB)).limit(1),
+  ]);
+  const bothReadReceiptsEnabled = Boolean(
+    profileA[0]?.readReceiptsEnabled && profileB[0]?.readReceiptsEnabled
+  );
+
+  if (bothReadReceiptsEnabled) {
+    broadcastToMatch(String(matchId), {
+      type: "messages_read",
+      matchId: String(matchId),
+      readAt: now.toISOString(),
+    });
+  }
+
+  res.json({ success: true, readAt: now.toISOString() });
+});
+
+// PATCH /messages/:messageId
+router.patch("/messages/:messageId", requireAuth, async (req, res) => {
+  const userId = (req as AuthedRequest).userId;
+  const { messageId } = req.params;
+  const { content } = req.body as { content?: string };
+
+  if (!content || content.trim().length === 0) {
+    res.status(400).json({ error: "bad_request", message: "content is required" });
+    return;
+  }
+
+  if (content.length > 1000) {
+    res.status(400).json({ error: "bad_request", message: "Message too long (max 1000 chars)" });
+    return;
+  }
+
+  const [message] = await db
+    .select()
+    .from(messagesTable)
+    .where(eq(messagesTable.id, String(messageId)))
+    .limit(1);
+
+  if (!message) {
+    res.status(404).json({ error: "not_found", message: "Message not found" });
+    return;
+  }
+
+  if (message.senderId !== userId) {
+    res.status(403).json({ error: "forbidden", message: "Cannot edit another user's message" });
+    return;
+  }
+
+  if (message.deletedAt) {
+    res.status(400).json({ error: "bad_request", message: "Cannot edit a deleted message" });
+    return;
+  }
+
+  if (message.isSystem) {
+    res.status(400).json({ error: "bad_request", message: "Cannot edit system messages" });
+    return;
+  }
+
+  // 15-minute edit window check
+  const createdTime = new Date(message.createdAt ?? Date.now()).getTime();
+  const elapsedMs = Date.now() - createdTime;
+  if (elapsedMs > 15 * 60 * 1000) {
+    res.status(400).json({
+      error: "bad_request",
+      message: "Messages can only be edited within 15 minutes of sending",
+    });
+    return;
+  }
+
+  // Save audit history in message_edits table
+  await db.insert(messageEditsTable).values({
+    messageId: message.id,
+    previousContent: message.content,
+  });
+
+  const now = new Date();
+  const [updated] = await db
+    .update(messagesTable)
+    .set({
+      content: content.trim(),
+      editedAt: now,
+    })
+    .where(eq(messagesTable.id, message.id))
+    .returning();
+
+  // Determine read receipt preference for mapping
+  const [match] = await db
+    .select()
+    .from(matchesTable)
+    .where(eq(matchesTable.id, message.matchId))
+    .limit(1);
+
+  let bothReadReceiptsEnabled = false;
+  if (match) {
+    const [pA, pB] = await Promise.all([
+      db.select({ readReceiptsEnabled: profilesTable.readReceiptsEnabled }).from(profilesTable).where(eq(profilesTable.id, match.userA)).limit(1),
+      db.select({ readReceiptsEnabled: profilesTable.readReceiptsEnabled }).from(profilesTable).where(eq(profilesTable.id, match.userB)).limit(1),
+    ]);
+    bothReadReceiptsEnabled = Boolean(pA[0]?.readReceiptsEnabled && pB[0]?.readReceiptsEnabled);
+  }
+
+  const mapped = mapMessage(updated!, userId, bothReadReceiptsEnabled);
+
+  // Broadcast edit to match room
+  broadcastToMatch(message.matchId, { type: "message_edited", message: mapped });
+
+  res.json(mapped);
+});
+
+// DELETE /messages/:messageId
+router.delete("/messages/:messageId", requireAuth, async (req, res) => {
+  const userId = (req as AuthedRequest).userId;
+  const { messageId } = req.params;
+
+  const [message] = await db
+    .select()
+    .from(messagesTable)
+    .where(eq(messagesTable.id, String(messageId)))
+    .limit(1);
+
+  if (!message) {
+    res.status(404).json({ error: "not_found", message: "Message not found" });
+    return;
+  }
+
+  if (message.senderId !== userId) {
+    res.status(403).json({ error: "forbidden", message: "Cannot delete another user's message" });
+    return;
+  }
+
+  const now = new Date();
+  await db
+    .update(messagesTable)
+    .set({ deletedAt: now })
+    .where(eq(messagesTable.id, message.id));
+
+  // Broadcast deletion to match room
+  broadcastToMatch(message.matchId, {
+    type: "message_deleted",
+    messageId: message.id,
+    matchId: message.matchId,
+    deletedAt: now.toISOString(),
+  });
+
+  res.json({ success: true, id: message.id });
+});
+
 // POST /matches/:matchId/phase-complete
 router.post("/matches/:matchId/phase-complete", requireAuth, async (req, res) => {
   const userId = (req as AuthedRequest).userId;
@@ -184,7 +502,7 @@ router.post("/matches/:matchId/phase-complete", requireAuth, async (req, res) =>
       and(
         eq(matchesTable.id, String(matchId)),
         or(eq(matchesTable.userA, userId), eq(matchesTable.userB, userId)),
-        eq(matchesTable.status, "active"),
+        eq(matchesTable.status, "active")
       )
     )
     .limit(1);

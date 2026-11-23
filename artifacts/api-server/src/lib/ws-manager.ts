@@ -1,6 +1,8 @@
 import type { IncomingMessage, Server } from "http";
 import { WebSocket, WebSocketServer } from "ws";
 import { verifyTokenAsync } from "./jwt.js";
+import { db, messagesTable } from "@workspace/db";
+import { eq, and, ne, isNull } from "drizzle-orm";
 
 const rooms = new Map<string, Set<WebSocket>>();
 
@@ -63,6 +65,39 @@ export function createWsServer(httpServer: Server) {
           if (!rooms.has(subscribedMatchId)) rooms.set(subscribedMatchId, new Set());
           rooms.get(subscribedMatchId)!.add(ws);
           ws.send(JSON.stringify({ type: "subscribed", matchId: subscribedMatchId }));
+          return;
+        }
+
+        if (msg["type"] === "typing" && typeof msg["matchId"] === "string") {
+          if (!authedUserId) return;
+          broadcastToMatch(
+            msg["matchId"],
+            { type: "typing", matchId: msg["matchId"], userId: authedUserId },
+            ws
+          );
+          return;
+        }
+
+        if (msg["type"] === "delivered" && typeof msg["matchId"] === "string") {
+          if (!authedUserId) return;
+          const mId = msg["matchId"];
+          const now = new Date();
+          await db
+            .update(messagesTable)
+            .set({ deliveredAt: now })
+            .where(
+              and(
+                eq(messagesTable.matchId, mId),
+                ne(messagesTable.senderId, authedUserId),
+                isNull(messagesTable.deliveredAt)
+              )
+            );
+          broadcastToMatch(mId, {
+            type: "messages_delivered",
+            matchId: mId,
+            deliveredAt: now.toISOString(),
+          });
+          return;
         }
       } catch {
         // ignore malformed messages
@@ -84,12 +119,12 @@ export function createWsServer(httpServer: Server) {
   return wss;
 }
 
-export function broadcastToMatch(matchId: string, payload: object) {
+export function broadcastToMatch(matchId: string, payload: object, excludeWs?: WebSocket) {
   const clients = rooms.get(matchId);
   if (!clients || clients.size === 0) return;
   const data = JSON.stringify(payload);
   for (const ws of clients) {
-    if (ws.readyState === WebSocket.OPEN) {
+    if (ws !== excludeWs && ws.readyState === WebSocket.OPEN) {
       ws.send(data);
     }
   }

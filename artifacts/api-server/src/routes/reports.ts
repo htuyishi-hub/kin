@@ -1,5 +1,6 @@
 import { Router } from "express";
-import { db, reportsTable } from "@workspace/db";
+import { eq, desc } from "drizzle-orm";
+import { db, reportsTable, messagesTable } from "@workspace/db";
 import { requireAuth, type AuthedRequest } from "../middlewares/auth.js";
 
 const router = Router();
@@ -7,8 +8,9 @@ const router = Router();
 // POST /reports
 router.post("/reports", requireAuth, async (req, res) => {
   const userId = (req as AuthedRequest).userId;
-  const { reportedUserId, reason, details } = req.body as {
+  const { reportedUserId, matchId, reason, details } = req.body as {
     reportedUserId?: string;
+    matchId?: string;
     reason?: string;
     details?: string;
   };
@@ -24,11 +26,35 @@ router.post("/reports", requireAuth, async (req, res) => {
     return;
   }
 
+  let reportDetails = details ?? "";
+  if (matchId) {
+    try {
+      const recentMessages = await db
+        .select()
+        .from(messagesTable)
+        .where(eq(messagesTable.matchId, String(matchId)))
+        .orderBy(desc(messagesTable.createdAt))
+        .limit(30);
+
+      if (recentMessages.length > 0) {
+        const snapshot = recentMessages
+          .reverse()
+          .map((m) => `[${m.createdAt?.toISOString()}] ${m.senderId === userId ? "Reporter" : "Reported"}: ${m.deletedAt ? "[DELETED]" : m.content}`)
+          .join("\n");
+        reportDetails = reportDetails
+          ? `${reportDetails}\n\n--- Chat Snapshot (Last 30 Messages) ---\n${snapshot}`
+          : `--- Chat Snapshot (Last 30 Messages) ---\n${snapshot}`;
+      }
+    } catch (snapErr) {
+      console.warn("Failed to capture chat snapshot for report:", snapErr);
+    }
+  }
+
   await db.insert(reportsTable).values({
     reporterId: userId,
     reportedId: reportedUserId,
     reason,
-    details: details ?? null,
+    details: reportDetails || null,
   });
 
   res.status(201).json({ message: "Report submitted. Our team will review it within 24 hours." });
