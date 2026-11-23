@@ -25,6 +25,8 @@ import { useTranslation } from "@workspace/i18n";
 
 import { useAuth } from "@/contexts/AuthContext";
 import { useColors } from "@/hooks/useColors";
+import { useAudioPlayer, useAudioPlayerStatus } from "expo-audio";
+import { getVoiceSignedUrl } from "@/services/voiceIntroService";
 
 type MessageItem = {
   id: string;
@@ -37,6 +39,67 @@ type MessageItem = {
   readAt: string | null;
   createdAt: string;
 };
+
+function MatchVoicePlayer({
+  path,
+  durationMs,
+  colors,
+}: {
+  path: string;
+  durationMs?: number | null;
+  colors: any;
+}) {
+  const { t } = useTranslation();
+  const [audioUri, setAudioUri] = useState<string | null>(() => {
+    if (path.startsWith("http://") || path.startsWith("https://")) return path;
+    return null;
+  });
+
+  const loadVoice = async (forceRefresh = false) => {
+    if (path.startsWith("http://") || path.startsWith("https://")) {
+      setAudioUri(path);
+      return;
+    }
+    const signed = await getVoiceSignedUrl(path, forceRefresh);
+    if (signed) setAudioUri(signed);
+  };
+
+  useEffect(() => {
+    loadVoice();
+  }, [path]);
+
+  const player = useAudioPlayer(audioUri);
+  const status = useAudioPlayerStatus(player);
+  const isPlaying = Boolean(status.playing);
+
+  const togglePlay = () => {
+    if (isPlaying) {
+      player.pause();
+    } else {
+      if (!audioUri) {
+        loadVoice(true).then(() => player.play());
+      } else {
+        player.play();
+      }
+    }
+  };
+
+  const seconds = durationMs ? Math.round(durationMs / 1000) : Math.round(status.duration || 5);
+
+  return (
+    <TouchableOpacity
+      style={[styles.voiceHeaderPill, { backgroundColor: colors.secondary, borderColor: colors.border }]}
+      onPress={togglePlay}
+      activeOpacity={0.8}
+    >
+      <Feather name={isPlaying ? "pause" : "play"} size={13} color={colors.primary} />
+      <Feather name="volume-2" size={13} color={colors.mutedForeground} />
+      <Text style={[styles.voiceHeaderText, { color: colors.foreground }]}>
+        {t("profile.voiceDuration", { seconds: Math.max(1, seconds) })}
+      </Text>
+    </TouchableOpacity>
+  );
+}
 
 function useMatchWebSocket(matchId: string, token: string | null) {
   const queryClient = useQueryClient();
@@ -191,12 +254,21 @@ export default function MatchScreen() {
           <Feather name="arrow-left" size={22} color={colors.foreground} />
         </TouchableOpacity>
         <View style={styles.headerInfo}>
-          <Text style={[styles.headerName, { color: colors.foreground }]}>
-            {match.otherUserName}
-          </Text>
+          <View style={styles.headerNameRow}>
+            <Text style={[styles.headerName, { color: colors.foreground }]}>
+              {match.otherUserName}
+            </Text>
+            {!!(match as any).otherUser?.voiceIntroPath && (
+              <MatchVoicePlayer
+                path={(match as any).otherUser.voiceIntroPath}
+                durationMs={(match as any).otherUser.voiceIntroDurationMs}
+                colors={colors}
+              />
+            )}
+          </View>
           <View style={[styles.phasePill, { backgroundColor: colors.secondary }]}>
             <Text style={[styles.phaseText, { color: colors.primary }]}>
-              Phase {phase}: {phaseLabels[phase] ?? ""}
+              {t("matches.phase", { phase })}: {phaseLabels[phase] ?? ""}
             </Text>
           </View>
         </View>
@@ -267,7 +339,7 @@ export default function MatchScreen() {
             <View style={styles.waitRow}>
               <Feather name="clock" size={16} color={colors.mutedForeground} />
               <Text style={[styles.waitText, { color: colors.mutedForeground }]}>
-                Waiting for them to send the first message
+                {t("matches.waitingFirstMessage")}
               </Text>
             </View>
           ) : (
@@ -315,7 +387,18 @@ const styles = StyleSheet.create({
   },
   backBtn: { padding: 4 },
   headerInfo: { flex: 1, gap: 4 },
+  headerNameRow: { flexDirection: "row", alignItems: "center", gap: 8 },
   headerName: { fontFamily: "Inter_700Bold", fontSize: 18 },
+  voiceHeaderPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  voiceHeaderText: { fontFamily: "Inter_600SemiBold", fontSize: 10 },
   phasePill: {
     alignSelf: "flex-start",
     paddingHorizontal: 10,

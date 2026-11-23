@@ -180,7 +180,10 @@
     "send": "Send",
     "phaseValues": "Values",
     "phaseVision": "Vision",
-    "phaseFreeTalk": "Free talk"
+    "phaseFreeTalk": "Free talk",
+    "phase": "Phase {{phase}}",
+    "hoursLeft": "{{count}}h left",
+    "waitingFirstMessage": "Waiting for first message"
   },
   "serious": {
     "tabTitle": "Serious",

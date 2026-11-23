@@ -129,6 +129,85 @@ export default function AppScreen() {
   const candidateAudioRef = useRef<HTMLAudioElement | null>(null);
   const [playingCandidateAudio, setPlayingCandidateAudio] = useState(false);
 
+  const [selectedMatch, setSelectedMatch] = useState<any | null>(null);
+  const [chatMessages, setChatMessages] = useState<Array<{ id: string; senderId: string; content: string; createdAt: string }>>([]);
+  const [inputMessage, setInputMessage] = useState('');
+  const [isSendingMessage, setIsSendingMessage] = useState(false);
+  const [realMatches, setRealMatches] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (!token) return;
+    fetch('/api/matches', {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (Array.isArray(data) && data.length > 0) {
+          setRealMatches(data);
+        }
+      })
+      .catch(() => {});
+  }, [token, activeTab]);
+
+  async function handleOpenMatch(match: any) {
+    setSelectedMatch(match);
+    if (!token || !match.id || String(match.id).startsWith('demo-')) {
+      setChatMessages([
+        {
+          id: '1',
+          senderId: match.otherUserId || 'other',
+          content: match.lastMessage || 'Muraho neza! Nshimishijwe no guhura nawe.',
+          createdAt: new Date().toISOString(),
+        },
+      ]);
+      return;
+    }
+    try {
+      const res = await fetch(`/api/matches/${match.id}/messages`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const msgs = await res.json();
+        setChatMessages(msgs);
+      }
+    } catch {
+      // fallback
+    }
+  }
+
+  async function handleSendMessage(e: React.FormEvent) {
+    e.preventDefault();
+    const text = inputMessage.trim();
+    if (!text || !selectedMatch) return;
+
+    setInputMessage('');
+    const tempMsg = {
+      id: String(Date.now()),
+      senderId: user?.id || 'me',
+      content: text,
+      createdAt: new Date().toISOString(),
+    };
+    setChatMessages((prev) => [...prev, tempMsg]);
+
+    if (!token || !selectedMatch.id || String(selectedMatch.id).startsWith('demo-')) return;
+
+    try {
+      setIsSendingMessage(true);
+      await fetch(`/api/matches/${selectedMatch.id}/messages`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ content: text }),
+      });
+    } catch {
+      // non-fatal
+    } finally {
+      setIsSendingMessage(false);
+    }
+  }
+
   useEffect(() => {
     if (!token) return;
     fetch('/api/me', {
@@ -661,55 +740,168 @@ export default function AppScreen() {
 
         {/* TAB 2: MATCHES & 3-PHASE CHAT */}
         {activeTab === 'matches' && (
-          <div className="flex-1 flex flex-col p-4 gap-4">
-            <h2 className="font-serif text-lg font-bold text-[#F0EDE6]">
-              {t('matches.guidedChatTitle')}
-            </h2>
+          <div className="flex-1 flex flex-col p-4 gap-3">
+            {selectedMatch ? (
+              /* Active Conversation View */
+              <div className="flex-1 flex flex-col min-h-[460px]">
+                {/* Chat Header */}
+                <div className="flex items-center justify-between pb-3 border-b border-[#21262D]">
+                  <div className="flex items-center gap-2.5">
+                    <button
+                      type="button"
+                      onClick={() => setSelectedMatch(null)}
+                      className="text-sm font-medium text-[#FF6B6B] hover:opacity-80 transition-opacity cursor-pointer p-1"
+                    >
+                      ←
+                    </button>
+                    <div className="w-9 h-9 rounded-full bg-[#1A1A2E] border border-[#2563EB] overflow-hidden flex items-center justify-center">
+                      {selectedMatch.otherUserPrimaryPhoto || selectedMatch.photoUrl ? (
+                        <img
+                          src={selectedMatch.otherUserPrimaryPhoto || selectedMatch.photoUrl}
+                          alt="Match"
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <User className="w-5 h-5 text-[#A8A49E]" />
+                      )}
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-sm text-[#F0EDE6] leading-tight">
+                        {selectedMatch.otherUserName || selectedMatch.name}
+                      </h3>
+                      <span className="text-[10px] font-semibold text-[#2563EB]">
+                        {t('matches.phase', { phase: selectedMatch.conversationPhase || 1 })}
+                      </span>
+                    </div>
+                  </div>
 
-            {/* Active Match Card */}
-            <div className="p-3.5 bg-[#1A1A2E] border border-[#21262D] rounded-2xl flex items-center gap-3.5 hover:border-[#2563EB]/50 transition-colors cursor-pointer">
-              <img
-                src="/images/couple1.jpg"
-                alt="Match"
-                className="w-12 h-12 rounded-full object-cover border border-[#2563EB]"
-              />
-              <div className="flex-1">
-                <div className="flex items-center justify-between">
-                  <h3 className="font-bold text-sm text-[#F0EDE6]">Keza Diane</h3>
-                  <span className="text-[10px] text-[#A8A49E]">10m ago</span>
+                  {/* Voice Intro Player in Chat Header */}
+                  {(selectedMatch.voiceIntroPath || selectedMatch.otherUser?.voiceIntroPath) && (
+                    <button
+                      type="button"
+                      onClick={() => toggleCandidateVoice(selectedMatch.voiceIntroPath || selectedMatch.otherUser?.voiceIntroPath)}
+                      className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#1A1A2E] border border-[#C9A84C]/40 text-[#C9A84C] text-[11px] font-semibold hover:border-[#C9A84C] transition-colors cursor-pointer"
+                    >
+                      {playingCandidateAudio ? <Pause className="w-3 h-3 fill-current" /> : <Play className="w-3 h-3 fill-current" />}
+                      <Volume2 className="w-3 h-3" />
+                    </button>
+                  )}
                 </div>
-                <p className="text-xs text-[#A8A49E] truncate">Muraho neza! Nshimishijwe no...</p>
-                <div className="flex items-center gap-2 mt-1.5">
-                  <span className="text-[9px] font-bold bg-[#2563EB]/20 text-[#2563EB] px-2 py-0.5 rounded">
-                    {t('matches.phaseValues')}
-                  </span>
-                  <span className="text-[10px] text-[#FF6B6B] flex items-center gap-1 font-mono">
-                    <Clock className="w-3 h-3" />
-                    71h 45m
-                  </span>
-                </div>
-              </div>
-            </div>
 
-            <div className="p-3.5 bg-[#1A1A2E] border border-[#21262D] rounded-2xl flex items-center gap-3.5 opacity-80 cursor-pointer">
-              <img
-                src="/images/couple2.jpg"
-                alt="Match"
-                className="w-12 h-12 rounded-full object-cover border border-[#C9A84C]"
-              />
-              <div className="flex-1">
-                <div className="flex items-center justify-between">
-                  <h3 className="font-bold text-sm text-[#F0EDE6]">Manzi Eric</h3>
-                  <span className="text-[10px] text-[#A8A49E]">2h ago</span>
+                {/* Messages List */}
+                <div className="flex-1 flex flex-col gap-2.5 py-4 overflow-y-auto max-h-[380px]">
+                  {chatMessages.length === 0 ? (
+                    <div className="my-auto text-center py-8">
+                      <p className="text-xs text-[#A8A49E]">{t('matches.waitingFirstMessage')}</p>
+                    </div>
+                  ) : (
+                    chatMessages.map((msg) => {
+                      const isMe = msg.senderId === user?.id || msg.senderId === 'me';
+                      return (
+                        <div
+                          key={msg.id}
+                          className={`max-w-[78%] p-3 rounded-2xl text-sm leading-relaxed ${
+                            isMe
+                              ? 'self-end bg-[#2563EB] text-[#F0EDE6] rounded-br-xs'
+                              : 'self-start bg-[#1A1A2E] border border-[#21262D] text-[#F0EDE6] rounded-bl-xs'
+                          }`}
+                        >
+                          {msg.content}
+                        </div>
+                      );
+                    })
+                  )}
                 </div>
-                <p className="text-xs text-[#A8A49E] truncate">Golden Bid Accepted! Mwatangiye...</p>
-                <div className="flex items-center gap-2 mt-1.5">
-                  <span className="text-[9px] font-bold bg-[#C9A84C]/20 text-[#C9A84C] px-2 py-0.5 rounded">
-                    {t('matches.phaseVision')}
-                  </span>
-                </div>
+
+                {/* Message Input Bar */}
+                <form onSubmit={handleSendMessage} className="flex items-center gap-2 pt-2 border-t border-[#21262D]">
+                  <input
+                    type="text"
+                    placeholder={t('matches.typeMessage')}
+                    value={inputMessage}
+                    onChange={(e) => setInputMessage(e.target.value)}
+                    className="flex-1 bg-[#1A1A2E] border border-[#21262D] focus:border-[#2563EB] rounded-full px-4 py-2.5 text-sm text-[#F0EDE6] placeholder-[#4A4742] outline-none"
+                  />
+                  <button
+                    type="submit"
+                    disabled={isSendingMessage || !inputMessage.trim()}
+                    className="w-10 h-10 rounded-full bg-[#2563EB] text-[#F0EDE6] flex items-center justify-center hover:bg-[#1A4DB8] transition-colors disabled:opacity-50 cursor-pointer shrink-0"
+                  >
+                    <Send className="w-4 h-4" />
+                  </button>
+                </form>
               </div>
-            </div>
+            ) : (
+              /* Match List */
+              <>
+                <h2 className="font-serif text-lg font-bold text-[#F0EDE6]">
+                  {t('matches.guidedChatTitle')}
+                </h2>
+
+                {(realMatches.length > 0 ? realMatches : [
+                  {
+                    id: 'demo-1',
+                    otherUserName: 'Keza Diane',
+                    otherUserAge: 23,
+                    conversationPhase: 1,
+                    lastMessage: 'Muraho neza! Nshimishijwe no...',
+                    expiresAt: new Date(Date.now() + 71 * 3600000).toISOString(),
+                    photoUrl: '/images/couple1.jpg',
+                    voiceIntroPath: 'https://actions.google.com/sounds/v1/speech/hello_world.ogg',
+                  },
+                  {
+                    id: 'demo-2',
+                    otherUserName: 'Manzi Eric',
+                    otherUserAge: 25,
+                    conversationPhase: 2,
+                    lastMessage: 'Golden Bid Accepted! Mwatangiye...',
+                    expiresAt: new Date(Date.now() + 48 * 3600000).toISOString(),
+                    photoUrl: '/images/couple2.jpg',
+                    voiceIntroPath: 'https://actions.google.com/sounds/v1/speech/hello_world.ogg',
+                  },
+                ]).map((matchItem: any) => {
+                  const hoursLeft = Math.max(0, Math.round((new Date(matchItem.expiresAt).getTime() - Date.now()) / 3600000));
+                  return (
+                    <div
+                      key={matchItem.id}
+                      onClick={() => handleOpenMatch(matchItem)}
+                      className="p-3.5 bg-[#1A1A2E] border border-[#21262D] rounded-2xl flex items-center gap-3.5 hover:border-[#2563EB]/50 transition-colors cursor-pointer"
+                    >
+                      <div className="w-12 h-12 rounded-full overflow-hidden bg-[#242438] border border-[#2563EB] flex items-center justify-center shrink-0">
+                        {matchItem.otherUserPrimaryPhoto || matchItem.photoUrl ? (
+                          <img
+                            src={matchItem.otherUserPrimaryPhoto || matchItem.photoUrl}
+                            alt="Match"
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <User className="w-6 h-6 text-[#A8A49E]" />
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between">
+                          <h3 className="font-bold text-sm text-[#F0EDE6] truncate">
+                            {matchItem.otherUserName || matchItem.name}
+                            {matchItem.otherUserAge ? `, ${matchItem.otherUserAge}` : ''}
+                          </h3>
+                          <span className="text-[10px] text-[#A8A49E] shrink-0 font-mono">
+                            {t('matches.hoursLeft', { count: hoursLeft })}
+                          </span>
+                        </div>
+                        <p className="text-xs text-[#A8A49E] truncate mt-0.5">
+                          {matchItem.lastMessage || '...'}
+                        </p>
+                        <div className="flex items-center gap-2 mt-1.5">
+                          <span className="text-[9px] font-bold bg-[#2563EB]/20 text-[#2563EB] px-2 py-0.5 rounded">
+                            {t('matches.phase', { phase: matchItem.conversationPhase || 1 })}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </>
+            )}
           </div>
         )}
 

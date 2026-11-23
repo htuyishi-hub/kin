@@ -180,7 +180,10 @@
     "send": "Ohereza",
     "phaseValues": "Indangagaciro",
     "phaseVision": "Icyerekezo",
-    "phaseFreeTalk": "Kuvugana kubuntu"
+    "phaseFreeTalk": "Kuvugana kubuntu",
+    "phase": "Icyiciro {{phase}}",
+    "hoursLeft": "Hasigaye {{count}}h",
+    "waitingFirstMessage": "Tegereza ubutumwa bwa mbere"
   },
   "serious": {
     "tabTitle": "Abiyemeje",

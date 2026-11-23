@@ -6,7 +6,9 @@ import { getSupabaseClient } from '../lib/supabase';
 const API_URL =
   process.env.EXPO_PUBLIC_API_URL ??
   process.env.VITE_API_URL ??
-  'https://kinn-api.fly.dev';
+  (process.env.EXPO_PUBLIC_DOMAIN
+    ? `https://${process.env.EXPO_PUBLIC_DOMAIN}`
+    : 'https://kin-x81d.onrender.com');
 
 export type PhotoUploadResult =
   | { success: true; photoId?: string; signedUrl: string; publicUrl: string; storagePath: string }

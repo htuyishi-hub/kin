@@ -77,13 +77,13 @@ export default function MatchesScreen() {
                     {item.otherUserAge ? `, ${item.otherUserAge}` : ""}
                   </Text>
                   <Text style={[styles.matchTime, { color: colors.mutedForeground }]}>
-                    {hoursLeft}h left
+                    {t("matches.hoursLeft", { count: hoursLeft })}
                   </Text>
                 </View>
                 <View style={styles.matchBottom}>
                   <View style={[styles.phaseBadge, { backgroundColor: colors.secondary }]}>
                     <Text style={[styles.phaseText, { color: colors.primary }]}>
-                      Phase {phase}
+                      {t("matches.phase", { phase })}
                     </Text>
                   </View>
                   {item.unreadCount > 0 && (

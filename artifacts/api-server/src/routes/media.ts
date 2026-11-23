@@ -9,7 +9,7 @@ import { getStorageAdmin } from "../lib/storage.js";
 const router = Router();
 
 function isVoiceIntroEnabled(): boolean {
-  return process.env.VOICE_INTRO_ENABLED === "true" || process.env.VOICE_INTRO_ENABLED === "1";
+  return process.env.VOICE_INTRO_ENABLED !== "false" && process.env.VOICE_INTRO_ENABLED !== "0";
 }
 
 // =============================================================================
@@ -408,12 +408,12 @@ router.post("/media/voice/confirm", requireAuth, async (req, res) => {
     durationSec = 0;
   }
 
-  if (durationSec < 1 || durationSec > 20) {
+  if (durationSec < 1 || durationSec > 30) {
     await admin.storage.from("voice-intros").remove([path]);
     res.status(400).json({
       error: "invalid_duration",
       code: durationSec < 1 ? "VOICE_INTRO_TOO_SHORT" : "VOICE_INTRO_TOO_LONG",
-      message: "Voice intro duration must be between 1 and 20 seconds.",
+      message: "Voice intro duration must be between 1 and 30 seconds.",
     });
     return;
   }
