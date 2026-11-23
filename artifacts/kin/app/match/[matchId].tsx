@@ -10,6 +10,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
   ActivityIndicator,
   FlatList,
+  Modal,
   Platform,
   StyleSheet,
   Text,
@@ -38,6 +39,11 @@ type MessageItem = {
   promptText?: string | null;
   isSystem: boolean;
   readAt?: string | null;
+  replyToId?: string | null;
+  replyTo?: { id?: string; senderId?: string; content?: string } | null;
+  editedAt?: string | null;
+  deletedAt?: string | null;
+  deliveredAt?: string | null;
   createdAt: string;
 };
 
@@ -79,6 +85,46 @@ function formatMessageTime(isoDateStr: string): string {
   return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 }
 
+function MessageTicks({
+  status,
+  deliveredAt,
+  readAt,
+  onRetry,
+}: {
+  status?: "sending" | "sent" | "failed";
+  deliveredAt?: string | null;
+  readAt?: string | null;
+  onRetry?: () => void;
+}) {
+  if (status === "failed") {
+    return (
+      <TouchableOpacity onPress={onRetry} hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}>
+        <Feather name="alert-circle" size={13} color="#EF4444" />
+      </TouchableOpacity>
+    );
+  }
+  if (status === "sending") {
+    return <Feather name="clock" size={11} color="#94A3B8" />;
+  }
+  if (readAt) {
+    return (
+      <View style={{ flexDirection: "row", alignItems: "center" }}>
+        <Feather name="check" size={12} color="#22C55E" />
+        <Feather name="check" size={12} color="#22C55E" style={{ marginLeft: -6 }} />
+      </View>
+    );
+  }
+  if (deliveredAt) {
+    return (
+      <View style={{ flexDirection: "row", alignItems: "center" }}>
+        <Feather name="check" size={12} color="#94A3B8" />
+        <Feather name="check" size={12} color="#94A3B8" style={{ marginLeft: -6 }} />
+      </View>
+    );
+  }
+  return <Feather name="check" size={12} color="#94A3B8" />;
+}
+
 function MatchVoicePlayer({
   path,
   durationMs,
@@ -107,23 +153,23 @@ function MatchVoicePlayer({
     loadVoice();
   }, [path]);
 
-  const player = useAudioPlayer(audioUri);
+  const player = useAudioPlayer(audioUri ? { uri: audioUri } : null);
   const status = useAudioPlayerStatus(player);
-  const isPlaying = Boolean(status.playing);
+  const isPlaying = status.playing;
 
-  const togglePlay = () => {
+  const togglePlay = async () => {
+    if (!audioUri) {
+      await loadVoice(true);
+    }
+    if (!player) return;
     if (isPlaying) {
       player.pause();
     } else {
-      if (!audioUri) {
-        loadVoice(true).then(() => player.play());
-      } else {
-        player.play();
-      }
+      player.play();
     }
   };
 
-  const seconds = durationMs ? Math.round(durationMs / 1000) : Math.round(status.duration || 5);
+  const seconds = Math.round((durationMs || 5000) / 1000);
 
   return (
     <TouchableOpacity
@@ -140,12 +186,24 @@ function MatchVoicePlayer({
   );
 }
 
-function useMatchWebSocket(matchId: string, token: string | null, onNewIncoming?: () => void) {
+function useMatchWebSocket(
+  matchId: string,
+  token: string | null,
+  userId: string | null,
+  onNewIncoming?: () => void,
+  onTyping?: (typingUserId: string) => void
+) {
   const queryClient = useQueryClient();
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const mountedRef = useRef(true);
   const [isConnected, setIsConnected] = useState(true);
+
+  const sendWsMessage = useCallback((payload: object) => {
+    if (wsRef.current?.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify(payload));
+    }
+  }, []);
 
   const connect = useCallback(() => {
     if (!token || !mountedRef.current) return;
@@ -167,13 +225,14 @@ function useMatchWebSocket(matchId: string, token: string | null, onNewIncoming?
         setIsConnected(true);
         ws.send(JSON.stringify({ type: "auth", token }));
         ws.send(JSON.stringify({ type: "subscribe", matchId }));
+        ws.send(JSON.stringify({ type: "delivered", matchId }));
       };
 
       ws.onmessage = (event) => {
         try {
-          const msg = JSON.parse(event.data as string) as { type: string; message?: MessageItem };
+          const msg = JSON.parse(event.data as string) as Record<string, any>;
           if (msg.type === "new_message" && msg.message) {
-            const incoming = msg.message;
+            const incoming = msg.message as MessageItem;
             onNewIncoming?.();
             queryClient.setQueryData<MessageItem[]>(
               ["getMessages", matchId],
@@ -184,6 +243,53 @@ function useMatchWebSocket(matchId: string, token: string | null, onNewIncoming?
                 return [...prev, incoming];
               }
             );
+            if (incoming.senderId !== userId) {
+              fetch(`${apiBaseUrl}/api/matches/${matchId}/read`, {
+                method: "POST",
+                headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+              }).catch(() => {});
+              if (ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({ type: "delivered", matchId }));
+              }
+            }
+          } else if (msg.type === "typing" && msg.matchId === matchId && msg.userId !== userId) {
+            onTyping?.(msg.userId);
+          } else if (msg.type === "messages_delivered" && msg.matchId === matchId) {
+            queryClient.setQueryData<MessageItem[]>(
+              ["getMessages", matchId],
+              (prev) =>
+                prev?.map((m) =>
+                  m.senderId === userId && !m.deliveredAt ? { ...m, deliveredAt: msg.deliveredAt } : m
+                )
+            );
+          } else if (msg.type === "messages_read" && msg.matchId === matchId) {
+            queryClient.setQueryData<MessageItem[]>(
+              ["getMessages", matchId],
+              (prev) =>
+                prev?.map((m) =>
+                  m.senderId === userId && !m.readAt
+                    ? { ...m, readAt: msg.readAt, deliveredAt: m.deliveredAt || msg.readAt }
+                    : m
+                )
+            );
+          } else if (msg.type === "message_edited" && msg.message && msg.message.matchId === matchId) {
+            const updated = msg.message;
+            queryClient.setQueryData<MessageItem[]>(
+              ["getMessages", matchId],
+              (prev) => prev?.map((m) => (m.id === updated.id ? { ...m, ...updated } : m))
+            );
+          } else if (msg.type === "message_deleted" && msg.matchId === matchId) {
+            queryClient.setQueryData<MessageItem[]>(
+              ["getMessages", matchId],
+              (prev) =>
+                prev?.map((m) =>
+                  m.id === msg.messageId
+                    ? { ...m, deletedAt: msg.deletedAt || new Date().toISOString(), content: "" }
+                    : m
+                )
+            );
+          } else if (msg.type === "phase_updated" && msg.match) {
+            queryClient.setQueryData(["getMatch", matchId], msg.match);
           }
         } catch {
           // ignore parse errors
@@ -205,7 +311,7 @@ function useMatchWebSocket(matchId: string, token: string | null, onNewIncoming?
     } catch {
       setIsConnected(false);
     }
-  }, [matchId, token, queryClient, onNewIncoming]);
+  }, [matchId, token, userId, queryClient, onNewIncoming, onTyping]);
 
   useEffect(() => {
     mountedRef.current = true;
@@ -218,7 +324,7 @@ function useMatchWebSocket(matchId: string, token: string | null, onNewIncoming?
     };
   }, [connect]);
 
-  return { isConnected };
+  return { isConnected, sendWsMessage };
 }
 
 type ListItem =
@@ -254,8 +360,21 @@ export default function MatchScreen() {
   const [optimisticMessages, setOptimisticMessages] = useState<OptimisticMessage[]>([]);
   const [isNearBottom, setIsNearBottom] = useState(true);
   const [showNewMessagesPill, setShowNewMessagesPill] = useState(false);
+
+  // Part 2 state: replies, edits, actions, reporting, typing
+  const [replyingToMessage, setReplyingToMessage] = useState<MessageItem | null>(null);
+  const [editingMessage, setEditingMessage] = useState<MessageItem | null>(null);
+  const [actionTargetMessage, setActionTargetMessage] = useState<MessageItem | null>(null);
+  const [reportModalOpen, setReportModalOpen] = useState(false);
+  const [reportReason, setReportReason] = useState<string>("harassment");
+  const [isSubmittingReport, setIsSubmittingReport] = useState(false);
+  const [reportSuccess, setReportSuccess] = useState(false);
+  const [isOtherTyping, setIsOtherTyping] = useState(false);
+
   const flatRef = useRef<FlatList>(null);
   const inputRef = useRef<TextInput>(null);
+  const typingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastTypingSentRef = useRef<number>(0);
 
   const handleIncomingMessage = useCallback(() => {
     if (!isNearBottom) {
@@ -263,7 +382,21 @@ export default function MatchScreen() {
     }
   }, [isNearBottom]);
 
-  const { isConnected } = useMatchWebSocket(String(matchId), token, handleIncomingMessage);
+  const handleTypingEvent = useCallback((typingUserId: string) => {
+    if (typingUserId !== userId) {
+      setIsOtherTyping(true);
+      if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
+      typingTimerRef.current = setTimeout(() => setIsOtherTyping(false), 3500);
+    }
+  }, [userId]);
+
+  const { isConnected, sendWsMessage } = useMatchWebSocket(
+    String(matchId),
+    token,
+    userId ?? null,
+    handleIncomingMessage,
+    handleTypingEvent
+  );
 
   const { data: match, isLoading: matchLoading } = useGetMatch(String(matchId), {
     query: { refetchInterval: 10000 } as any,
@@ -274,12 +407,28 @@ export default function MatchScreen() {
     { query: { refetchInterval: 5000 } as any },
   );
 
+  // Acknowledge read receipt on mount
+  useEffect(() => {
+    if (!token || !matchId) return;
+    const apiBaseUrl =
+      process.env.EXPO_PUBLIC_API_URL ??
+      process.env.VITE_API_URL ??
+      (process.env.EXPO_PUBLIC_DOMAIN
+        ? `https://${process.env.EXPO_PUBLIC_DOMAIN}`
+        : "https://kin-x81d.onrender.com");
+
+    fetch(`${apiBaseUrl}/api/matches/${matchId}/read`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+    }).catch(() => {});
+  }, [matchId, token]);
+
   useEffect(() => {
     let isMounted = true;
     async function decryptAll() {
       const updates: Record<string, string> = {};
       for (const m of messages) {
-        if (m.content && !decryptedMap[m.id]) {
+        if (m.content && !decryptedMap[m.id] && !m.deletedAt) {
           updates[m.id] = await decryptMessage(m.content, String(matchId));
         }
       }
@@ -309,6 +458,40 @@ export default function MatchScreen() {
     const raw = (textToSend ?? content).trim();
     if (!raw) return;
 
+    const apiBaseUrl =
+      process.env.EXPO_PUBLIC_API_URL ??
+      process.env.VITE_API_URL ??
+      (process.env.EXPO_PUBLIC_DOMAIN
+        ? `https://${process.env.EXPO_PUBLIC_DOMAIN}`
+        : "https://kin-x81d.onrender.com");
+
+    // Handle Edit Mode
+    if (editingMessage) {
+      const msgId = editingMessage.id;
+      setEditingMessage(null);
+      setContent("");
+
+      try {
+        const encrypted = await encryptMessage(raw, String(matchId));
+        await fetch(`${apiBaseUrl}/api/messages/${msgId}`, {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+          body: JSON.stringify({ content: encrypted }),
+        });
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        refetchMessages();
+      } catch {
+        // non-fatal
+      }
+      return;
+    }
+
+    const currentReply = replyingToMessage;
+    setReplyingToMessage(null);
+
     const localId = retryLocalId || `local-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
     const tempMsg: OptimisticMessage = {
       id: localId,
@@ -320,6 +503,14 @@ export default function MatchScreen() {
       promptKey: null,
       isSystem: false,
       readAt: null,
+      replyToId: currentReply?.id ?? null,
+      replyTo: currentReply
+        ? {
+            id: currentReply.id,
+            senderId: currentReply.senderId,
+            content: decryptedMap[currentReply.id] || currentReply.content,
+          }
+        : null,
       createdAt: new Date().toISOString(),
       status: "sending",
     };
@@ -335,20 +526,16 @@ export default function MatchScreen() {
 
     try {
       const encrypted = await encryptMessage(raw, String(matchId));
-      const apiBaseUrl =
-        process.env.EXPO_PUBLIC_API_URL ??
-        process.env.VITE_API_URL ??
-        (process.env.EXPO_PUBLIC_DOMAIN
-          ? `https://${process.env.EXPO_PUBLIC_DOMAIN}`
-          : "https://kin-x81d.onrender.com");
-
       const res = await fetch(`${apiBaseUrl}/api/matches/${matchId}/messages`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
-        body: JSON.stringify({ content: encrypted }),
+        body: JSON.stringify({
+          content: encrypted,
+          replyToId: currentReply?.id ?? null,
+        }),
       });
 
       if (!res.ok) {
@@ -359,7 +546,11 @@ export default function MatchScreen() {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 
       setOptimisticMessages((prev) =>
-        prev.map((m) => (m.id === localId ? { ...m, id: savedMessage.id, status: "sent" } : m))
+        prev.map((m) =>
+          m.id === localId
+            ? { ...m, id: savedMessage.id, status: "sent", replyTo: tempMsg.replyTo }
+            : m
+        )
       );
       refetchMessages();
     } catch {
@@ -368,6 +559,60 @@ export default function MatchScreen() {
       );
     }
   }
+
+  const handleDeleteMessage = async (msgId: string) => {
+    setActionTargetMessage(null);
+    const apiBaseUrl =
+      process.env.EXPO_PUBLIC_API_URL ??
+      process.env.VITE_API_URL ??
+      (process.env.EXPO_PUBLIC_DOMAIN
+        ? `https://${process.env.EXPO_PUBLIC_DOMAIN}`
+        : "https://kin-x81d.onrender.com");
+
+    try {
+      await fetch(`${apiBaseUrl}/api/messages/${msgId}`, {
+        method: "DELETE",
+        headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+      });
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      refetchMessages();
+    } catch {}
+  };
+
+  const handleSubmitReport = async () => {
+    if (!match) return;
+    setIsSubmittingReport(true);
+    const apiBaseUrl =
+      process.env.EXPO_PUBLIC_API_URL ??
+      process.env.VITE_API_URL ??
+      (process.env.EXPO_PUBLIC_DOMAIN
+        ? `https://${process.env.EXPO_PUBLIC_DOMAIN}`
+        : "https://kin-x81d.onrender.com");
+
+    try {
+      await fetch(`${apiBaseUrl}/api/reports`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({
+          reportedUserId: match.otherUserId,
+          matchId: String(matchId),
+          reason: reportReason,
+        }),
+      });
+      setReportSuccess(true);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      setTimeout(() => {
+        setReportModalOpen(false);
+        setReportSuccess(false);
+        setIsSubmittingReport(false);
+      }, 1500);
+    } catch {
+      setIsSubmittingReport(false);
+    }
+  };
 
   // Combined messages
   const combinedMessages = useMemo(() => {
@@ -458,38 +703,61 @@ export default function MatchScreen() {
             )}
           </View>
           <View style={styles.subHeaderRow}>
-            <View style={[styles.phasePill, { backgroundColor: colors.secondary }]}>
-              <Text style={[styles.phaseText, { color: colors.primary }]}>
-                {t("matches.phase", { phase })}: {phaseLabels[phase] ?? ""}
-              </Text>
-            </View>
+            {isOtherTyping ? (
+              <View style={styles.typingIndicatorRow}>
+                <View style={[styles.typingDot, { backgroundColor: "#22C55E" }]} />
+                <Text style={[styles.typingText, { color: "#22C55E" }]}>
+                  {t("chat.typing")}
+                </Text>
+              </View>
+            ) : (
+              <View style={[styles.phasePill, { backgroundColor: colors.secondary }]}>
+                <Text style={[styles.phaseText, { color: colors.primary }]}>
+                  {t("matches.phase", { phase })}: {phaseLabels[phase] ?? ""}
+                </Text>
+              </View>
+            )}
           </View>
         </View>
-        <TouchableOpacity
-          style={[
-            styles.phaseBtn,
-            {
-              backgroundColor: match.myPhaseComplete ? colors.accent + "22" : colors.secondary,
-              borderColor: match.myPhaseComplete ? colors.accent : colors.border,
-              borderWidth: 1,
-            },
-          ]}
-          onPress={() => markPhaseComplete({ matchId: String(matchId) })}
-          disabled={isPhasing || match.myPhaseComplete}
-          accessibilityLabel={match.myPhaseComplete ? t("matches.phaseCompleted") : t("matches.completePhase")}
-          accessibilityHint={t("matches.completePhase")}
-          accessibilityRole="button"
-        >
-          {isPhasing ? (
-            <ActivityIndicator size="small" color={colors.primary} />
-          ) : (
-            <Feather
-              name={match.myPhaseComplete ? "check-circle" : "check"}
-              size={18}
-              color={match.myPhaseComplete ? colors.accent : colors.mutedForeground}
-            />
-          )}
-        </TouchableOpacity>
+
+        <View style={styles.headerActionsRow}>
+          {/* Report Button in Header */}
+          <TouchableOpacity
+            style={[styles.headerIconBtn, { backgroundColor: colors.secondary, borderColor: colors.border }]}
+            onPress={() => setReportModalOpen(true)}
+            accessibilityLabel={t("chat.report")}
+            accessibilityRole="button"
+          >
+            <Feather name="flag" size={16} color={colors.mutedForeground} />
+          </TouchableOpacity>
+
+          {/* Phase Completion Button */}
+          <TouchableOpacity
+            style={[
+              styles.phaseBtn,
+              {
+                backgroundColor: match.myPhaseComplete ? colors.accent + "22" : colors.secondary,
+                borderColor: match.myPhaseComplete ? colors.accent : colors.border,
+                borderWidth: 1,
+              },
+            ]}
+            onPress={() => markPhaseComplete({ matchId: String(matchId) })}
+            disabled={isPhasing || match.myPhaseComplete}
+            accessibilityLabel={match.myPhaseComplete ? t("matches.phaseCompleted") : t("matches.completePhase")}
+            accessibilityHint={t("matches.completePhase")}
+            accessibilityRole="button"
+          >
+            {isPhasing ? (
+              <ActivityIndicator size="small" color={colors.primary} />
+            ) : (
+              <Feather
+                name={match.myPhaseComplete ? "check-circle" : "check"}
+                size={18}
+                color={match.myPhaseComplete ? colors.accent : colors.mutedForeground}
+              />
+            )}
+          </TouchableOpacity>
+        </View>
       </View>
 
       {!isConnected && (
@@ -543,56 +811,95 @@ export default function MatchScreen() {
               }
 
               const isMe = item.message.senderId === userId || item.message.senderId === "me";
-              const textContent =
-                item.message.localPlaintext ??
-                decryptedMap[item.message.id] ??
-                (item.message.content.startsWith("e2ee:v1:") ? "..." : item.message.content);
+              const isDeleted = Boolean(item.message.deletedAt);
+              const textContent = isDeleted
+                ? t("chat.deletedMessage")
+                : item.message.localPlaintext ??
+                  decryptedMap[item.message.id] ??
+                  (item.message.content.startsWith("e2ee:v1:") ? "..." : item.message.content);
 
               return (
                 <View style={[styles.messageRow, { marginBottom: item.isLastInGroup ? 8 : 2 }]}>
-                  <View
+                  <TouchableOpacity
+                    onLongPress={() => {
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                      setActionTargetMessage(item.message);
+                    }}
+                    activeOpacity={0.88}
                     style={[
                       styles.bubble,
                       isMe
                         ? [styles.bubbleMe, { backgroundColor: colors.primary }]
                         : [styles.bubbleThem, { backgroundColor: colors.card, borderColor: colors.border }],
+                      isDeleted && styles.bubbleDeleted,
                     ]}
                   >
+                    {!isDeleted && item.message.replyTo && (
+                      <View
+                        style={[
+                          styles.quotedBubble,
+                          {
+                            borderLeftColor: isMe ? colors.primaryForeground : colors.primary,
+                            backgroundColor: isMe ? "rgba(0,0,0,0.18)" : colors.secondary,
+                          },
+                        ]}
+                      >
+                        <Text
+                          style={[
+                            styles.quotedSender,
+                            { color: isMe ? colors.primaryForeground : colors.primary },
+                          ]}
+                        >
+                          {item.message.replyTo.senderId === userId
+                            ? t("chat.replyingTo")
+                            : t("chat.reply")}
+                        </Text>
+                        <Text
+                          style={[
+                            styles.quotedText,
+                            { color: isMe ? colors.primaryForeground : colors.foreground },
+                          ]}
+                          numberOfLines={1}
+                        >
+                          {item.message.replyTo.content || t("chat.deletedMessage")}
+                        </Text>
+                      </View>
+                    )}
+
                     <Text
                       style={[
                         styles.bubbleText,
                         { color: isMe ? colors.primaryForeground : colors.foreground },
+                        isDeleted && styles.bubbleTextDeleted,
                       ]}
                     >
                       {textContent}
                     </Text>
-                  </View>
+                  </TouchableOpacity>
 
                   {item.isLastInGroup && (
                     <View style={[styles.metaRow, isMe ? styles.metaRowMe : styles.metaRowThem]}>
                       <Text style={[styles.timeText, { color: colors.mutedForeground }]}>
                         {item.timeText}
                       </Text>
+                      {item.message.editedAt && !isDeleted && (
+                        <Text style={[styles.editedIndicator, { color: colors.mutedForeground }]}>
+                          ({t("chat.edited")})
+                        </Text>
+                      )}
                       {isMe && (
                         <View style={styles.statusIconWrap}>
-                          {item.message.status === "sending" ? (
-                            <Feather name="clock" size={11} color={colors.mutedForeground} />
-                          ) : item.message.status === "failed" ? (
-                            <TouchableOpacity
-                              onPress={() =>
-                                handleSendMessage(
-                                  item.message.localPlaintext || item.message.content,
-                                  item.message.id
-                                )
-                              }
-                              style={styles.retryBtn}
-                              accessibilityLabel={t("matches.retry")}
-                            >
-                              <Feather name="alert-circle" size={13} color="#EF4444" />
-                            </TouchableOpacity>
-                          ) : (
-                            <Feather name="check" size={13} color={colors.mutedForeground} />
-                          )}
+                          <MessageTicks
+                            status={item.message.status}
+                            deliveredAt={item.message.deliveredAt}
+                            readAt={item.message.readAt}
+                            onRetry={() =>
+                              handleSendMessage(
+                                item.message.localPlaintext || item.message.content,
+                                item.message.id
+                              )
+                            }
+                          />
                         </View>
                       )}
                     </View>
@@ -618,6 +925,54 @@ export default function MatchScreen() {
             </TouchableOpacity>
           )}
         </View>
+
+        {/* Replying Banner */}
+        {replyingToMessage && (
+          <View
+            style={[
+              styles.inputBanner,
+              { backgroundColor: colors.card, borderLeftColor: colors.primary, borderColor: colors.border },
+            ]}
+          >
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.inputBannerTitle, { color: colors.primary }]}>
+                {t("chat.replyingTo")}
+              </Text>
+              <Text style={[styles.inputBannerSubtitle, { color: colors.mutedForeground }]} numberOfLines={1}>
+                {decryptedMap[replyingToMessage.id] || replyingToMessage.content}
+              </Text>
+            </View>
+            <TouchableOpacity onPress={() => setReplyingToMessage(null)} style={styles.bannerCloseBtn}>
+              <Feather name="x" size={16} color={colors.mutedForeground} />
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {/* Editing Banner */}
+        {editingMessage && (
+          <View
+            style={[
+              styles.inputBanner,
+              { backgroundColor: colors.card, borderLeftColor: colors.accent, borderColor: colors.border },
+            ]}
+          >
+            <View style={{ flex: 1, flexDirection: "row", alignItems: "center", gap: 6 }}>
+              <Feather name="edit-2" size={14} color={colors.accent} />
+              <Text style={[styles.inputBannerTitle, { color: colors.accent }]}>
+                {t("chat.editing")}
+              </Text>
+            </View>
+            <TouchableOpacity
+              onPress={() => {
+                setEditingMessage(null);
+                setContent("");
+              }}
+              style={styles.bannerCloseBtn}
+            >
+              <Feather name="x" size={16} color={colors.mutedForeground} />
+            </TouchableOpacity>
+          </View>
+        )}
 
         <View
           style={[
@@ -651,7 +1006,14 @@ export default function MatchScreen() {
                 placeholder={t("matches.typeMessage")}
                 placeholderTextColor={colors.mutedForeground}
                 value={content}
-                onChangeText={setContent}
+                onChangeText={(text) => {
+                  setContent(text);
+                  const now = Date.now();
+                  if (now - lastTypingSentRef.current > 3000) {
+                    lastTypingSentRef.current = now;
+                    sendWsMessage({ type: "typing", matchId: String(matchId) });
+                  }
+                }}
                 multiline
                 maxLength={1000}
                 blurOnSubmit={false}
@@ -675,6 +1037,194 @@ export default function MatchScreen() {
           )}
         </View>
       </KeyboardAvoidingView>
+
+      {/* Message Context Action Modal */}
+      <Modal
+        visible={!!actionTargetMessage}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setActionTargetMessage(null)}
+      >
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setActionTargetMessage(null)}
+        >
+          <View style={[styles.actionSheetContainer, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            {/* Reply */}
+            <TouchableOpacity
+              style={[styles.actionSheetBtn, { borderBottomColor: colors.border }]}
+              onPress={() => {
+                const target = actionTargetMessage;
+                setActionTargetMessage(null);
+                if (target) {
+                  setEditingMessage(null);
+                  setReplyingToMessage(target);
+                  inputRef.current?.focus();
+                }
+              }}
+            >
+              <Feather name="corner-up-left" size={18} color={colors.primary} />
+              <Text style={[styles.actionSheetText, { color: colors.foreground }]}>{t("chat.reply")}</Text>
+            </TouchableOpacity>
+
+            {/* Edit (if own, not deleted, within 15 min) */}
+            {actionTargetMessage &&
+              (actionTargetMessage.senderId === userId || actionTargetMessage.senderId === "me") &&
+              !actionTargetMessage.deletedAt &&
+              Date.now() - new Date(actionTargetMessage.createdAt).getTime() <= 15 * 60 * 1000 && (
+                <TouchableOpacity
+                  style={[styles.actionSheetBtn, { borderBottomColor: colors.border }]}
+                  onPress={() => {
+                    const target = actionTargetMessage;
+                    setActionTargetMessage(null);
+                    if (target) {
+                      setReplyingToMessage(null);
+                      setEditingMessage(target);
+                      setContent(decryptedMap[target.id] || target.content);
+                      inputRef.current?.focus();
+                    }
+                  }}
+                >
+                  <Feather name="edit-2" size={18} color={colors.accent} />
+                  <Text style={[styles.actionSheetText, { color: colors.foreground }]}>{t("chat.edit")}</Text>
+                </TouchableOpacity>
+              )}
+
+            {/* Delete (if own, not deleted) */}
+            {actionTargetMessage &&
+              (actionTargetMessage.senderId === userId || actionTargetMessage.senderId === "me") &&
+              !actionTargetMessage.deletedAt && (
+                <TouchableOpacity
+                  style={[styles.actionSheetBtn, { borderBottomColor: colors.border }]}
+                  onPress={() => {
+                    if (actionTargetMessage) handleDeleteMessage(actionTargetMessage.id);
+                  }}
+                >
+                  <Feather name="trash-2" size={18} color="#EF4444" />
+                  <Text style={[styles.actionSheetText, { color: "#EF4444" }]}>{t("chat.delete")}</Text>
+                </TouchableOpacity>
+              )}
+
+            {/* Report */}
+            <TouchableOpacity
+              style={[styles.actionSheetBtn, { borderBottomColor: colors.border }]}
+              onPress={() => {
+                setActionTargetMessage(null);
+                setReportModalOpen(true);
+              }}
+            >
+              <Feather name="flag" size={18} color="#EF4444" />
+              <Text style={[styles.actionSheetText, { color: "#EF4444" }]}>{t("chat.report")}</Text>
+            </TouchableOpacity>
+
+            {/* Cancel */}
+            <TouchableOpacity
+              style={styles.actionSheetBtn}
+              onPress={() => setActionTargetMessage(null)}
+            >
+              <Feather name="x" size={18} color={colors.mutedForeground} />
+              <Text style={[styles.actionSheetText, { color: colors.mutedForeground }]}>{t("chat.cancel")}</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* Report Reason Modal */}
+      <Modal
+        visible={reportModalOpen}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setReportModalOpen(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.reportCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <View style={styles.reportHeader}>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                <Feather name="flag" size={18} color="#EF4444" />
+                <Text style={[styles.reportTitle, { color: colors.foreground }]}>{t("chat.report")}</Text>
+              </View>
+              <TouchableOpacity onPress={() => setReportModalOpen(false)}>
+                <Feather name="x" size={18} color={colors.mutedForeground} />
+              </TouchableOpacity>
+            </View>
+
+            {reportSuccess ? (
+              <View style={styles.reportSuccessBox}>
+                <Feather name="check-circle" size={32} color="#22C55E" />
+                <Text style={[styles.reportSuccessText, { color: colors.foreground }]}>
+                  {t("chat.reportSubmitted")}
+                </Text>
+              </View>
+            ) : (
+              <>
+                <Text style={[styles.reportSubtitle, { color: colors.mutedForeground }]}>
+                  {t("chat.selectReason")}
+                </Text>
+
+                <View style={styles.reasonList}>
+                  {(["harassment", "wrong_intent", "fake_profile", "other"] as const).map((r) => {
+                    const labelKey =
+                      r === "harassment"
+                        ? "chat.reasonHarassment"
+                        : r === "wrong_intent"
+                        ? "chat.reasonInappropriate"
+                        : r === "fake_profile"
+                        ? "chat.reasonFake"
+                        : "chat.reasonOther";
+                    const isSelected = reportReason === r;
+                    return (
+                      <TouchableOpacity
+                        key={r}
+                        onPress={() => setReportReason(r)}
+                        style={[
+                          styles.reasonBtn,
+                          {
+                            backgroundColor: isSelected ? colors.primary + "18" : colors.secondary,
+                            borderColor: isSelected ? colors.primary : colors.border,
+                          },
+                        ]}
+                      >
+                        <Text
+                          style={[
+                            styles.reasonText,
+                            { color: isSelected ? colors.primary : colors.foreground },
+                          ]}
+                        >
+                          {t(labelKey)}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+
+                <View style={styles.reportModalActions}>
+                  <TouchableOpacity
+                    style={[styles.modalCancelBtn, { borderColor: colors.border }]}
+                    onPress={() => setReportModalOpen(false)}
+                  >
+                    <Text style={[styles.modalCancelText, { color: colors.mutedForeground }]}>
+                      {t("chat.cancel")}
+                    </Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={[styles.modalSubmitBtn, { backgroundColor: "#EF4444" }]}
+                    onPress={handleSubmitReport}
+                    disabled={isSubmittingReport}
+                  >
+                    {isSubmittingReport ? (
+                      <ActivityIndicator size="small" color="#FFFFFF" />
+                    ) : (
+                      <Text style={styles.modalSubmitText}>{t("chat.report")}</Text>
+                    )}
+                  </TouchableOpacity>
+                </View>
+              </>
+            )}
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -717,7 +1267,35 @@ const styles = StyleSheet.create({
     flexWrap: "wrap",
     marginTop: 2,
   },
+  typingIndicatorRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+  },
+  typingDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+  },
+  typingText: {
+    fontFamily: "Inter_500Medium",
+    fontSize: 11,
+    fontStyle: "italic",
+  },
   phaseText: { fontFamily: "Inter_600SemiBold", fontSize: 11 },
+  headerActionsRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  headerIconBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 1,
+  },
   phaseBtn: {
     width: 38,
     height: 38,
@@ -758,7 +1336,30 @@ const styles = StyleSheet.create({
   },
   bubbleMe: { alignSelf: "flex-end", borderBottomRightRadius: 4 },
   bubbleThem: { alignSelf: "flex-start", borderBottomLeftRadius: 4, borderWidth: 1 },
+  bubbleDeleted: {
+    opacity: 0.75,
+  },
   bubbleText: { fontFamily: "Inter_400Regular", fontSize: 15, lineHeight: 22 },
+  bubbleTextDeleted: {
+    fontStyle: "italic",
+    fontSize: 13,
+  },
+  quotedBubble: {
+    borderLeftWidth: 3,
+    paddingLeft: 8,
+    paddingVertical: 4,
+    marginBottom: 6,
+    borderRadius: 4,
+  },
+  quotedSender: {
+    fontFamily: "Inter_600SemiBold",
+    fontSize: 10,
+    marginBottom: 2,
+  },
+  quotedText: {
+    fontFamily: "Inter_400Regular",
+    fontSize: 11,
+  },
   metaRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -777,6 +1378,11 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_400Regular",
     fontSize: 10,
   },
+  editedIndicator: {
+    fontFamily: "Inter_400Regular",
+    fontSize: 9,
+    fontStyle: "italic",
+  },
   statusIconWrap: {
     marginLeft: 2,
   },
@@ -789,7 +1395,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     paddingVertical: 80,
     gap: 10,
-    transform: [{ scaleY: -1 }], // Counteract inverted FlatList so empty state is right side up
+    transform: [{ scaleY: -1 }],
   },
   emptyText: {
     fontFamily: "Inter_600SemiBold",
@@ -815,6 +1421,30 @@ const styles = StyleSheet.create({
   newMessagesPillText: {
     fontFamily: "Inter_600SemiBold",
     fontSize: 12,
+  },
+  inputBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    borderLeftWidth: 4,
+    borderWidth: 1,
+    borderRadius: 10,
+    marginHorizontal: 12,
+    marginBottom: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  inputBannerTitle: {
+    fontFamily: "Inter_600SemiBold",
+    fontSize: 11,
+  },
+  inputBannerSubtitle: {
+    fontFamily: "Inter_400Regular",
+    fontSize: 11,
+    marginTop: 1,
+  },
+  bannerCloseBtn: {
+    padding: 4,
   },
   inputBar: {
     flexDirection: "row",
@@ -844,4 +1474,107 @@ const styles = StyleSheet.create({
   },
   waitRow: { flex: 1, flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 14 },
   waitText: { fontFamily: "Inter_400Regular", fontSize: 14, flex: 1 },
+
+  // Action Sheet Modal
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.65)",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 24,
+  },
+  actionSheetContainer: {
+    width: "100%",
+    maxWidth: 320,
+    borderRadius: 20,
+    borderWidth: 1,
+    overflow: "hidden",
+  },
+  actionSheetBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    paddingVertical: 15,
+    paddingHorizontal: 20,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  actionSheetText: {
+    fontFamily: "Inter_600SemiBold",
+    fontSize: 15,
+  },
+
+  // Report Modal
+  reportCard: {
+    width: "100%",
+    maxWidth: 340,
+    borderRadius: 20,
+    borderWidth: 1,
+    padding: 20,
+    gap: 14,
+  },
+  reportHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  reportTitle: {
+    fontFamily: "Inter_700Bold",
+    fontSize: 16,
+  },
+  reportSubtitle: {
+    fontFamily: "Inter_500Medium",
+    fontSize: 12,
+  },
+  reasonList: {
+    gap: 8,
+  },
+  reasonBtn: {
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  reasonText: {
+    fontFamily: "Inter_500Medium",
+    fontSize: 13,
+  },
+  reportModalActions: {
+    flexDirection: "row",
+    gap: 10,
+    marginTop: 6,
+  },
+  modalCancelBtn: {
+    flex: 1,
+    paddingVertical: 10,
+    borderRadius: 12,
+    borderWidth: 1,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  modalCancelText: {
+    fontFamily: "Inter_600SemiBold",
+    fontSize: 13,
+  },
+  modalSubmitBtn: {
+    flex: 1,
+    paddingVertical: 10,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  modalSubmitText: {
+    fontFamily: "Inter_600SemiBold",
+    fontSize: 13,
+    color: "#FFFFFF",
+  },
+  reportSuccessBox: {
+    paddingVertical: 24,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 12,
+  },
+  reportSuccessText: {
+    fontFamily: "Inter_600SemiBold",
+    fontSize: 15,
+  },
 });

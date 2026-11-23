@@ -331,6 +331,25 @@ export default function ProfileScreen() {
     }
   };
 
+  const [readReceiptsEnabled, setReadReceiptsEnabled] = useState(false);
+
+  useEffect(() => {
+    if (profile) {
+      setReadReceiptsEnabled(Boolean((profile as any).readReceiptsEnabled));
+    }
+  }, [profile]);
+
+  const handleToggleReadReceipts = async () => {
+    const nextVal = !readReceiptsEnabled;
+    setReadReceiptsEnabled(nextVal);
+    try {
+      if (profile?.id) {
+        await supabase.from('profiles').update({ read_receipts_enabled: nextVal }).eq('id', profile.id);
+      }
+      refetch();
+    } catch {}
+  };
+
   const [primaryPhotoUrl, setPrimaryPhotoUrl] = useState<string | null>(null);
   const [photoSlots, setPhotoSlots] = useState<PhotoSlot[]>([
     { id: null, publicUrl: null, storagePath: null, isPrimary: true,  sortOrder: 0 },
@@ -668,6 +687,19 @@ export default function ProfileScreen() {
             </View>
           </View>
 
+          {/* Read Receipts Switch */}
+          <View style={styles.actionRow}>
+            <Feather name="check-circle" size={18} color={Colors.bone} />
+            <Text style={styles.actionText}>{t('profile.readReceipts')}</Text>
+            <TouchableOpacity
+              onPress={handleToggleReadReceipts}
+              style={[styles.receiptToggleTrack, readReceiptsEnabled && styles.receiptToggleTrackActive]}
+              activeOpacity={0.8}
+            >
+              <View style={[styles.receiptToggleThumb, readReceiptsEnabled && styles.receiptToggleThumbActive]} />
+            </TouchableOpacity>
+          </View>
+
           <TouchableOpacity
             style={styles.actionRow}
             onPress={() => pauseProfile({ data: { paused: !isPaused } })}
@@ -903,6 +935,30 @@ const styles = StyleSheet.create({
   },
   langToggleTextActive: {
     color:      Colors.bone,
+  },
+  receiptToggleTrack: {
+    width: 48,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: Colors.night,
+    borderWidth: 1,
+    borderColor: Colors.divider,
+    padding: 2,
+    justifyContent: "center",
+  },
+  receiptToggleTrackActive: {
+    backgroundColor: Colors.trust,
+    borderColor: Colors.trust,
+  },
+  receiptToggleThumb: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: Colors.boneDim,
+  },
+  receiptToggleThumbActive: {
+    backgroundColor: Colors.bone,
+    alignSelf: "flex-end",
   },
   sectionCounter: {
     fontFamily: "Inter_500Medium",
