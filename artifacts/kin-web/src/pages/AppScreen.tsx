@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useLocation } from 'wouter';
 import {
   Flame,
@@ -29,6 +29,10 @@ import {
   Reply,
   Edit2,
   Flag,
+  Plus,
+  MoreHorizontal,
+  EyeOff,
+  Camera,
 } from 'lucide-react';
 import { useTranslation, changeLanguage, getCurrentLanguage, type SupportedLanguage } from '@workspace/i18n';
 import { useAuth } from '@/contexts/AuthContext';
@@ -207,6 +211,261 @@ export default function AppScreen() {
   const [reportSuccess, setReportSuccess] = useState(false);
   const [isOtherTyping, setIsOtherTyping] = useState(false);
   const [readReceiptsEnabled, setReadReceiptsEnabled] = useState(false);
+
+  // Discover Part A state: Posts feed
+  type WebPostItem = {
+    id: string;
+    authorId: string;
+    firstName: string;
+    age?: number | null;
+    location?: string | null;
+    isVerified: boolean;
+    text: string;
+    photoUrls: string[];
+    createdAt: string;
+    isLiked: boolean;
+    isOwn: boolean;
+    likeCount?: number | null;
+  };
+
+  const isFeedEnabled =
+    import.meta.env.VITE_FEED_ENABLED === 'true' ||
+    import.meta.env.FEED_ENABLED === 'true';
+  const isPeopleEnabled =
+    import.meta.env.VITE_PEOPLE_ENABLED === 'true' ||
+    import.meta.env.PEOPLE_ENABLED === 'true';
+
+  const [discoverSegment, setDiscoverSegment] = useState<'deck' | 'posts' | 'people'>('deck');
+  const [posts, setPosts] = useState<WebPostItem[]>([]);
+  const [isLoadingPosts, setIsLoadingPosts] = useState(false);
+  const [, setPostsCursor] = useState<string | null>(null);
+  const [isCreatePostModalOpen, setIsCreatePostModalOpen] = useState(false);
+  const [createPostText, setCreatePostText] = useState('');
+  const [createPostPhotos, setCreatePostPhotos] = useState<File[]>([]);
+  const [createPostPhotoPreviews, setCreatePostPhotoPreviews] = useState<string[]>([]);
+  const [isSubmittingPost, setIsSubmittingPost] = useState(false);
+  const [createPostError, setCreatePostError] = useState<string | null>(null);
+  const [postActionTarget, setPostActionTarget] = useState<WebPostItem | null>(null);
+  const [postReportOpen, setPostReportOpen] = useState(false);
+  const [postReportReason, setPostReportReason] = useState('post');
+  const [isSubmittingPostReport, setIsSubmittingPostReport] = useState(false);
+
+  function formatWebRelativeTime(isoDateStr: string): string {
+    const d = new Date(isoDateStr);
+    const now = Date.now();
+    const diffSec = Math.floor((now - d.getTime()) / 1000);
+    if (diffSec < 60) return 'now';
+    const diffMin = Math.floor(diffSec / 60);
+    if (diffMin < 60) return `${diffMin}m`;
+    const diffHours = Math.floor(diffMin / 60);
+    if (diffHours < 24) return `${diffHours}h`;
+    const diffDays = Math.floor(diffHours / 24);
+    return `${diffDays}d`;
+  }
+
+  const fetchWebPosts = useCallback(async (cursor?: string | null) => {
+    setIsLoadingPosts(true);
+    try {
+      const url = cursor ? `/api/posts?limit=10&cursor=${encodeURIComponent(cursor)}` : '/api/posts?limit=10';
+      const res = await apiFetch(url, { headers: { Authorization: `Bearer ${token}` } });
+      if (res.ok) {
+        const data = await res.json();
+        if (!cursor) {
+          setPosts(data.posts ?? []);
+        } else {
+          setPosts((prev) => [...prev, ...(data.posts ?? [])]);
+        }
+        setPostsCursor(data.nextCursor ?? null);
+      }
+    } catch {
+      // non-fatal
+    } finally {
+      setIsLoadingPosts(false);
+    }
+  }, [token]);
+
+  useEffect(() => {
+    if (activeTab === 'discover' && discoverSegment === 'posts') {
+      fetchWebPosts();
+    }
+  }, [activeTab, discoverSegment, fetchWebPosts]);
+
+  const handleToggleLikePost = async (postId: string) => {
+    setPosts((prev) =>
+      prev.map((p) => {
+        if (p.id !== postId) return p;
+        const newLiked = !p.isLiked;
+        let newLikeCount = p.likeCount;
+        if (p.isOwn && p.likeCount !== null && p.likeCount !== undefined) {
+          newLikeCount = newLiked ? p.likeCount + 1 : Math.max(0, p.likeCount - 1);
+        }
+        return {
+          ...p,
+          isLiked: newLiked,
+          likeCount: newLikeCount,
+        };
+      })
+    );
+
+    try {
+      const res = await apiFetch(`/api/posts/${postId}/like`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) {
+        fetchWebPosts();
+      }
+    } catch {
+      fetchWebPosts();
+    }
+  };
+
+  const handleHidePostAuthor = async (post: WebPostItem) => {
+    try {
+      await apiFetch(`/api/posts/${post.id}/hide-author`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setPosts((prev) => prev.filter((p) => p.authorId !== post.authorId));
+      setPostActionTarget(null);
+    } catch {
+      // non-fatal
+    }
+  };
+
+  const handleDeletePost = async (post: WebPostItem) => {
+    try {
+      const res = await apiFetch(`/api/posts/${post.id}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        setPosts((prev) => prev.filter((p) => p.id !== post.id));
+        setPostActionTarget(null);
+      }
+    } catch {
+      // non-fatal
+    }
+  };
+
+  const handleReportPost = async () => {
+    if (!postActionTarget) return;
+    setIsSubmittingPostReport(true);
+    try {
+      const res = await apiFetch(`/api/posts/${postActionTarget.id}/report`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ reason: postReportReason }),
+      });
+      if (res.ok) {
+        setPostReportOpen(false);
+        setPostActionTarget(null);
+      }
+    } catch {
+      // non-fatal
+    } finally {
+      setIsSubmittingPostReport(false);
+    }
+  };
+
+  const handlePhotoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files) return;
+    const files = Array.from(e.target.files).slice(0, 2 - createPostPhotos.length);
+    const validJpegs = files.filter(f => f.type === 'image/jpeg' || f.type === 'image/jpg');
+    if (validJpegs.length === 0) return;
+
+    setCreatePostPhotos(prev => [...prev, ...validJpegs].slice(0, 2));
+    const previews = validJpegs.map(f => URL.createObjectURL(f));
+    setCreatePostPhotoPreviews(prev => [...prev, ...previews].slice(0, 2));
+  };
+
+  const handleRemovePhoto = (idx: number) => {
+    setCreatePostPhotos(prev => prev.filter((_, i) => i !== idx));
+    setCreatePostPhotoPreviews(prev => prev.filter((_, i) => i !== idx));
+  };
+
+  const handleCreatePost = async () => {
+    if (!createPostText.trim() || isSubmittingPost) return;
+    setIsSubmittingPost(true);
+    setCreatePostError(null);
+
+    try {
+      const uploadedPaths: string[] = [];
+
+      for (const file of createPostPhotos) {
+        if (file.size > 500 * 1024) {
+          throw new Error('Photo exceeds 500 KB');
+        }
+
+        const urlRes = await apiFetch('/api/posts/media/upload-url', {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!urlRes.ok) throw new Error('Failed to get upload URL');
+        const { uploadUrl, path } = await urlRes.json();
+
+        const putRes = await fetch(uploadUrl, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'image/jpeg' },
+          body: file,
+        });
+        if (!putRes.ok) throw new Error('Upload failed');
+
+        const confRes = await apiFetch('/api/posts/media/confirm', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ path }),
+        });
+        if (!confRes.ok) throw new Error('Confirmation failed');
+        uploadedPaths.push(path);
+      }
+
+      const res = await apiFetch('/api/posts', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          text: createPostText.trim(),
+          photoPaths: uploadedPaths,
+        }),
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        if (err.code === 'POST_CONTACT_INFO') {
+          setCreatePostError(t('errors.postContactInfo'));
+        } else if (err.code === 'POST_DAILY_LIMIT') {
+          setCreatePostError(t('errors.postDailyLimit'));
+        } else if (err.code === 'MAX_ACTIVE_POSTS') {
+          setCreatePostError(t('errors.maxActivePosts'));
+        } else if (err.code === 'POST_TOO_LONG') {
+          setCreatePostError(t('errors.postTooLong'));
+        } else {
+          setCreatePostError(t('errors.generic'));
+        }
+        setIsSubmittingPost(false);
+        return;
+      }
+
+      setCreatePostText('');
+      setCreatePostPhotos([]);
+      setCreatePostPhotoPreviews([]);
+      setIsCreatePostModalOpen(false);
+      fetchWebPosts();
+    } catch {
+      setCreatePostError(t('errors.generic'));
+    } finally {
+      setIsSubmittingPost(false);
+    }
+  };
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -1083,40 +1342,219 @@ export default function AppScreen() {
 
       {/* Main Tab Views */}
       <div className="flex-1 flex flex-col relative overflow-y-auto">
-        {/* TAB 1: DISCOVER SWIPE DECK */}
+        {/* TAB 1: DISCOVER SWIPE DECK OR POSTS FEED */}
         {activeTab === 'discover' && (
-          <div className="flex-1 flex flex-col px-4 py-3 justify-between relative">
-            {/* Match Toast Notification */}
-            {matchAlert && (
-              <div className="absolute top-4 left-4 right-4 z-30 p-3 bg-[#3FB950] text-[#0D1117] rounded-xl font-bold text-center text-xs shadow-xl animate-bounce">
-                🎉 {matchAlert}
+          <div className="flex-1 flex flex-col justify-between relative overflow-hidden">
+            {/* Segmented Control */}
+            {(isFeedEnabled || isPeopleEnabled) && (
+              <div className="px-4 py-2 border-b border-[#21262D] bg-[#0D1117]/80 flex gap-2 shrink-0">
+                <button
+                  onClick={() => setDiscoverSegment('deck')}
+                  className={`px-3 py-1 text-xs font-semibold rounded-lg transition-colors cursor-pointer ${
+                    discoverSegment === 'deck'
+                      ? 'bg-[#1A1A2E] text-[#C9A84C] border border-[#C9A84C]/40'
+                      : 'text-[#A8A49E] hover:text-[#F0EDE6]'
+                  }`}
+                >
+                  {t('posts.deck')}
+                </button>
+                {isFeedEnabled && (
+                  <button
+                    onClick={() => setDiscoverSegment('posts')}
+                    className={`px-3 py-1 text-xs font-semibold rounded-lg transition-colors cursor-pointer ${
+                      discoverSegment === 'posts'
+                        ? 'bg-[#1A1A2E] text-[#C9A84C] border border-[#C9A84C]/40'
+                        : 'text-[#A8A49E] hover:text-[#F0EDE6]'
+                    }`}
+                  >
+                    {t('posts.title')}
+                  </button>
+                )}
+                {isPeopleEnabled && (
+                  <button
+                    onClick={() => setDiscoverSegment('people')}
+                    className={`px-3 py-1 text-xs font-semibold rounded-lg transition-colors cursor-pointer ${
+                      discoverSegment === 'people'
+                        ? 'bg-[#1A1A2E] text-[#C9A84C] border border-[#C9A84C]/40'
+                        : 'text-[#A8A49E] hover:text-[#F0EDE6]'
+                    }`}
+                  >
+                    {t('posts.people')}
+                  </button>
+                )}
               </div>
             )}
 
-            {/* Profile Card */}
-            <div className="w-full flex-1 rounded-3xl bg-[#1A1A2E] border border-[#21262D] overflow-hidden flex flex-col relative shadow-2xl">
-              {/* Photo Area */}
-              <div className="relative h-64 w-full bg-[#242438] overflow-hidden">
-                <img
-                  src={currentProfile.photoUrl}
-                  alt={currentProfile.name}
-                  className="w-full h-full object-cover"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-[#1A1A2E] via-transparent to-black/30" />
-
-                {/* Badge tags */}
-                <div className="absolute top-3 left-3 flex flex-wrap gap-1.5">
-                  {currentProfile.isUrStudent && (
-                    <span className="bg-[#2563EB] text-white text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1 shadow">
-                      <GraduationCap className="w-3 h-3" />
-                      {t('discover.urStudentBadge')}
-                    </span>
-                  )}
-                  <span className="bg-[#0D1117]/80 backdrop-blur-sm text-[#3FB950] text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1 border border-[#3FB950]/30">
-                    <ShieldCheck className="w-3 h-3" />
-                    {t('discover.trustBadge', { score: currentProfile.trustScore })}
-                  </span>
+            {discoverSegment === 'posts' && isFeedEnabled ? (
+              <div className="flex-1 flex flex-col overflow-hidden">
+                {/* Notice bar & Create Post button */}
+                <div className="px-4 py-2 bg-[#161B22] border-b border-[#21262D] flex items-center justify-between text-xs text-[#A8A49E] shrink-0">
+                  <span className="text-[11px]">🛡️ {t('posts.webCaptureNotice')}</span>
+                  <button
+                    onClick={() => setIsCreatePostModalOpen(true)}
+                    className="flex items-center gap-1.5 bg-[#C9A84C] text-[#0D1117] font-bold px-3 py-1 rounded-full hover:bg-[#C9A84C]/90 transition-colors shadow-sm cursor-pointer text-xs"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>{t('posts.createPost')}</span>
+                  </button>
                 </div>
+
+                {/* Posts Feed list */}
+                <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                  {isLoadingPosts ? (
+                    <div className="py-20 flex justify-center items-center">
+                      <Loader2 className="w-6 h-6 animate-spin text-[#C9A84C]" />
+                    </div>
+                  ) : posts.length === 0 ? (
+                    <div className="py-20 flex flex-col items-center justify-center text-center gap-3">
+                      <p className="text-[#A8A49E] font-medium text-sm">{t('posts.noPosts')}</p>
+                      <button
+                        onClick={() => setIsCreatePostModalOpen(true)}
+                        className="flex items-center gap-1.5 bg-[#C9A84C] text-[#0D1117] font-bold px-4 py-2 rounded-full hover:bg-[#C9A84C]/90 transition-colors cursor-pointer text-xs"
+                      >
+                        <Plus className="w-4 h-4" />
+                        <span>{t('posts.createPost')}</span>
+                      </button>
+                    </div>
+                  ) : (
+                    posts.map((post) => (
+                      <div
+                        key={post.id}
+                        className="p-4 rounded-2xl bg-[#1A1A2E] border border-[#21262D] shadow-lg space-y-3"
+                      >
+                        {/* Header */}
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold text-sm text-[#F0EDE6]">
+                              {post.firstName}{post.age ? `, ${post.age}` : ''}
+                            </span>
+                            {post.isVerified && (
+                              <ShieldCheck className="w-3.5 h-3.5 text-[#3FB950]" />
+                            )}
+                            {post.location && (
+                              <span className="text-xs text-[#A8A49E]">• {post.location}</span>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-[11px] text-[#A8A49E]">
+                              {formatWebRelativeTime(post.createdAt)}
+                            </span>
+                            <div className="relative">
+                              <button
+                                onClick={() => setPostActionTarget(postActionTarget?.id === post.id ? null : post)}
+                                className="p-1 text-[#A8A49E] hover:text-[#F0EDE6] rounded transition-colors cursor-pointer"
+                              >
+                                <MoreHorizontal className="w-4 h-4" />
+                              </button>
+                              {postActionTarget?.id === post.id && (
+                                <div className="absolute right-0 top-full mt-1 w-36 bg-[#161B22] border border-[#21262D] rounded-xl shadow-xl z-20 py-1 overflow-hidden">
+                                  {post.isOwn ? (
+                                    <button
+                                      onClick={() => handleDeletePost(post)}
+                                      className="w-full px-3 py-1.5 text-left text-xs text-red-400 hover:bg-red-500/10 flex items-center gap-2 cursor-pointer"
+                                    >
+                                      <Trash2 className="w-3.5 h-3.5" />
+                                      <span>{t('posts.delete')}</span>
+                                    </button>
+                                  ) : (
+                                    <>
+                                      <button
+                                        onClick={() => {
+                                          setPostReportReason('post');
+                                          setPostReportOpen(true);
+                                        }}
+                                        className="w-full px-3 py-1.5 text-left text-xs text-[#F0EDE6] hover:bg-white/5 flex items-center gap-2 cursor-pointer"
+                                      >
+                                        <Flag className="w-3.5 h-3.5" />
+                                        <span>{t('posts.report')}</span>
+                                      </button>
+                                      <button
+                                        onClick={() => handleHidePostAuthor(post)}
+                                        className="w-full px-3 py-1.5 text-left text-xs text-[#F0EDE6] hover:bg-white/5 flex items-center gap-2 cursor-pointer"
+                                      >
+                                        <EyeOff className="w-3.5 h-3.5" />
+                                        <span>{t('posts.hideAuthor')}</span>
+                                      </button>
+                                    </>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Text */}
+                        <p className="text-sm text-[#F0EDE6] leading-relaxed whitespace-pre-wrap">
+                          {post.text}
+                        </p>
+
+                        {/* Photos (up to 2) */}
+                        {post.photoUrls && post.photoUrls.length > 0 && (
+                          <div className={`grid gap-2 rounded-xl overflow-hidden ${post.photoUrls.length === 2 ? 'grid-cols-2' : 'grid-cols-1'}`}>
+                            {post.photoUrls.slice(0, 2).map((url, idx) => (
+                              <img
+                                key={idx}
+                                src={url}
+                                alt="Post"
+                                className="w-full h-52 object-cover rounded-lg bg-[#242438]"
+                              />
+                            ))}
+                          </div>
+                        )}
+
+                        {/* Footer: Like */}
+                        <div className="pt-2 border-t border-[#21262D] flex items-center gap-4">
+                          <button
+                            onClick={() => handleToggleLikePost(post.id)}
+                            className="flex items-center gap-1.5 text-xs text-[#A8A49E] hover:text-red-400 transition-colors cursor-pointer"
+                          >
+                            <Heart
+                              className={`w-4 h-4 ${post.isLiked ? 'fill-red-500 text-red-500' : ''}`}
+                            />
+                            {/* Viewers never see any count; author sees count ONLY when > 0 */}
+                            {post.isOwn && typeof post.likeCount === 'number' && post.likeCount > 0 && (
+                              <span className="font-semibold text-xs text-[#F0EDE6]">{post.likeCount}</span>
+                            )}
+                          </button>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            ) : (
+              <div className="flex-1 flex flex-col px-4 py-3 justify-between relative">
+                {/* Match Toast Notification */}
+                {matchAlert && (
+                  <div className="absolute top-4 left-4 right-4 z-30 p-3 bg-[#3FB950] text-[#0D1117] rounded-xl font-bold text-center text-xs shadow-xl animate-bounce">
+                    🎉 {matchAlert}
+                  </div>
+                )}
+
+                {/* Profile Card */}
+                <div className="w-full flex-1 rounded-3xl bg-[#1A1A2E] border border-[#21262D] overflow-hidden flex flex-col relative shadow-2xl">
+                  {/* Photo Area */}
+                  <div className="relative h-64 w-full bg-[#242438] overflow-hidden">
+                    <img
+                      src={currentProfile.photoUrl}
+                      alt={currentProfile.name}
+                      className="w-full h-full object-cover"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-[#1A1A2E] via-transparent to-black/30" />
+
+                    {/* Badge tags */}
+                    <div className="absolute top-3 left-3 flex flex-wrap gap-1.5">
+                      {currentProfile.isUrStudent && (
+                        <span className="bg-[#2563EB] text-white text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1 shadow">
+                          <GraduationCap className="w-3 h-3" />
+                          {t('discover.urStudentBadge')}
+                        </span>
+                      )}
+                      <span className="bg-[#0D1117]/80 backdrop-blur-sm text-[#3FB950] text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1 border border-[#3FB950]/30">
+                        <ShieldCheck className="w-3 h-3" />
+                        {t('discover.trustBadge', { score: currentProfile.trustScore })}
+                      </span>
+                    </div>
 
                 {/* Bottom Photo Info */}
                 <div className="absolute bottom-3 left-4 right-4 flex items-end justify-between">
@@ -1209,6 +1647,8 @@ export default function AppScreen() {
             </div>
           </div>
         )}
+      </div>
+    )}
 
         {/* TAB 2: MATCHES & 3-PHASE CHAT */}
         {activeTab === 'matches' && (
@@ -2002,6 +2442,145 @@ export default function AppScreen() {
           <span>{t('profile.tabTitle')}</span>
         </button>
       </div>
+
+      {/* CREATE POST MODAL */}
+      {isCreatePostModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="w-full max-w-md bg-[#161B22] border border-[#21262D] rounded-2xl shadow-2xl overflow-hidden flex flex-col">
+            {/* Modal Header */}
+            <div className="px-5 py-3 border-b border-[#21262D] flex items-center justify-between">
+              <span className="font-bold text-sm text-[#F0EDE6]">{t('posts.newPost')}</span>
+              <button
+                onClick={() => {
+                  setIsCreatePostModalOpen(false);
+                  setCreatePostError(null);
+                }}
+                className="p-1 text-[#A8A49E] hover:text-[#F0EDE6] cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Error banner */}
+            {createPostError && (
+              <div className="px-5 py-2 bg-red-500/15 border-b border-red-500/30 text-xs font-semibold text-red-400">
+                {createPostError}
+              </div>
+            )}
+
+            {/* Modal Body */}
+            <div className="p-5 space-y-4">
+              <textarea
+                value={createPostText}
+                onChange={(e) => setCreatePostText(e.target.value)}
+                maxLength={200}
+                placeholder={t('posts.textPlaceholder')}
+                className="w-full h-28 bg-[#0D1117] border border-[#21262D] rounded-xl p-3 text-sm text-[#F0EDE6] placeholder-[#A8A49E]/60 focus:outline-none focus:border-[#C9A84C]/60 resize-none"
+              />
+
+              <div className="flex justify-end text-[11px] text-[#A8A49E]">
+                <span>{createPostText.length}/200</span>
+              </div>
+
+              {/* Photo Preview & Upload */}
+              <div className="flex items-center gap-3">
+                {createPostPhotoPreviews.map((url, idx) => (
+                  <div key={idx} className="relative w-20 h-20 rounded-xl overflow-hidden border border-[#21262D]">
+                    <img src={url} alt="Preview" className="w-full h-full object-cover" />
+                    <button
+                      onClick={() => handleRemovePhoto(idx)}
+                      className="absolute top-1 right-1 p-0.5 rounded-full bg-black/70 text-white hover:bg-black cursor-pointer"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                ))}
+
+                {createPostPhotos.length < 2 && (
+                  <label className="w-20 h-20 rounded-xl border border-dashed border-[#21262D] hover:border-[#C9A84C]/50 flex flex-col items-center justify-center gap-1 cursor-pointer text-[#A8A49E] hover:text-[#C9A84C] transition-colors">
+                    <Camera className="w-5 h-5" />
+                    <span className="text-[10px] font-semibold">{t('posts.addPhoto')}</span>
+                    <input
+                      type="file"
+                      accept="image/jpeg,image/jpg"
+                      onChange={handlePhotoSelect}
+                      className="hidden"
+                    />
+                  </label>
+                )}
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="px-5 py-3 border-t border-[#21262D] bg-[#0D1117] flex justify-end gap-3">
+              <button
+                onClick={() => {
+                  setIsCreatePostModalOpen(false);
+                  setCreatePostError(null);
+                }}
+                className="px-4 py-1.5 text-xs font-semibold text-[#A8A49E] hover:text-[#F0EDE6] cursor-pointer"
+              >
+                {t('matches.cancel')}
+              </button>
+              <button
+                onClick={handleCreatePost}
+                disabled={!createPostText.trim() || isSubmittingPost}
+                className="flex items-center gap-1.5 bg-[#C9A84C] text-[#0D1117] font-bold px-4 py-1.5 rounded-full text-xs hover:bg-[#C9A84C]/90 transition-colors disabled:opacity-40 cursor-pointer shadow-md"
+              >
+                {isSubmittingPost && <Loader2 className="w-3 h-3 animate-spin" />}
+                <span>{t('posts.publish')}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* POST REPORT MODAL */}
+      {postReportOpen && (
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="w-full max-w-sm bg-[#161B22] border border-[#21262D] rounded-2xl shadow-2xl p-5 space-y-4">
+            <span className="font-bold text-sm text-[#F0EDE6] block">{t('posts.report')}</span>
+            <div className="space-y-2">
+              {[
+                { id: 'post', label: t('posts.report') },
+                { id: 'harassment', label: t('matches.reasonHarassment') },
+                { id: 'inappropriate', label: t('matches.reasonInappropriate') },
+                { id: 'fake', label: t('matches.reasonFake') },
+                { id: 'other', label: t('matches.reasonOther') },
+              ].map((r) => (
+                <button
+                  key={r.id}
+                  onClick={() => setPostReportReason(r.id)}
+                  className={`w-full p-2.5 rounded-xl text-left text-xs flex items-center justify-between cursor-pointer border transition-colors ${
+                    postReportReason === r.id
+                      ? 'border-[#C9A84C] bg-[#C9A84C]/10 text-[#C9A84C] font-bold'
+                      : 'border-[#21262D] text-[#F0EDE6] hover:bg-white/5'
+                  }`}
+                >
+                  <span>{r.label}</span>
+                  {postReportReason === r.id && <Check className="w-3.5 h-3.5" />}
+                </button>
+              ))}
+            </div>
+
+            <div className="flex justify-end gap-3 pt-2">
+              <button
+                onClick={() => setPostReportOpen(false)}
+                className="px-3 py-1.5 text-xs text-[#A8A49E] hover:text-[#F0EDE6] cursor-pointer"
+              >
+                {t('matches.cancel')}
+              </button>
+              <button
+                onClick={handleReportPost}
+                disabled={isSubmittingPostReport}
+                className="bg-[#C9A84C] text-[#0D1117] font-bold px-4 py-1.5 rounded-full text-xs hover:bg-[#C9A84C]/90 transition-colors cursor-pointer"
+              >
+                {isSubmittingPostReport ? <Loader2 className="w-3 h-3 animate-spin" /> : t('matches.report')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
