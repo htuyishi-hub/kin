@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { eq, and, sql } from "drizzle-orm";
+import { eq, and, sql, or } from "drizzle-orm";
 import { db, profilesTable, vouchesTable } from "@workspace/db";
 import { requireAuth, type AuthedRequest } from "../middlewares/auth.js";
 import { getStorageAdmin } from "../lib/storage.js";
@@ -68,18 +68,19 @@ function mapProfile(p: typeof profilesTable.$inferSelect) {
     voiceIntroPath: p.voiceIntroPath ?? null,
     voiceIntroDurationMs: p.voiceIntroDurationMs ?? null,
     communityVotingEnabled: process.env.COMMUNITY_VOTING_ENABLED === "true",
-    createdAt: p.createdAt?.toISOString() ?? new Date().toISOString(),
-    lastActive: p.lastActive?.toISOString() ?? new Date().toISOString(),
+    createdAt: p.createdAt ? new Date(p.createdAt).toISOString() : new Date().toISOString(),
+    lastActive: p.lastActive ? new Date(p.lastActive).toISOString() : new Date().toISOString(),
   };
 }
 
-function calculateAge(dateOfBirth: string): number {
+function calculateAge(dateOfBirth: string | Date): number {
   const dob = new Date(dateOfBirth);
+  if (isNaN(dob.getTime())) return 18;
   const today = new Date();
   let age = today.getFullYear() - dob.getFullYear();
   const m = today.getMonth() - dob.getMonth();
   if (m < 0 || (m === 0 && today.getDate() < dob.getDate())) age--;
-  return age;
+  return isNaN(age) ? 18 : age;
 }
 
 // GET /me
@@ -90,8 +91,11 @@ router.get("/me", requireAuth, async (req, res) => {
   res.setHeader("Pragma", "no-cache");
   res.setHeader("Expires", "0");
 
-  const userId = (req as AuthedRequest).userId;
-
+  const authed = req as AuthedRequest;
+  const userId = authed.userId;
+  const userEmail = authed.userEmail;
+  const userPhone = authed.userPhone;
+  const userName = authed.userName;
 
   try {
     (req as any).log?.info?.({ userId }, "GET /me");
@@ -100,7 +104,17 @@ router.get("/me", requireAuth, async (req, res) => {
   }
 
   const [rows, countResult] = await Promise.all([
-    db.select().from(profilesTable).where(eq(profilesTable.id, userId)).limit(1),
+    db
+      .select()
+      .from(profilesTable)
+      .where(
+        or(
+          eq(profilesTable.id, userId),
+          userEmail ? eq(profilesTable.email, userEmail) : sql`false`,
+          eq(profilesTable.googleId, userId)
+        )
+      )
+      .limit(1),
     db.select({ count: sql<number>`count(*)` }).from(profilesTable),
   ]);
 
@@ -108,19 +122,25 @@ router.get("/me", requireAuth, async (req, res) => {
 
   if (!p) {
     try {
+      const fallbackPhone = userPhone || `user:${userId}`;
       const [created] = await db
         .insert(profilesTable)
         .values({
           id: userId,
+          phoneNumber: fallbackPhone,
+          email: userEmail ?? null,
+          fullName: userName ?? null,
+          googleId: userId,
           inviteCode: generateInviteCode(),
           tokensRemaining: 3,
           profileActive: true,
           accountStatus: "waitlisted",
-        })
+        } as any)
         .onConflictDoNothing()
         .returning();
       p = created || (await db.select().from(profilesTable).where(eq(profilesTable.id, userId)).limit(1))[0];
-    } catch {
+    } catch (err) {
+      console.error("[GET /me] Failed to create initial profile:", err);
       p = (await db.select().from(profilesTable).where(eq(profilesTable.id, userId)).limit(1))[0];
     }
   }
@@ -222,7 +242,11 @@ router.get("/me", requireAuth, async (req, res) => {
 
 // PATCH /me
 router.patch("/me", requireAuth, async (req, res) => {
-  const userId = (req as AuthedRequest).userId;
+  const authed = req as AuthedRequest;
+  const userId = authed.userId;
+  const userEmail = authed.userEmail;
+  const userPhone = authed.userPhone;
+  const userName = authed.userName;
   const body = req.body as Record<string, unknown>;
 
   const allowed = ["fullName", "gender", "dateOfBirth", "campusName", "faculty", "yearOfStudy", "hostelName", "city", "district", "proximityConsent", "language", "primaryIntent"];
@@ -249,14 +273,28 @@ router.patch("/me", requireAuth, async (req, res) => {
     let [updated] = await db
       .update(profilesTable)
       .set(updates as any)
-      .where(eq(profilesTable.id, userId))
+      .where(
+        or(
+          eq(profilesTable.id, userId),
+          userEmail ? eq(profilesTable.email, userEmail) : sql`false`,
+          eq(profilesTable.googleId, userId)
+        )
+      )
       .returning();
 
     if (!updated) {
+      const fallbackPhone = userPhone || `user:${userId}`;
+      const fallbackEmail = userEmail || null;
+      const fallbackName = (updates.fullName as string) || userName || null;
+
       const [created] = await db
         .insert(profilesTable)
         .values({
           id: userId,
+          phoneNumber: fallbackPhone,
+          email: fallbackEmail,
+          fullName: fallbackName,
+          googleId: userId,
           inviteCode: generateInviteCode(),
           tokensRemaining: 3,
           profileActive: true,
@@ -273,16 +311,23 @@ router.patch("/me", requireAuth, async (req, res) => {
     }
 
     res.json(mapProfile(updated!));
-  } catch (err) {
+  } catch (err: any) {
     console.error("[PATCH /me] update failed", err);
-    return res.status(500).json({ error: "server_error", message: "Failed to update profile" });
+    return res.status(500).json({
+      error: "server_error",
+      message: err?.message || "Failed to update profile",
+      detail: String(err),
+    });
   }
   return;
 });
 
 // POST /me/onboarding — invisible tier classification
 router.post("/me/onboarding", requireAuth, async (req, res) => {
-  const userId = (req as AuthedRequest).userId;
+  const authed = req as AuthedRequest;
+  const userId = authed.userId;
+  const userEmail = authed.userEmail;
+  const userPhone = authed.userPhone;
   let { occupation, locationType, primaryGoal, campusName, fullName, gender, dateOfBirth } =
     req.body as {
       occupation?: string;
@@ -297,7 +342,13 @@ router.post("/me/onboarding", requireAuth, async (req, res) => {
   const [existingProfile] = await db
     .select()
     .from(profilesTable)
-    .where(eq(profilesTable.id, userId))
+    .where(
+      or(
+        eq(profilesTable.id, userId),
+        userEmail ? eq(profilesTable.email, userEmail) : sql`false`,
+        eq(profilesTable.googleId, userId)
+      )
+    )
     .limit(1);
 
   fullName = fullName || existingProfile?.fullName || undefined;
@@ -348,14 +399,26 @@ router.post("/me/onboarding", requireAuth, async (req, res) => {
       verifiedAdult: true,
       onboardingComplete: true,
     })
-    .where(eq(profilesTable.id, userId))
+    .where(
+      or(
+        eq(profilesTable.id, userId),
+        userEmail ? eq(profilesTable.email, userEmail) : sql`false`,
+        eq(profilesTable.googleId, userId)
+      )
+    )
     .returning();
 
   if (!updated) {
+    const fallbackPhone = userPhone || `user:${userId}`;
+    const fallbackEmail = userEmail || null;
+
     const [created] = await db
       .insert(profilesTable)
       .values({
         id: userId,
+        phoneNumber: fallbackPhone,
+        email: fallbackEmail,
+        googleId: userId,
         inviteCode: generateInviteCode(),
         tokensRemaining: 3,
         profileActive: true,

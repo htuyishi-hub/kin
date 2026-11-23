@@ -32,12 +32,31 @@ export function signToken(payload: { userId: string }): string {
   return jwt.sign(payload, SESSION_SECRET, { expiresIn: "30d" });
 }
 
-export function verifyToken(token: string): { userId: string } {
+export interface VerifiedUser {
+  userId: string;
+  email?: string | null;
+  phone?: string | null;
+  fullName?: string | null;
+}
+
+function extractUserFromDecoded(decoded: any): VerifiedUser | null {
+  const userId = decoded?.sub || decoded?.userId;
+  if (!userId) return null;
+  const email = decoded?.email || null;
+  const phone = decoded?.phone || null;
+  const fullName =
+    decoded?.user_metadata?.full_name ||
+    decoded?.user_metadata?.name ||
+    null;
+  return { userId, email, phone, fullName };
+}
+
+export function verifyToken(token: string): VerifiedUser {
   // 1. Verify with Supabase JWT secret (string)
   try {
     const decoded = jwt.verify(token, SUPABASE_JWT_SECRET) as any;
-    const userId = decoded.sub || decoded.userId;
-    if (userId) return { userId };
+    const user = extractUserFromDecoded(decoded);
+    if (user) return user;
   } catch {
     // ignore and try next
   }
@@ -45,8 +64,8 @@ export function verifyToken(token: string): { userId: string } {
   // 1b. Verify with Supabase JWT secret (base64 decoded buffer)
   try {
     const decoded = jwt.verify(token, Buffer.from(SUPABASE_JWT_SECRET, "base64")) as any;
-    const userId = decoded.sub || decoded.userId;
-    if (userId) return { userId };
+    const user = extractUserFromDecoded(decoded);
+    if (user) return user;
   } catch {
     // ignore and try next
   }
@@ -54,8 +73,8 @@ export function verifyToken(token: string): { userId: string } {
   // 2. Verify with local session secret
   try {
     const decoded = jwt.verify(token, SESSION_SECRET) as any;
-    const userId = decoded.userId || decoded.sub;
-    if (userId) return { userId };
+    const user = extractUserFromDecoded(decoded);
+    if (user) return user;
   } catch {
     // ignore and fail
   }
@@ -63,7 +82,7 @@ export function verifyToken(token: string): { userId: string } {
   throw new Error("Invalid or unverified token");
 }
 
-export async function verifyTokenAsync(token: string): Promise<{ userId: string }> {
+export async function verifyTokenAsync(token: string): Promise<VerifiedUser> {
   // 1. Try fast local signature checks
   try {
     return verifyToken(token);
@@ -76,7 +95,16 @@ export async function verifyTokenAsync(token: string): Promise<{ userId: string 
     const client = getSupabaseAuthClient();
     const { data, error } = await client.auth.getUser(token);
     if (!error && data?.user?.id) {
-      return { userId: data.user.id };
+      const u = data.user;
+      return {
+        userId: u.id,
+        email: u.email || null,
+        phone: u.phone || null,
+        fullName:
+          u.user_metadata?.full_name ||
+          u.user_metadata?.name ||
+          null,
+      };
     }
   } catch {
     // ignore

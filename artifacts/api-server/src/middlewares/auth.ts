@@ -3,6 +3,9 @@ import { verifyTokenAsync } from "../lib/jwt.js";
 
 export interface AuthedRequest extends Request {
   userId: string;
+  userEmail?: string | null;
+  userPhone?: string | null;
+  userName?: string | null;
 }
 
 export async function requireAuth(req: Request, res: Response, next: NextFunction): Promise<void> {
@@ -29,11 +32,14 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
 
   try {
     const token = auth.slice(7);
-    const { userId } = await verifyTokenAsync(token);
-    (req as AuthedRequest).userId = userId;
+    const verified = await verifyTokenAsync(token);
+    (req as AuthedRequest).userId = verified.userId;
+    (req as AuthedRequest).userEmail = verified.email;
+    (req as AuthedRequest).userPhone = verified.phone;
+    (req as AuthedRequest).userName = verified.fullName;
 
     try {
-      (req as any).log?.info?.({ userId }, "requireAuth: verified token");
+      (req as any).log?.info?.({ userId: verified.userId }, "requireAuth: verified token");
     } catch {
       // ignore logging failures
     }
