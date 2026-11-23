@@ -144,10 +144,7 @@ export default function AuthCallback() {
       } catch (err: any) {
         if (active) {
           active = false;
-          setError(err?.message || 'Authentication error');
-          timer = setTimeout(() => {
-            setLocation('/signin');
-          }, 2000);
+          setError(err?.message || t('common.networkError'));
         }
       }
     }
@@ -159,14 +156,34 @@ export default function AuthCallback() {
       if (timer) clearTimeout(timer);
       if (activeSubscription) activeSubscription.unsubscribe();
     };
-  }, [setSession, signIn, setLocation]);
+  }, [setSession, signIn, setLocation, t]);
+
+  if (error) {
+    return (
+      <div className="flex-1 flex flex-col items-center justify-center px-6 py-8 bg-[#0D1117] text-[#F0EDE6] select-none gap-4">
+        <span className="text-sm font-medium text-[#FF6B6B] text-center max-w-xs">{error}</span>
+        <button
+          onClick={() => window.location.reload()}
+          className="px-6 py-2.5 rounded-full bg-[#2563EB] text-[#F0EDE6] text-sm font-semibold hover:bg-[#1A4DB8] transition-colors cursor-pointer"
+        >
+          {t('common.continue')}
+        </button>
+        <button
+          onClick={() => setLocation('/')}
+          className="text-xs text-[#8B949E] hover:text-[#F0EDE6] transition-colors cursor-pointer"
+        >
+          {t('common.back')}
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="flex-1 flex flex-col items-center justify-center px-6 py-8 bg-[#0D1117] text-[#F0EDE6] select-none">
       <div className="flex flex-col items-center gap-4">
         <Loader2 className="w-10 h-10 text-[#C9A84C] animate-spin" />
         <span className="text-sm font-medium text-[#8B949E]">
-          {error || t('common.loading')}
+          {t('common.loading')}
         </span>
       </div>
     </div>

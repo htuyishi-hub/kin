@@ -1,16 +1,19 @@
-import React, { useEffect } from "react";
-import { ActivityIndicator, Platform, StyleSheet, View } from "react-native";
+import React, { useEffect, useState } from "react";
+import { ActivityIndicator, Platform, Pressable, StyleSheet, Text, View } from "react-native";
 import * as WebBrowser from "expo-web-browser";
 import { router } from "expo-router";
 import { supabase } from "@/lib/supabase";
 import { fetchProfileRouting } from "@/services/authService";
 import { useAuth } from "@/contexts/AuthContext";
 import { useColors } from "@/hooks/useColors";
-import { getCurrentLanguage } from "@workspace/i18n";
+import { getCurrentLanguage, useTranslation } from "@workspace/i18n";
 
 export default function Callback() {
   const colors = useColors();
   const { setSession, signIn } = useAuth();
+  const { t } = useTranslation();
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
 
   useEffect(() => {
     let active = true;
@@ -26,6 +29,7 @@ export default function Callback() {
 
     async function handleSession() {
       try {
+        setErrorMsg(null);
         // 1. Check for PKCE authorization code in URL query params on web
         if (Platform.OS === "web" && typeof window !== "undefined" && window.location.search) {
           const params = new URLSearchParams(window.location.search);
@@ -35,6 +39,7 @@ export default function Callback() {
               const { data } = await supabase.auth.exchangeCodeForSession(code);
               if (data?.session?.user && active) {
                 if (timer) clearTimeout(timer);
+                active = false;
                 await setSession(data.session);
                 await signIn(data.session.access_token, data.session.user.id);
                 try {
@@ -70,6 +75,7 @@ export default function Callback() {
               });
               if (data?.session?.user && active) {
                 if (timer) clearTimeout(timer);
+                active = false;
                 await setSession(data.session);
                 await signIn(data.session.access_token, data.session.user.id);
                 try {
@@ -86,7 +92,9 @@ export default function Callback() {
                 }
                 return;
               }
-            } catch {}
+            } catch (err: any) {
+              console.warn("[Callback] setSession from hash error:", err);
+            }
           }
         }
 
@@ -94,6 +102,7 @@ export default function Callback() {
         const { data: { session } } = await supabase.auth.getSession();
         if (session?.user && active) {
           if (timer) clearTimeout(timer);
+          active = false;
           await setSession(session);
           await signIn(session.access_token, session.user.id);
           try {
@@ -134,13 +143,13 @@ export default function Callback() {
           }
         });
 
-        // 4. Timeout fallback only if still unauthenticated after 5s
+        // 4. Timeout fallback only if still unauthenticated after 6s
         timer = setTimeout(async () => {
           if (active) {
-            active = false;
             subscription.unsubscribe();
             const { data: checkData } = await supabase.auth.getSession();
             if (checkData?.session?.user) {
+              active = false;
               const routing = await fetchProfileRouting(checkData.session.user.id);
               if (routing.onboardingComplete) {
                 router.replace("/(tabs)");
@@ -149,13 +158,16 @@ export default function Callback() {
               }
               return;
             }
-            router.replace("/(onboarding)/welcome");
+            // If still no session after timeout, offer retry or back instead of blind redirect
+            active = false;
+            setErrorMsg(t("common.networkError"));
           }
-        }, 5000);
-      } catch {
+        }, 6000);
+      } catch (err: any) {
         if (active) {
           active = false;
-          router.replace("/(onboarding)/welcome");
+          console.error("[Callback error]:", err);
+          setErrorMsg(t("common.networkError"));
         }
       }
     }
@@ -166,7 +178,31 @@ export default function Callback() {
       active = false;
       if (timer) clearTimeout(timer);
     };
-  }, [setSession, signIn]);
+  }, [setSession, signIn, retryCount, t]);
+
+  if (errorMsg) {
+    return (
+      <View style={[styles.container, { backgroundColor: colors.background }]}>
+        <Text style={[styles.errorText, { color: colors.destructive }]}>{errorMsg}</Text>
+        <Pressable
+          style={[styles.button, { backgroundColor: colors.primary }]}
+          onPress={() => setRetryCount((c) => c + 1)}
+        >
+          <Text style={[styles.buttonText, { color: colors.primaryForeground }]}>
+            {t("common.continue")}
+          </Text>
+        </Pressable>
+        <Pressable
+          onPress={() => router.replace("/(onboarding)/welcome")}
+          style={styles.backButton}
+        >
+          <Text style={[styles.backText, { color: colors.mutedForeground }]}>
+            {t("common.back")}
+          </Text>
+        </Pressable>
+      </View>
+    );
+  }
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -180,6 +216,32 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    padding: 20,
+    padding: 24,
+    gap: 16,
+  },
+  errorText: {
+    fontFamily: "Inter_500Medium",
+    fontSize: 15,
+    textAlign: "center",
+    marginBottom: 8,
+  },
+  button: {
+    paddingHorizontal: 32,
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: "center",
+    minWidth: 160,
+  },
+  buttonText: {
+    fontFamily: "Inter_600SemiBold",
+    fontSize: 15,
+  },
+  backButton: {
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+  },
+  backText: {
+    fontFamily: "Inter_500Medium",
+    fontSize: 14,
   },
 });
