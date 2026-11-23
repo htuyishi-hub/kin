@@ -11,10 +11,12 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { Feather } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTranslation } from "@workspace/i18n";
 
 import { useColors } from "@/hooks/useColors";
+import { DatePickerModal, getMonthDisplay } from "@/components/DatePickerModal";
 
 export default function PersonalScreen() {
   const colors = useColors();
@@ -24,6 +26,10 @@ export default function PersonalScreen() {
 
   const [fullName, setFullName] = useState("");
   const [dateOfBirth, setDateOfBirth] = useState("");
+  const [day, setDay] = useState("");
+  const [month, setMonth] = useState("");
+  const [year, setYear] = useState("");
+  const [activePicker, setActivePicker] = useState<"day" | "month" | "year" | null>(null);
   const [gender, setGender] = useState("");
   const [error, setError] = useState("");
 
@@ -43,9 +49,35 @@ export default function PersonalScreen() {
     },
   });
 
+  function handleSelectDate(d: string, m: string, y: string) {
+    setDay(d);
+    setMonth(m);
+    setYear(y);
+    if (d && m && y) {
+      setDateOfBirth(`${y}-${m}-${d}`);
+      setError("");
+    }
+  }
+
   function handleNext() {
     if (!fullName.trim()) { setError(t("onboarding.personal.enterFullName")); return; }
-    if (!dateOfBirth.match(/^\d{4}-\d{2}-\d{2}$/)) { setError(t("onboarding.personal.enterDateFormat")); return; }
+    if (!dateOfBirth || !dateOfBirth.match(/^\d{4}-\d{2}-\d{2}$/)) {
+      setError(t("onboarding.personal.selectDob"));
+      return;
+    }
+
+    const birthDate = new Date(dateOfBirth);
+    const today = new Date();
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const m = today.getMonth() - birthDate.getMonth();
+    if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+      age--;
+    }
+    if (age < 18) {
+      setError(t("onboarding.personal.mustBe18"));
+      return;
+    }
+
     if (!gender) { setError(t("onboarding.personal.selectGender")); return; }
     setError("");
     updateMe({ data: { fullName: fullName.trim(), dateOfBirth, gender: gender as UpdateProfileRequestGender } });
@@ -80,19 +112,83 @@ export default function PersonalScreen() {
         </Field>
 
         <Field label={t("onboarding.personal.dobLabel")} colors={colors}>
-          <TextInput
-            style={[styles.input, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.card }]}
-            placeholder={t("onboarding.personal.dobPlaceholder")}
-            placeholderTextColor={colors.mutedForeground}
-            value={dateOfBirth}
-            onChangeText={(t) => { setDateOfBirth(t); setError(""); }}
-            keyboardType="numbers-and-punctuation"
-            returnKeyType="done"
-            maxLength={10}
-          />
+          <View style={styles.dobRow}>
+            {/* Day */}
+            <TouchableOpacity
+              style={[
+                styles.dobPill,
+                {
+                  borderColor: activePicker === "day" ? colors.primary : colors.border,
+                  backgroundColor: colors.card,
+                },
+              ]}
+              onPress={() => setActivePicker("day")}
+              activeOpacity={0.8}
+            >
+              <Text
+                style={[
+                  styles.dobPillText,
+                  { color: day ? colors.foreground : colors.mutedForeground },
+                ]}
+              >
+                {day ? day : t("onboarding.personal.dayLabel")}
+              </Text>
+              <Feather name="chevron-down" size={16} color={colors.mutedForeground} />
+            </TouchableOpacity>
+
+            {/* Month */}
+            <TouchableOpacity
+              style={[
+                styles.dobPill,
+                {
+                  flex: 1.4,
+                  borderColor: activePicker === "month" ? colors.primary : colors.border,
+                  backgroundColor: colors.card,
+                },
+              ]}
+              onPress={() => setActivePicker("month")}
+              activeOpacity={0.8}
+            >
+              <Text
+                style={[
+                  styles.dobPillText,
+                  { color: month ? colors.foreground : colors.mutedForeground },
+                ]}
+                numberOfLines={1}
+              >
+                {month ? getMonthDisplay(month) : t("onboarding.personal.monthLabel")}
+              </Text>
+              <Feather name="chevron-down" size={16} color={colors.mutedForeground} />
+            </TouchableOpacity>
+
+            {/* Year */}
+            <TouchableOpacity
+              style={[
+                styles.dobPill,
+                {
+                  flex: 1.1,
+                  borderColor: activePicker === "year" ? colors.primary : colors.border,
+                  backgroundColor: colors.card,
+                },
+              ]}
+              onPress={() => setActivePicker("year")}
+              activeOpacity={0.8}
+            >
+              <Text
+                style={[
+                  styles.dobPillText,
+                  { color: year ? colors.foreground : colors.mutedForeground },
+                ]}
+              >
+                {year ? year : t("onboarding.personal.yearLabel")}
+              </Text>
+              <Feather name="chevron-down" size={16} color={colors.mutedForeground} />
+            </TouchableOpacity>
+          </View>
         </Field>
 
         <Field label={t("onboarding.personal.genderLabel")} colors={colors}>
+
           <View style={styles.genderRow}>
             {genders.map((g) => (
               <TouchableOpacity
@@ -135,9 +231,21 @@ export default function PersonalScreen() {
           <Text style={[styles.buttonText, { color: colors.primaryForeground }]}>{t("onboarding.personal.continue")}</Text>
         )}
       </TouchableOpacity>
+
+      <DatePickerModal
+        visible={activePicker !== null}
+        activeTab={activePicker ?? "day"}
+        onTabChange={(tab) => setActivePicker(tab)}
+        onClose={() => setActivePicker(null)}
+        selectedDay={day}
+        selectedMonth={month}
+        selectedYear={year}
+        onSelectDate={handleSelectDate}
+      />
     </ScrollView>
   );
 }
+
 
 function Field({ label, children, colors }: { label: string; children: React.ReactNode; colors: any }) {
   return (
@@ -164,6 +272,24 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_500Medium",
     fontSize: 16,
   },
+  dobRow: {
+    flexDirection: "row",
+    gap: 10,
+  },
+  dobPill: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    borderWidth: 1.5,
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 16,
+  },
+  dobPillText: {
+    fontFamily: "Inter_500Medium",
+    fontSize: 15,
+  },
   genderRow: { flexDirection: "row", gap: 10 },
   genderOption: {
     flex: 1,
@@ -177,3 +303,4 @@ const styles = StyleSheet.create({
   button: { paddingVertical: 18, borderRadius: 16, alignItems: "center" },
   buttonText: { fontFamily: "Inter_700Bold", fontSize: 17 },
 });
+
