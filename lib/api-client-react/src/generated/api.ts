@@ -22,13 +22,20 @@ import type {
 import type {
   AddPhotoRequest,
   AuthSession,
+  ConfirmPostPhotoUpload200,
+  ConfirmPostPhotoUploadBody,
+  CreatePostRequest,
+  DeletePost200,
   EditMessageRequest,
   ErrorResponse,
   ExitSurveyRequest,
   ExpressInterestRequest,
   GetMatchQueueParams,
   GetMessagesParams,
+  GetPostPhotoUploadUrl200,
+  GetPostsParams,
   HealthStatus,
+  HidePostAuthor200,
   InitiatePaymentRequest,
   InterestResult,
   Match,
@@ -41,6 +48,11 @@ import type {
   PauseProfileBody,
   Payment,
   Photo,
+  PostItem,
+  PostLikeResponse,
+  PostsFeedResponse,
+  ReportPost200,
+  ReportPostBody,
   ReportRequest,
   SendMessageRequest,
   SendOtpRequest,
@@ -2278,5 +2290,587 @@ export const useInitiatePayment = <TError = ErrorType<ErrorResponse>,
         TContext
       > => {
       return useMutation(getInitiatePaymentMutationOptions(options));
+    }
+
+export const getGetPostsUrl = (params?: GetPostsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/posts?${stringifiedParams}` : `/api/posts`
+}
+
+/**
+ * @summary Get posts feed for verified members (max 30/day, newest first)
+ */
+export const getPosts = async (params?: GetPostsParams, options?: RequestInit): Promise<PostsFeedResponse> => {
+
+  return customFetch<PostsFeedResponse>(getGetPostsUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetPostsQueryKey = (params?: GetPostsParams,) => {
+    return [
+    `/api/posts`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetPostsQueryOptions = <TData = Awaited<ReturnType<typeof getPosts>>, TError = ErrorType<ErrorResponse>>(params?: GetPostsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPosts>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetPostsQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getPosts>>> = ({ signal }) => getPosts(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getPosts>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetPostsQueryResult = NonNullable<Awaited<ReturnType<typeof getPosts>>>
+export type GetPostsQueryError = ErrorType<ErrorResponse>
+
+
+/**
+ * @summary Get posts feed for verified members (max 30/day, newest first)
+ */
+
+export function useGetPosts<TData = Awaited<ReturnType<typeof getPosts>>, TError = ErrorType<ErrorResponse>>(
+ params?: GetPostsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPosts>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetPostsQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreatePostUrl = () => {
+
+
+
+
+  return `/api/posts`
+}
+
+/**
+ * @summary Create a new post
+ */
+export const createPost = async (createPostRequest: CreatePostRequest, options?: RequestInit): Promise<PostItem> => {
+
+  return customFetch<PostItem>(getCreatePostUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(createPostRequest)
+  }
+);}
+
+
+
+
+
+export const getCreatePostMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createPost>>, TError,{data: BodyType<CreatePostRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createPost>>, TError,{data: BodyType<CreatePostRequest>}, TContext> => {
+
+const mutationKey = ['createPost'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createPost>>, {data: BodyType<CreatePostRequest>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createPost(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreatePostMutationResult = NonNullable<Awaited<ReturnType<typeof createPost>>>
+    export type CreatePostMutationBody = BodyType<CreatePostRequest>
+    export type CreatePostMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Create a new post
+ */
+export const useCreatePost = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createPost>>, TError,{data: BodyType<CreatePostRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createPost>>,
+        TError,
+        {data: BodyType<CreatePostRequest>},
+        TContext
+      > => {
+      return useMutation(getCreatePostMutationOptions(options));
+    }
+
+export const getGetPostPhotoUploadUrlUrl = () => {
+
+
+
+
+  return `/api/posts/media/upload-url`
+}
+
+/**
+ * @summary Get signed upload URL for post photo
+ */
+export const getPostPhotoUploadUrl = async ( options?: RequestInit): Promise<GetPostPhotoUploadUrl200> => {
+
+  return customFetch<GetPostPhotoUploadUrl200>(getGetPostPhotoUploadUrlUrl(),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetPostPhotoUploadUrlMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof getPostPhotoUploadUrl>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof getPostPhotoUploadUrl>>, TError,void, TContext> => {
+
+const mutationKey = ['getPostPhotoUploadUrl'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof getPostPhotoUploadUrl>>, void> = () => {
+
+
+          return  getPostPhotoUploadUrl(requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type GetPostPhotoUploadUrlMutationResult = NonNullable<Awaited<ReturnType<typeof getPostPhotoUploadUrl>>>
+
+    export type GetPostPhotoUploadUrlMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Get signed upload URL for post photo
+ */
+export const useGetPostPhotoUploadUrl = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof getPostPhotoUploadUrl>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof getPostPhotoUploadUrl>>,
+        TError,
+        void,
+        TContext
+      > => {
+      return useMutation(getGetPostPhotoUploadUrlMutationOptions(options));
+    }
+
+export const getConfirmPostPhotoUploadUrl = () => {
+
+
+
+
+  return `/api/posts/media/confirm`
+}
+
+/**
+ * @summary Confirm post photo upload and validate JPEG magic bytes
+ */
+export const confirmPostPhotoUpload = async (confirmPostPhotoUploadBody: ConfirmPostPhotoUploadBody, options?: RequestInit): Promise<ConfirmPostPhotoUpload200> => {
+
+  return customFetch<ConfirmPostPhotoUpload200>(getConfirmPostPhotoUploadUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(confirmPostPhotoUploadBody)
+  }
+);}
+
+
+
+
+
+export const getConfirmPostPhotoUploadMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof confirmPostPhotoUpload>>, TError,{data: BodyType<ConfirmPostPhotoUploadBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof confirmPostPhotoUpload>>, TError,{data: BodyType<ConfirmPostPhotoUploadBody>}, TContext> => {
+
+const mutationKey = ['confirmPostPhotoUpload'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof confirmPostPhotoUpload>>, {data: BodyType<ConfirmPostPhotoUploadBody>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  confirmPostPhotoUpload(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ConfirmPostPhotoUploadMutationResult = NonNullable<Awaited<ReturnType<typeof confirmPostPhotoUpload>>>
+    export type ConfirmPostPhotoUploadMutationBody = BodyType<ConfirmPostPhotoUploadBody>
+    export type ConfirmPostPhotoUploadMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Confirm post photo upload and validate JPEG magic bytes
+ */
+export const useConfirmPostPhotoUpload = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof confirmPostPhotoUpload>>, TError,{data: BodyType<ConfirmPostPhotoUploadBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof confirmPostPhotoUpload>>,
+        TError,
+        {data: BodyType<ConfirmPostPhotoUploadBody>},
+        TContext
+      > => {
+      return useMutation(getConfirmPostPhotoUploadMutationOptions(options));
+    }
+
+export const getDeletePostUrl = (postId: string,) => {
+
+
+
+
+  return `/api/posts/${postId}`
+}
+
+/**
+ * @summary Delete own post
+ */
+export const deletePost = async (postId: string, options?: RequestInit): Promise<DeletePost200> => {
+
+  return customFetch<DeletePost200>(getDeletePostUrl(postId),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getDeletePostMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deletePost>>, TError,{postId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deletePost>>, TError,{postId: string}, TContext> => {
+
+const mutationKey = ['deletePost'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deletePost>>, {postId: string}> = (props) => {
+          const {postId} = props ?? {};
+
+          return  deletePost(postId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeletePostMutationResult = NonNullable<Awaited<ReturnType<typeof deletePost>>>
+
+    export type DeletePostMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Delete own post
+ */
+export const useDeletePost = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deletePost>>, TError,{postId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deletePost>>,
+        TError,
+        {postId: string},
+        TContext
+      > => {
+      return useMutation(getDeletePostMutationOptions(options));
+    }
+
+export const getLikePostUrl = (postId: string,) => {
+
+
+
+
+  return `/api/posts/${postId}/like`
+}
+
+/**
+ * @summary Toggle private like on a post
+ */
+export const likePost = async (postId: string, options?: RequestInit): Promise<PostLikeResponse> => {
+
+  return customFetch<PostLikeResponse>(getLikePostUrl(postId),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getLikePostMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof likePost>>, TError,{postId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof likePost>>, TError,{postId: string}, TContext> => {
+
+const mutationKey = ['likePost'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof likePost>>, {postId: string}> = (props) => {
+          const {postId} = props ?? {};
+
+          return  likePost(postId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type LikePostMutationResult = NonNullable<Awaited<ReturnType<typeof likePost>>>
+
+    export type LikePostMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Toggle private like on a post
+ */
+export const useLikePost = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof likePost>>, TError,{postId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof likePost>>,
+        TError,
+        {postId: string},
+        TContext
+      > => {
+      return useMutation(getLikePostMutationOptions(options));
+    }
+
+export const getHidePostAuthorUrl = (postId: string,) => {
+
+
+
+
+  return `/api/posts/${postId}/hide-author`
+}
+
+/**
+ * @summary Hide all posts from this author
+ */
+export const hidePostAuthor = async (postId: string, options?: RequestInit): Promise<HidePostAuthor200> => {
+
+  return customFetch<HidePostAuthor200>(getHidePostAuthorUrl(postId),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getHidePostAuthorMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof hidePostAuthor>>, TError,{postId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof hidePostAuthor>>, TError,{postId: string}, TContext> => {
+
+const mutationKey = ['hidePostAuthor'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof hidePostAuthor>>, {postId: string}> = (props) => {
+          const {postId} = props ?? {};
+
+          return  hidePostAuthor(postId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type HidePostAuthorMutationResult = NonNullable<Awaited<ReturnType<typeof hidePostAuthor>>>
+
+    export type HidePostAuthorMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Hide all posts from this author
+ */
+export const useHidePostAuthor = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof hidePostAuthor>>, TError,{postId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof hidePostAuthor>>,
+        TError,
+        {postId: string},
+        TContext
+      > => {
+      return useMutation(getHidePostAuthorMutationOptions(options));
+    }
+
+export const getReportPostUrl = (postId: string,) => {
+
+
+
+
+  return `/api/posts/${postId}/report`
+}
+
+/**
+ * @summary Report a post with evidence preservation
+ */
+export const reportPost = async (postId: string,
+    reportPostBody: ReportPostBody, options?: RequestInit): Promise<ReportPost200> => {
+
+  return customFetch<ReportPost200>(getReportPostUrl(postId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(reportPostBody)
+  }
+);}
+
+
+
+
+
+export const getReportPostMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof reportPost>>, TError,{postId: string;data: BodyType<ReportPostBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof reportPost>>, TError,{postId: string;data: BodyType<ReportPostBody>}, TContext> => {
+
+const mutationKey = ['reportPost'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof reportPost>>, {postId: string;data: BodyType<ReportPostBody>}> = (props) => {
+          const {postId,data} = props ?? {};
+
+          return  reportPost(postId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ReportPostMutationResult = NonNullable<Awaited<ReturnType<typeof reportPost>>>
+    export type ReportPostMutationBody = BodyType<ReportPostBody>
+    export type ReportPostMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Report a post with evidence preservation
+ */
+export const useReportPost = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof reportPost>>, TError,{postId: string;data: BodyType<ReportPostBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof reportPost>>,
+        TError,
+        {postId: string;data: BodyType<ReportPostBody>},
+        TContext
+      > => {
+      return useMutation(getReportPostMutationOptions(options));
     }
 

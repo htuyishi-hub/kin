@@ -384,6 +384,37 @@ export interface InitiatePaymentRequest {
   phoneNumber: string;
 }
 
+export interface PostItem {
+  id: string;
+  authorId: string;
+  firstName: string;
+  age?: number | null;
+  location?: string | null;
+  isVerified?: boolean;
+  text: string;
+  photoUrls: string[];
+  createdAt: string;
+  isLiked: boolean;
+  isOwn: boolean;
+  likeCount?: number | null;
+}
+
+export interface PostsFeedResponse {
+  posts: PostItem[];
+  nextCursor?: string | null;
+  totalImpressionsToday: number;
+}
+
+export interface CreatePostRequest {
+  text: string;
+  photoPaths?: string[];
+}
+
+export interface PostLikeResponse {
+  liked: boolean;
+  likeCount?: number | null;
+}
+
 export type VerifyURRegistrationBody = {
   /** Student registration number (9 digits) */
   registration_number: string;
@@ -429,5 +460,43 @@ limit?: number;
  * Cursor – get messages before this message ID
  */
 before?: string;
+};
+
+export type GetPostsParams = {
+limit?: number;
+cursor?: string;
+};
+
+export type GetPostPhotoUploadUrl200 = {
+  uploadUrl: string;
+  token: string;
+  path: string;
+  expiresIn: number;
+};
+
+export type ConfirmPostPhotoUploadBody = {
+  path: string;
+};
+
+export type ConfirmPostPhotoUpload200 = {
+  path: string;
+  confirmed: boolean;
+};
+
+export type DeletePost200 = {
+  success?: boolean;
+};
+
+export type HidePostAuthor200 = {
+  hidden?: boolean;
+};
+
+export type ReportPostBody = {
+  reason: string;
+  details?: string;
+};
+
+export type ReportPost200 = {
+  reported?: boolean;
 };
 

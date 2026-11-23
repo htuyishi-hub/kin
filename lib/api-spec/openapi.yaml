@@ -801,6 +801,249 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
+  /posts:
+    get:
+      operationId: getPosts
+      tags: [posts]
+      summary: Get posts feed for verified members (max 30/day, newest first)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 10
+        - name: cursor
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Posts feed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PostsFeedResponse"
+        "403":
+          description: Forbidden - Not verified or active
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Feature disabled
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    post:
+      operationId: createPost
+      tags: [posts]
+      summary: Create a new post
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreatePostRequest"
+      responses:
+        "201":
+          description: Post created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PostItem"
+        "400":
+          description: Validation or limit error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Feature disabled
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /posts/media/upload-url:
+    post:
+      operationId: getPostPhotoUploadUrl
+      tags: [posts]
+      summary: Get signed upload URL for post photo
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Upload URL generated
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [uploadUrl, token, path, expiresIn]
+                properties:
+                  uploadUrl:
+                    type: string
+                  token:
+                    type: string
+                  path:
+                    type: string
+                  expiresIn:
+                    type: integer
+
+  /posts/media/confirm:
+    post:
+      operationId: confirmPostPhotoUpload
+      tags: [posts]
+      summary: Confirm post photo upload and validate JPEG magic bytes
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [path]
+              properties:
+                path:
+                  type: string
+      responses:
+        "200":
+          description: Photo confirmed
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [path, confirmed]
+                properties:
+                  path:
+                    type: string
+                  confirmed:
+                    type: boolean
+
+  /posts/{postId}:
+    delete:
+      operationId: deletePost
+      tags: [posts]
+      summary: Delete own post
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: postId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Post deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+        "404":
+          description: Not found or not authorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /posts/{postId}/like:
+    post:
+      operationId: likePost
+      tags: [posts]
+      summary: Toggle private like on a post
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: postId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Like toggled
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PostLikeResponse"
+        "429":
+          description: Rate limit reached
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /posts/{postId}/hide-author:
+    post:
+      operationId: hidePostAuthor
+      tags: [posts]
+      summary: Hide all posts from this author
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: postId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Author hidden
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  hidden:
+                    type: boolean
+
+  /posts/{postId}/report:
+    post:
+      operationId: reportPost
+      tags: [posts]
+      summary: Report a post with evidence preservation
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: postId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [reason]
+              properties:
+                reason:
+                  type: string
+                details:
+                  type: string
+      responses:
+        "200":
+          description: Post reported
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  reported:
+                    type: boolean
+
 # ── Schemas ──────────────────────────────────────────────────────────────────
 components:
   securitySchemes:
@@ -1385,3 +1628,85 @@ components:
           type: string
           description: MoMo phone number for payment
       required: [productType, phoneNumber]
+
+    PostItem:
+      type: object
+      required:
+        - id
+        - authorId
+        - firstName
+        - text
+        - photoUrls
+        - createdAt
+        - isLiked
+        - isOwn
+      properties:
+        id:
+          type: string
+        authorId:
+          type: string
+        firstName:
+          type: string
+        age:
+          type: integer
+          nullable: true
+        location:
+          type: string
+          nullable: true
+        isVerified:
+          type: boolean
+        text:
+          type: string
+        photoUrls:
+          type: array
+          items:
+            type: string
+        createdAt:
+          type: string
+          format: date-time
+        isLiked:
+          type: boolean
+        isOwn:
+          type: boolean
+        likeCount:
+          type: integer
+          nullable: true
+
+    PostsFeedResponse:
+      type: object
+      required:
+        - posts
+        - totalImpressionsToday
+      properties:
+        posts:
+          type: array
+          items:
+            $ref: "#/components/schemas/PostItem"
+        nextCursor:
+          type: string
+          nullable: true
+        totalImpressionsToday:
+          type: integer
+
+    CreatePostRequest:
+      type: object
+      required:
+        - text
+      properties:
+        text:
+          type: string
+        photoPaths:
+          type: array
+          items:
+            type: string
+
+    PostLikeResponse:
+      type: object
+      required:
+        - liked
+      properties:
+        liked:
+          type: boolean
+        likeCount:
+          type: integer
+          nullable: true

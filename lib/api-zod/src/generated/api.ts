@@ -777,3 +777,135 @@ export const InitiatePaymentResponse = zod.object({
 })
 
 
+/**
+ * @summary Get posts feed for verified members (max 30/day, newest first)
+ */
+export const getPostsQueryLimitDefault = 10;
+
+export const GetPostsQueryParams = zod.object({
+  "limit": zod.coerce.number().default(getPostsQueryLimitDefault),
+  "cursor": zod.coerce.string().optional()
+})
+
+export const GetPostsResponse = zod.object({
+  "posts": zod.array(zod.object({
+  "id": zod.string(),
+  "authorId": zod.string(),
+  "firstName": zod.string(),
+  "age": zod.number().nullish(),
+  "location": zod.string().nullish(),
+  "isVerified": zod.boolean().optional(),
+  "text": zod.string(),
+  "photoUrls": zod.array(zod.string()),
+  "createdAt": zod.coerce.date(),
+  "isLiked": zod.boolean(),
+  "isOwn": zod.boolean(),
+  "likeCount": zod.number().nullish()
+})),
+  "nextCursor": zod.string().nullish(),
+  "totalImpressionsToday": zod.number()
+})
+
+
+/**
+ * @summary Create a new post
+ */
+export const CreatePostBody = zod.object({
+  "text": zod.string(),
+  "photoPaths": zod.array(zod.string()).optional()
+})
+
+export const CreatePostResponse = zod.object({
+  "id": zod.string(),
+  "authorId": zod.string(),
+  "firstName": zod.string(),
+  "age": zod.number().nullish(),
+  "location": zod.string().nullish(),
+  "isVerified": zod.boolean().optional(),
+  "text": zod.string(),
+  "photoUrls": zod.array(zod.string()),
+  "createdAt": zod.coerce.date(),
+  "isLiked": zod.boolean(),
+  "isOwn": zod.boolean(),
+  "likeCount": zod.number().nullish()
+})
+
+
+/**
+ * @summary Get signed upload URL for post photo
+ */
+export const GetPostPhotoUploadUrlResponse = zod.object({
+  "uploadUrl": zod.string(),
+  "token": zod.string(),
+  "path": zod.string(),
+  "expiresIn": zod.number()
+})
+
+
+/**
+ * @summary Confirm post photo upload and validate JPEG magic bytes
+ */
+export const ConfirmPostPhotoUploadBody = zod.object({
+  "path": zod.string()
+})
+
+export const ConfirmPostPhotoUploadResponse = zod.object({
+  "path": zod.string(),
+  "confirmed": zod.boolean()
+})
+
+
+/**
+ * @summary Delete own post
+ */
+export const DeletePostParams = zod.object({
+  "postId": zod.coerce.string()
+})
+
+export const DeletePostResponse = zod.object({
+  "success": zod.boolean().optional()
+})
+
+
+/**
+ * @summary Toggle private like on a post
+ */
+export const LikePostParams = zod.object({
+  "postId": zod.coerce.string()
+})
+
+export const LikePostResponse = zod.object({
+  "liked": zod.boolean(),
+  "likeCount": zod.number().nullish()
+})
+
+
+/**
+ * @summary Hide all posts from this author
+ */
+export const HidePostAuthorParams = zod.object({
+  "postId": zod.coerce.string()
+})
+
+export const HidePostAuthorResponse = zod.object({
+  "hidden": zod.boolean().optional()
+})
+
+
+/**
+ * @summary Report a post with evidence preservation
+ */
+export const ReportPostParams = zod.object({
+  "postId": zod.coerce.string()
+})
+
+export const ReportPostBody = zod.object({
+  "reason": zod.string(),
+  "details": zod.string().optional()
+})
+
+export const ReportPostResponse = zod.object({
+  "reported": zod.boolean().optional()
+})
+
+
