@@ -12,10 +12,24 @@ export const messagesTable = pgTable("messages", {
   promptKey: text("prompt_key").references(() => promptDefinitionsTable.key),
   isSystem: boolean("is_system").default(false).notNull(),
   readAt: timestamp("read_at", { withTimezone: true }),
+  replyToId: uuid("reply_to_id"),
+  editedAt: timestamp("edited_at", { withTimezone: true }),
+  deletedAt: timestamp("deleted_at", { withTimezone: true }),
+  deliveredAt: timestamp("delivered_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
 }, (table) => [
   index("messages_match_id_idx").on(table.matchId),
   index("messages_match_created_idx").on(table.matchId, table.createdAt),
+  index("messages_reply_to_id_idx").on(table.replyToId),
+]);
+
+export const messageEditsTable = pgTable("message_edits", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  messageId: uuid("message_id").notNull().references(() => messagesTable.id, { onDelete: "cascade" }),
+  previousContent: text("previous_content").notNull(),
+  editedAt: timestamp("edited_at", { withTimezone: true }).defaultNow(),
+}, (table) => [
+  index("message_edits_message_id_idx").on(table.messageId),
 ]);
 
 export const exitSurveysTable = pgTable("exit_surveys", {
@@ -29,4 +43,6 @@ export const exitSurveysTable = pgTable("exit_surveys", {
 
 export type Message = typeof messagesTable.$inferSelect;
 export type InsertMessage = typeof messagesTable.$inferInsert;
+export type MessageEdit = typeof messageEditsTable.$inferSelect;
+export type InsertMessageEdit = typeof messageEditsTable.$inferInsert;
 export type ExitSurvey = typeof exitSurveysTable.$inferSelect;
