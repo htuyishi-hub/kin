@@ -26,6 +26,7 @@ import { useTranslation, changeLanguage, getCurrentLanguage, type SupportedLangu
 import { useAuth } from '@/contexts/AuthContext';
 import { getSupabaseClient } from '@/lib/supabase';
 import { encryptMessage, decryptMessage } from '@/lib/e2eeService';
+import { apiFetch } from '@/lib/api';
 
 interface Candidate {
   id: string;
@@ -139,7 +140,7 @@ export default function AppScreen() {
 
   useEffect(() => {
     if (!token) return;
-    fetch('/api/matches', {
+    apiFetch('/api/matches', {
       headers: { Authorization: `Bearer ${token}` },
     })
       .then((res) => (res.ok ? res.json() : null))
@@ -165,7 +166,7 @@ export default function AppScreen() {
       return;
     }
     try {
-      const res = await fetch(`/api/matches/${match.id}/messages`, {
+      const res = await apiFetch(`/api/matches/${match.id}/messages`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (res.ok) {
@@ -202,7 +203,7 @@ export default function AppScreen() {
     try {
       setIsSendingMessage(true);
       const encrypted = await encryptMessage(text, selectedMatch.id);
-      await fetch(`/api/matches/${selectedMatch.id}/messages`, {
+      await apiFetch(`/api/matches/${selectedMatch.id}/messages`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -219,7 +220,7 @@ export default function AppScreen() {
 
   useEffect(() => {
     if (!token) return;
-    fetch('/api/me', {
+    apiFetch('/api/me', {
       headers: { Authorization: `Bearer ${token}` },
     })
       .then((res) => (res.ok ? res.json() : null))
@@ -253,7 +254,7 @@ export default function AppScreen() {
     setExtrasSuccess(false);
     setIsSavingExtras(true);
     try {
-      const res = await fetch('/api/me/profile-extras', {
+      const res = await apiFetch('/api/me/profile-extras', {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -265,13 +266,16 @@ export default function AppScreen() {
         }),
       });
 
-      const data = await res.json();
+      let data: any = null;
+      try {
+        data = await res.json();
+      } catch {}
       if (!res.ok) {
-        if (data.code === 'BIO_CONTACT_INFO') {
+        if (data?.code === 'BIO_CONTACT_INFO') {
           setExtrasError(t('errors.bioContactInfo'));
-        } else if (data.code === 'TOO_MANY_EDITS') {
+        } else if (data?.code === 'TOO_MANY_EDITS') {
           setExtrasError(t('errors.tooManyEdits'));
-        } else if (data.code === 'TAGS_LIMIT_EXCEEDED') {
+        } else if (data?.code === 'TAGS_LIMIT_EXCEEDED') {
           setExtrasError(t('errors.tagsLimitExceeded'));
         } else {
           setExtrasError(t('errors.generic'));
@@ -294,7 +298,7 @@ export default function AppScreen() {
     setSelectedTags([]);
     setIsSavingExtras(true);
     try {
-      await fetch('/api/me/profile-extras', {
+      await apiFetch('/api/me/profile-extras', {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -381,7 +385,7 @@ export default function AppScreen() {
 
     try {
       const target = userIdOrPath.includes('/') ? userIdOrPath.split('/')[1] || userIdOrPath : userIdOrPath;
-      const res = await fetch(`/api/media/voice/${encodeURIComponent(target)}/url`, {
+      const res = await apiFetch(`/api/media/voice/${encodeURIComponent(target)}/url`, {
         headers: {
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
@@ -409,7 +413,7 @@ export default function AppScreen() {
     setVoiceError(null);
     try {
       // 1. Get signed upload URL from server
-      const urlRes = await fetch('/api/media/voice/upload-url', {
+      const urlRes = await apiFetch('/api/media/voice/upload-url', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -439,7 +443,7 @@ export default function AppScreen() {
       }
 
       // 3. Confirm with server (server validates duration 1-20s using music-metadata)
-      const confirmRes = await fetch('/api/media/voice/confirm', {
+      const confirmRes = await apiFetch('/api/media/voice/confirm', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -448,18 +452,21 @@ export default function AppScreen() {
         body: JSON.stringify({ path }),
       });
 
-      const data = await confirmRes.json();
+      let data: any = null;
+      try {
+        data = await confirmRes.json();
+      } catch {}
       if (!confirmRes.ok) {
-        if (data.code === 'VOICE_INTRO_TOO_LONG') {
+        if (data?.code === 'VOICE_INTRO_TOO_LONG') {
           setVoiceError(t('errors.voiceTooLong'));
-        } else if (data.code === 'VOICE_INTRO_TOO_SHORT') {
+        } else if (data?.code === 'VOICE_INTRO_TOO_SHORT') {
           setVoiceError(t('errors.voiceTooShort'));
         } else {
           setVoiceError(t('errors.generic'));
         }
       } else {
-        setVoiceIntroPath(data.voiceIntroPath || path);
-        setVoiceIntroDurationMs(data.durationMs || durationMs);
+        setVoiceIntroPath(data?.voiceIntroPath || path);
+        setVoiceIntroDurationMs(data?.durationMs || durationMs);
       }
     } catch {
       setVoiceError(t('errors.generic'));
@@ -472,7 +479,7 @@ export default function AppScreen() {
     setVoiceError(null);
     setIsSavingVoice(true);
     try {
-      const res = await fetch('/api/media/voice', {
+      const res = await apiFetch('/api/media/voice', {
         method: 'DELETE',
         headers: {
           ...(token ? { Authorization: `Bearer ${token}` } : {}),

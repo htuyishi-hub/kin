@@ -3,6 +3,7 @@ import { useLocation } from 'wouter';
 import { Loader2, GraduationCap, CheckCircle } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/contexts/AuthContext';
+import { apiFetch } from '@/lib/api';
 
 const CAMPUSES = [
   'Huye',
@@ -44,7 +45,7 @@ export default function OnboardingUr() {
     setIsPending(true);
 
     try {
-      const res = await fetch('/api/me/ur/verify-registration', {
+      const res = await apiFetch('/api/me/ur/verify-registration', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -56,7 +57,10 @@ export default function OnboardingUr() {
         }),
       });
 
-      const data = await res.json();
+      let data: any = null;
+      try {
+        data = await res.json();
+      } catch {}
 
       if (!res.ok) {
         if (data?.code === 'UR_REGISTRATION_INVALID') {

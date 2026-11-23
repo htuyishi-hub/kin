@@ -3,6 +3,7 @@ import { useLocation } from 'wouter';
 import { Clock, KeyRound, Share2, Copy, Check, Award, ChevronRight, Loader2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/contexts/AuthContext';
+import { apiFetch } from '@/lib/api';
 
 export default function OnboardingWaiting() {
   const [, setLocation] = useLocation();
@@ -18,7 +19,7 @@ export default function OnboardingWaiting() {
 
   useEffect(() => {
     if (token) {
-      fetch('/api/invites/my-code', {
+      apiFetch('/api/invites/my-code', {
         headers: { Authorization: `Bearer ${token}` },
       })
         .then((r) => (r.ok ? r.json() : null))
@@ -42,7 +43,7 @@ export default function OnboardingWaiting() {
     setError('');
 
     try {
-      const res = await fetch('/api/invites/claim', {
+      const res = await apiFetch('/api/invites/claim', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -51,7 +52,10 @@ export default function OnboardingWaiting() {
         body: JSON.stringify({ code: cleanCode }),
       });
 
-      const data = await res.json();
+      let data: any = null;
+      try {
+        data = await res.json();
+      } catch {}
       if (!res.ok) {
         if (data?.code === 'INVITE_ALREADY_CLAIMED') {
           setError(t('errors.inviteAlreadyClaimed'));

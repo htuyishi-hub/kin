@@ -4,6 +4,7 @@ import { Loader2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { getCurrentLanguage } from '@workspace/i18n';
 import { useAuth } from '@/contexts/AuthContext';
+import { apiFetch } from '@/lib/api';
 
 const MONTHS = [
   { value: '01', en: '01 - Jan', rw: '01 - Mut' },
@@ -46,11 +47,13 @@ export default function OnboardingPersonal() {
 
         let profile: any = null;
         if (token) {
-          const res = await fetch('/api/me', {
+          const res = await apiFetch('/api/me', {
             headers: { Authorization: `Bearer ${token}` },
           });
           if (res.ok) {
-            profile = await res.json();
+            try {
+              profile = await res.json();
+            } catch {}
           }
         }
 
@@ -157,7 +160,7 @@ export default function OnboardingPersonal() {
     setIsPending(true);
 
     try {
-      const res = await fetch('/api/me', {
+      const res = await apiFetch('/api/me', {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -170,7 +173,11 @@ export default function OnboardingPersonal() {
         }),
       });
 
-      const data = await res.json();
+      let data: any = null;
+      try {
+        data = await res.json();
+      } catch {}
+
       if (!res.ok) {
         if (data?.code === 'UNDERAGE') {
           setError(t('onboarding.personal.mustBe18'));

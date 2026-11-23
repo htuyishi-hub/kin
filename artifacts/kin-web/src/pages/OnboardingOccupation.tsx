@@ -3,6 +3,7 @@ import { useLocation } from 'wouter';
 import { Loader2, Heart, Sparkles, Coffee } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/contexts/AuthContext';
+import { apiFetch } from '@/lib/api';
 
 export default function OnboardingOccupation() {
   const [, setLocation] = useLocation();
@@ -25,11 +26,13 @@ export default function OnboardingOccupation() {
 
         let profile: any = null;
         if (token) {
-          const res = await fetch('/api/me', {
+          const res = await apiFetch('/api/me', {
             headers: { Authorization: `Bearer ${token}` },
           });
           if (res.ok) {
-            profile = await res.json();
+            try {
+              profile = await res.json();
+            } catch {}
           }
         }
 
@@ -73,7 +76,7 @@ export default function OnboardingOccupation() {
     saveDraft(occupation, intent);
 
     try {
-      const res = await fetch('/api/me/onboarding', {
+      const res = await apiFetch('/api/me/onboarding', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -86,7 +89,11 @@ export default function OnboardingOccupation() {
         }),
       });
 
-      const data = await res.json();
+      let data: any = null;
+      try {
+        data = await res.json();
+      } catch {}
+
       if (!res.ok) {
         setError(data?.message || t('onboarding.personal.saveFailed'));
         return;

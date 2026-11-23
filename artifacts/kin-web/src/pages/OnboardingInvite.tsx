@@ -3,6 +3,7 @@ import { useLocation } from 'wouter';
 import { Loader2, KeyRound, Clock } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/contexts/AuthContext';
+import { apiFetch } from '@/lib/api';
 
 export default function OnboardingInvite() {
   const [, setLocation] = useLocation();
@@ -26,7 +27,7 @@ export default function OnboardingInvite() {
     setIsPending(true);
 
     try {
-      const res = await fetch('/api/invites/claim', {
+      const res = await apiFetch('/api/invites/claim', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -35,7 +36,10 @@ export default function OnboardingInvite() {
         body: JSON.stringify({ code: cleanCode }),
       });
 
-      const data = await res.json();
+      let data: any = null;
+      try {
+        data = await res.json();
+      } catch {}
       if (!res.ok) {
         if (data?.code === 'INVITE_ALREADY_CLAIMED') {
           setError(t('errors.inviteAlreadyClaimed'));
