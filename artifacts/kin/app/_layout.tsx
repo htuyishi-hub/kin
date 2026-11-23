@@ -38,15 +38,17 @@ setBaseUrl(apiBaseUrl);
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: true,
-    shouldShowBanner: true,
-    shouldShowList: true,
-  }),
-});
+if (Platform.OS !== "web") {
+  Notifications.setNotificationHandler({
+    handleNotification: async () => ({
+      shouldShowAlert: true,
+      shouldPlaySound: true,
+      shouldSetBadge: true,
+      shouldShowBanner: true,
+      shouldShowList: true,
+    }),
+  });
+}
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -66,7 +68,7 @@ const queryClient = new QueryClient({
 
 
 async function registerPushToken(token: string | null) {
-  if (!token) return;
+  if (Platform.OS === "web" || !token) return;
   try {
     const { status: existing } = await Notifications.getPermissionsAsync();
     let finalStatus = existing;
@@ -104,7 +106,7 @@ function PushRegistrar() {
   const { token, isLoading } = useAuth();
 
   useEffect(() => {
-    if (!isLoading && token) {
+    if (Platform.OS !== "web" && !isLoading && token) {
       registerPushToken(token);
     }
   }, [token, isLoading]);
@@ -188,7 +190,7 @@ export default function RootLayout() {
     }
   }, [fontsLoaded, fontError, splashTimedOut]);
 
-  if (!fontsLoaded && !fontError && !splashTimedOut) return null;
+  if (Platform.OS !== "web" && !fontsLoaded && !fontError && !splashTimedOut) return null;
 
   return (
     <SafeAreaProvider>
