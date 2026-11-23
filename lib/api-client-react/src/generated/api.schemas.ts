@@ -88,6 +88,7 @@ export interface MyProfile {
   tags?: string[];
   voiceIntroPath?: string | null;
   voiceIntroDurationMs?: number | null;
+  readReceiptsEnabled?: boolean;
   createdAt: string;
   lastActive: string;
 }
@@ -112,6 +113,7 @@ export interface UpdateProfileRequest {
   city?: string;
   district?: string;
   proximityConsent?: boolean;
+  readReceiptsEnabled?: boolean;
 }
 
 export interface UpdateProfileExtrasRequest {
@@ -273,6 +275,12 @@ export type MatchDetail = Match & {
   milieuCards: string[];
 };
 
+export type MessageReplyTo = {
+  id?: string;
+  senderId?: string;
+  content?: string;
+} | null;
+
 export interface Message {
   id: string;
   matchId: string;
@@ -284,6 +292,11 @@ export interface Message {
   /** True for system-generated messages (assignment, smart close) */
   isSystem: boolean;
   readAt?: string | null;
+  replyToId?: string | null;
+  replyTo?: MessageReplyTo;
+  editedAt?: string | null;
+  deletedAt?: string | null;
+  deliveredAt?: string | null;
   createdAt: string;
 }
 
@@ -291,6 +304,12 @@ export interface SendMessageRequest {
   /** @maxLength 1000 */
   content: string;
   promptKey?: string | null;
+  replyToId?: string | null;
+}
+
+export interface EditMessageRequest {
+  /** @maxLength 1000 */
+  content: string;
 }
 
 export interface ExitSurveyRequest {
@@ -312,6 +331,7 @@ export const ReportRequestReason = {
 
 export interface ReportRequest {
   reportedUserId: string;
+  matchId?: string | null;
   reason: ReportRequestReason;
   details?: string | null;
 }

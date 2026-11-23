@@ -34,6 +34,7 @@ export interface MyProfile {
   tags?: string[];
   voiceIntroPath?: string | null;
   voiceIntroDurationMs?: number | null;
+  readReceiptsEnabled?: boolean;
   createdAt: Date;
   lastActive: Date;
 }

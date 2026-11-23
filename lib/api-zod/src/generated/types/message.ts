@@ -5,6 +5,7 @@
  * Kin – trusted introduction network API
  * OpenAPI spec version: 0.1.0
  */
+import type { MessageReplyTo } from './messageReplyTo';
 
 export interface Message {
   id: string;
@@ -17,5 +18,10 @@ export interface Message {
   /** True for system-generated messages (assignment, smart close) */
   isSystem: boolean;
   readAt?: Date | null;
+  replyToId?: string | null;
+  replyTo?: MessageReplyTo;
+  editedAt?: Date | null;
+  deletedAt?: Date | null;
+  deliveredAt?: Date | null;
   createdAt: Date;
 }

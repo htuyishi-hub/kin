@@ -10,4 +10,5 @@ export interface SendMessageRequest {
   /** @maxLength 1000 */
   content: string;
   promptKey?: string | null;
+  replyToId?: string | null;
 }

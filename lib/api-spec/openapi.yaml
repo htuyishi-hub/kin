@@ -649,6 +649,91 @@ paths:
               schema:
                 $ref: "#/components/schemas/Match"
 
+  /matches/{matchId}/read:
+    post:
+      operationId: markMessagesRead
+      tags: [messages]
+      summary: Mark unread messages in a match as read
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: matchId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Messages marked as read
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+
+  /messages/{messageId}:
+    patch:
+      operationId: editMessage
+      tags: [messages]
+      summary: Edit a sent message
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: messageId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EditMessageRequest"
+      responses:
+        "200":
+          description: Updated message
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Message"
+        "400":
+          description: Invalid request or edit window expired
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Message not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    delete:
+      operationId: deleteMessage
+      tags: [messages]
+      summary: Delete a sent message
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: messageId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Message deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "404":
+          description: Message not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
   # ── Reports ──────────────────────────────────────────────────────────────────
   /reports:
     post:
@@ -861,6 +946,8 @@ components:
         voiceIntroDurationMs:
           type: integer
           nullable: true
+        readReceiptsEnabled:
+          type: boolean
         createdAt:
           type: string
           format: date-time
@@ -906,6 +993,8 @@ components:
         district:
           type: string
         proximityConsent:
+          type: boolean
+        readReceiptsEnabled:
           type: boolean
 
     UpdateProfileExtrasRequest:
@@ -1182,6 +1271,31 @@ components:
           type: string
           format: date-time
           nullable: true
+        replyToId:
+          type: string
+          nullable: true
+        replyTo:
+          type: object
+          nullable: true
+          properties:
+            id:
+              type: string
+            senderId:
+              type: string
+            content:
+              type: string
+        editedAt:
+          type: string
+          format: date-time
+          nullable: true
+        deletedAt:
+          type: string
+          format: date-time
+          nullable: true
+        deliveredAt:
+          type: string
+          format: date-time
+          nullable: true
         createdAt:
           type: string
           format: date-time
@@ -1196,6 +1310,17 @@ components:
         promptKey:
           type: string
           nullable: true
+        replyToId:
+          type: string
+          nullable: true
+      required: [content]
+
+    EditMessageRequest:
+      type: object
+      properties:
+        content:
+          type: string
+          maxLength: 1000
       required: [content]
 
     # Exit survey
@@ -1214,6 +1339,9 @@ components:
       properties:
         reportedUserId:
           type: string
+        matchId:
+          type: string
+          nullable: true
         reason:
           type: string
           enum: [exploitation, wrong_intent, harassment, fake_profile, underage, other]

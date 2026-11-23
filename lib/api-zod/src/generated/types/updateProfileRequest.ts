@@ -18,4 +18,5 @@ export interface UpdateProfileRequest {
   city?: string;
   district?: string;
   proximityConsent?: boolean;
+  readReceiptsEnabled?: boolean;
 }

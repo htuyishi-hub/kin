@@ -22,6 +22,7 @@ import type {
 import type {
   AddPhotoRequest,
   AuthSession,
+  EditMessageRequest,
   ErrorResponse,
   ExitSurveyRequest,
   ExpressInterestRequest,
@@ -1844,6 +1845,220 @@ export const useMarkPhaseComplete = <TError = ErrorType<unknown>,
         TContext
       > => {
       return useMutation(getMarkPhaseCompleteMutationOptions(options));
+    }
+
+export const getMarkMessagesReadUrl = (matchId: string,) => {
+
+
+
+
+  return `/api/matches/${matchId}/read`
+}
+
+/**
+ * @summary Mark unread messages in a match as read
+ */
+export const markMessagesRead = async (matchId: string, options?: RequestInit): Promise<MessageResponse> => {
+
+  return customFetch<MessageResponse>(getMarkMessagesReadUrl(matchId),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getMarkMessagesReadMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof markMessagesRead>>, TError,{matchId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof markMessagesRead>>, TError,{matchId: string}, TContext> => {
+
+const mutationKey = ['markMessagesRead'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof markMessagesRead>>, {matchId: string}> = (props) => {
+          const {matchId} = props ?? {};
+
+          return  markMessagesRead(matchId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type MarkMessagesReadMutationResult = NonNullable<Awaited<ReturnType<typeof markMessagesRead>>>
+
+    export type MarkMessagesReadMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Mark unread messages in a match as read
+ */
+export const useMarkMessagesRead = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof markMessagesRead>>, TError,{matchId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof markMessagesRead>>,
+        TError,
+        {matchId: string},
+        TContext
+      > => {
+      return useMutation(getMarkMessagesReadMutationOptions(options));
+    }
+
+export const getEditMessageUrl = (messageId: string,) => {
+
+
+
+
+  return `/api/messages/${messageId}`
+}
+
+/**
+ * @summary Edit a sent message
+ */
+export const editMessage = async (messageId: string,
+    editMessageRequest: EditMessageRequest, options?: RequestInit): Promise<Message> => {
+
+  return customFetch<Message>(getEditMessageUrl(messageId),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(editMessageRequest)
+  }
+);}
+
+
+
+
+
+export const getEditMessageMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof editMessage>>, TError,{messageId: string;data: BodyType<EditMessageRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof editMessage>>, TError,{messageId: string;data: BodyType<EditMessageRequest>}, TContext> => {
+
+const mutationKey = ['editMessage'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof editMessage>>, {messageId: string;data: BodyType<EditMessageRequest>}> = (props) => {
+          const {messageId,data} = props ?? {};
+
+          return  editMessage(messageId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type EditMessageMutationResult = NonNullable<Awaited<ReturnType<typeof editMessage>>>
+    export type EditMessageMutationBody = BodyType<EditMessageRequest>
+    export type EditMessageMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Edit a sent message
+ */
+export const useEditMessage = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof editMessage>>, TError,{messageId: string;data: BodyType<EditMessageRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof editMessage>>,
+        TError,
+        {messageId: string;data: BodyType<EditMessageRequest>},
+        TContext
+      > => {
+      return useMutation(getEditMessageMutationOptions(options));
+    }
+
+export const getDeleteMessageUrl = (messageId: string,) => {
+
+
+
+
+  return `/api/messages/${messageId}`
+}
+
+/**
+ * @summary Delete a sent message
+ */
+export const deleteMessage = async (messageId: string, options?: RequestInit): Promise<MessageResponse> => {
+
+  return customFetch<MessageResponse>(getDeleteMessageUrl(messageId),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getDeleteMessageMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteMessage>>, TError,{messageId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteMessage>>, TError,{messageId: string}, TContext> => {
+
+const mutationKey = ['deleteMessage'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteMessage>>, {messageId: string}> = (props) => {
+          const {messageId} = props ?? {};
+
+          return  deleteMessage(messageId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteMessageMutationResult = NonNullable<Awaited<ReturnType<typeof deleteMessage>>>
+
+    export type DeleteMessageMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Delete a sent message
+ */
+export const useDeleteMessage = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteMessage>>, TError,{messageId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteMessage>>,
+        TError,
+        {messageId: string},
+        TContext
+      > => {
+      return useMutation(getDeleteMessageMutationOptions(options));
     }
 
 export const getSubmitReportUrl = () => {

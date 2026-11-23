@@ -79,6 +79,7 @@ export const GetMeResponse = zod.object({
   "tags": zod.array(zod.string()).optional(),
   "voiceIntroPath": zod.string().nullish(),
   "voiceIntroDurationMs": zod.number().nullish(),
+  "readReceiptsEnabled": zod.boolean().optional(),
   "createdAt": zod.coerce.date(),
   "lastActive": zod.coerce.date()
 })
@@ -97,7 +98,8 @@ export const UpdateMeBody = zod.object({
   "hostelName": zod.string().optional(),
   "city": zod.string().optional(),
   "district": zod.string().optional(),
-  "proximityConsent": zod.boolean().optional()
+  "proximityConsent": zod.boolean().optional(),
+  "readReceiptsEnabled": zod.boolean().optional()
 })
 
 export const UpdateMeResponse = zod.object({
@@ -126,6 +128,7 @@ export const UpdateMeResponse = zod.object({
   "tags": zod.array(zod.string()).optional(),
   "voiceIntroPath": zod.string().nullish(),
   "voiceIntroDurationMs": zod.number().nullish(),
+  "readReceiptsEnabled": zod.boolean().optional(),
   "createdAt": zod.coerce.date(),
   "lastActive": zod.coerce.date()
 })
@@ -170,6 +173,7 @@ export const CompleteOnboardingResponse = zod.object({
   "tags": zod.array(zod.string()).optional(),
   "voiceIntroPath": zod.string().nullish(),
   "voiceIntroDurationMs": zod.number().nullish(),
+  "readReceiptsEnabled": zod.boolean().optional(),
   "createdAt": zod.coerce.date(),
   "lastActive": zod.coerce.date()
 })
@@ -217,6 +221,7 @@ export const UpdateProfileExtrasResponse = zod.object({
   "tags": zod.array(zod.string()).optional(),
   "voiceIntroPath": zod.string().nullish(),
   "voiceIntroDurationMs": zod.number().nullish(),
+  "readReceiptsEnabled": zod.boolean().optional(),
   "createdAt": zod.coerce.date(),
   "lastActive": zod.coerce.date()
 })
@@ -261,6 +266,7 @@ export const UploadVoiceIntroResponse = zod.object({
   "tags": zod.array(zod.string()).optional(),
   "voiceIntroPath": zod.string().nullish(),
   "voiceIntroDurationMs": zod.number().nullish(),
+  "readReceiptsEnabled": zod.boolean().optional(),
   "createdAt": zod.coerce.date(),
   "lastActive": zod.coerce.date()
 })
@@ -295,6 +301,7 @@ export const DeleteVoiceIntroResponse = zod.object({
   "tags": zod.array(zod.string()).optional(),
   "voiceIntroPath": zod.string().nullish(),
   "voiceIntroDurationMs": zod.number().nullish(),
+  "readReceiptsEnabled": zod.boolean().optional(),
   "createdAt": zod.coerce.date(),
   "lastActive": zod.coerce.date()
 })
@@ -349,6 +356,7 @@ export const PauseProfileResponse = zod.object({
   "tags": zod.array(zod.string()).optional(),
   "voiceIntroPath": zod.string().nullish(),
   "voiceIntroDurationMs": zod.number().nullish(),
+  "readReceiptsEnabled": zod.boolean().optional(),
   "createdAt": zod.coerce.date(),
   "lastActive": zod.coerce.date()
 })
@@ -579,6 +587,15 @@ export const GetMessagesResponseItem = zod.object({
   "promptText": zod.string().nullish(),
   "isSystem": zod.boolean().describe('True for system-generated messages (assignment, smart close)'),
   "readAt": zod.coerce.date().nullish(),
+  "replyToId": zod.string().nullish(),
+  "replyTo": zod.object({
+  "id": zod.string().optional(),
+  "senderId": zod.string().optional(),
+  "content": zod.string().optional()
+}).nullish(),
+  "editedAt": zod.coerce.date().nullish(),
+  "deletedAt": zod.coerce.date().nullish(),
+  "deliveredAt": zod.coerce.date().nullish(),
   "createdAt": zod.coerce.date()
 })
 export const GetMessagesResponse = zod.array(GetMessagesResponseItem)
@@ -597,7 +614,8 @@ export const sendMessageBodyContentMax = 1000;
 
 export const SendMessageBody = zod.object({
   "content": zod.string().max(sendMessageBodyContentMax),
-  "promptKey": zod.string().nullish()
+  "promptKey": zod.string().nullish(),
+  "replyToId": zod.string().nullish()
 })
 
 export const SendMessageResponse = zod.object({
@@ -610,6 +628,15 @@ export const SendMessageResponse = zod.object({
   "promptText": zod.string().nullish(),
   "isSystem": zod.boolean().describe('True for system-generated messages (assignment, smart close)'),
   "readAt": zod.coerce.date().nullish(),
+  "replyToId": zod.string().nullish(),
+  "replyTo": zod.object({
+  "id": zod.string().optional(),
+  "senderId": zod.string().optional(),
+  "content": zod.string().optional()
+}).nullish(),
+  "editedAt": zod.coerce.date().nullish(),
+  "deletedAt": zod.coerce.date().nullish(),
+  "deliveredAt": zod.coerce.date().nullish(),
   "createdAt": zod.coerce.date()
 })
 
@@ -640,10 +667,73 @@ export const MarkPhaseCompleteResponse = zod.object({
 
 
 /**
+ * @summary Mark unread messages in a match as read
+ */
+export const MarkMessagesReadParams = zod.object({
+  "matchId": zod.coerce.string()
+})
+
+export const MarkMessagesReadResponse = zod.object({
+  "message": zod.string()
+})
+
+
+/**
+ * @summary Edit a sent message
+ */
+export const EditMessageParams = zod.object({
+  "messageId": zod.coerce.string()
+})
+
+export const editMessageBodyContentMax = 1000;
+
+
+
+export const EditMessageBody = zod.object({
+  "content": zod.string().max(editMessageBodyContentMax)
+})
+
+export const EditMessageResponse = zod.object({
+  "id": zod.string(),
+  "matchId": zod.string(),
+  "senderId": zod.string(),
+  "content": zod.string(),
+  "phase": zod.number(),
+  "promptKey": zod.string().nullish(),
+  "promptText": zod.string().nullish(),
+  "isSystem": zod.boolean().describe('True for system-generated messages (assignment, smart close)'),
+  "readAt": zod.coerce.date().nullish(),
+  "replyToId": zod.string().nullish(),
+  "replyTo": zod.object({
+  "id": zod.string().optional(),
+  "senderId": zod.string().optional(),
+  "content": zod.string().optional()
+}).nullish(),
+  "editedAt": zod.coerce.date().nullish(),
+  "deletedAt": zod.coerce.date().nullish(),
+  "deliveredAt": zod.coerce.date().nullish(),
+  "createdAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Delete a sent message
+ */
+export const DeleteMessageParams = zod.object({
+  "messageId": zod.coerce.string()
+})
+
+export const DeleteMessageResponse = zod.object({
+  "message": zod.string()
+})
+
+
+/**
  * @summary Report a user for misconduct
  */
 export const SubmitReportBody = zod.object({
   "reportedUserId": zod.string(),
+  "matchId": zod.string().nullish(),
   "reason": zod.enum(['exploitation', 'wrong_intent', 'harassment', 'fake_profile', 'underage', 'other']),
   "details": zod.string().nullish()
 })

@@ -9,6 +9,7 @@ import type { ReportRequestReason } from './reportRequestReason';
 
 export interface ReportRequest {
   reportedUserId: string;
+  matchId?: string | null;
   reason: ReportRequestReason;
   details?: string | null;
 }
