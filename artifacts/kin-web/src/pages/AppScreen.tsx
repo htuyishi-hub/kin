@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useLocation } from 'wouter';
 import {
   Flame,
@@ -20,13 +20,50 @@ import {
   Mic,
   Square,
   Trash2,
-  Lock,
+  Check,
+  CheckCircle2,
+  AlertCircle,
+  ArrowDown,
+  Loader2,
 } from 'lucide-react';
 import { useTranslation, changeLanguage, getCurrentLanguage, type SupportedLanguage } from '@workspace/i18n';
 import { useAuth } from '@/contexts/AuthContext';
 import { getSupabaseClient } from '@/lib/supabase';
 import { encryptMessage, decryptMessage } from '@/lib/e2eeService';
-import { apiFetch } from '@/lib/api';
+import { apiFetch, API_BASE } from '@/lib/api';
+
+function getDateKey(isoDateStr: string): string {
+  const d = new Date(isoDateStr);
+  if (isNaN(d.getTime())) return '';
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+function formatDateDivider(isoDateStr: string, t: (key: string) => string): string {
+  const d = new Date(isoDateStr);
+  if (isNaN(d.getTime())) return '';
+  const now = new Date();
+  const todayKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+
+  const yesterday = new Date(now);
+  yesterday.setDate(yesterday.getDate() - 1);
+  const yesterdayKey = `${yesterday.getFullYear()}-${String(yesterday.getMonth() + 1).padStart(2, '0')}-${String(yesterday.getDate()).padStart(2, '0')}`;
+
+  const dateKey = getDateKey(isoDateStr);
+  if (dateKey === todayKey) return t('matches.today');
+  if (dateKey === yesterdayKey) return t('matches.yesterday');
+
+  return d.toLocaleDateString(undefined, {
+    day: 'numeric',
+    month: 'short',
+    year: d.getFullYear() !== now.getFullYear() ? 'numeric' : undefined,
+  });
+}
+
+function formatMessageTime(isoDateStr: string): string {
+  const d = new Date(isoDateStr);
+  if (isNaN(d.getTime())) return '';
+  return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+}
 
 interface Candidate {
   id: string;
@@ -132,11 +169,121 @@ export default function AppScreen() {
   const candidateAudioRef = useRef<HTMLAudioElement | null>(null);
   const [playingCandidateAudio, setPlayingCandidateAudio] = useState(false);
 
+  type WebChatMessage = {
+    id: string;
+    senderId: string;
+    content: string;
+    createdAt: string;
+    status?: 'sending' | 'sent' | 'failed';
+    localPlaintext?: string;
+  };
+
   const [selectedMatch, setSelectedMatch] = useState<any | null>(null);
-  const [chatMessages, setChatMessages] = useState<Array<{ id: string; senderId: string; content: string; createdAt: string }>>([]);
+  const [chatMessages, setChatMessages] = useState<WebChatMessage[]>([]);
   const [inputMessage, setInputMessage] = useState('');
   const [isSendingMessage, setIsSendingMessage] = useState(false);
+  const [isCompletingPhase, setIsCompletingPhase] = useState(false);
+  const [isNearBottom, setIsNearBottom] = useState(true);
+  const [showNewMessagesPill, setShowNewMessagesPill] = useState(false);
+  const [wsConnected, setWsConnected] = useState(true);
   const [realMatches, setRealMatches] = useState<any[]>([]);
+
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const wsRef = useRef<WebSocket | null>(null);
+
+  function scrollToBottom(smooth = false) {
+    if (scrollContainerRef.current) {
+      if (smooth) {
+        scrollContainerRef.current.scrollTo({
+          top: scrollContainerRef.current.scrollHeight,
+          behavior: 'smooth',
+        });
+      } else {
+        scrollContainerRef.current.scrollTop = scrollContainerRef.current.scrollHeight;
+      }
+    }
+  }
+
+  // WebSocket for Real-time chat & phase updates
+  useEffect(() => {
+    if (!token || !selectedMatch?.id || String(selectedMatch.id).startsWith('demo-')) {
+      return;
+    }
+
+    const wsUrl = API_BASE.replace(/^http/, 'ws') + '/ws';
+    let active = true;
+    let timer: any = null;
+
+    function connectWs() {
+      try {
+        const ws = new WebSocket(wsUrl);
+        wsRef.current = ws;
+
+        ws.onopen = () => {
+          if (!active) return;
+          setWsConnected(true);
+          ws.send(JSON.stringify({ type: 'auth', token }));
+          ws.send(JSON.stringify({ type: 'subscribe', matchId: selectedMatch.id }));
+        };
+
+        ws.onmessage = async (event) => {
+          try {
+            const data = JSON.parse(event.data);
+            if (data.type === 'new_message' && data.message) {
+              const incoming = data.message;
+              const decrypted = await decryptMessage(incoming.content, selectedMatch.id);
+              setChatMessages((prev) => {
+                if (prev.some((m) => m.id === incoming.id)) return prev;
+                return [
+                  ...prev,
+                  {
+                    ...incoming,
+                    content: decrypted,
+                    status: 'sent',
+                  },
+                ];
+              });
+              if (!isNearBottom && incoming.senderId !== (user?.id || 'me')) {
+                setShowNewMessagesPill(true);
+              } else {
+                setTimeout(() => scrollToBottom(true), 50);
+              }
+            } else if (data.type === 'phase_updated' && data.match) {
+              setSelectedMatch((prev: any) => ({
+                ...prev,
+                ...data.match,
+              }));
+            }
+          } catch {}
+        };
+
+        ws.onclose = () => {
+          if (!active) return;
+          setWsConnected(false);
+          wsRef.current = null;
+          timer = setTimeout(connectWs, 3000);
+        };
+
+        ws.onerror = () => {
+          if (!active) return;
+          setWsConnected(false);
+          ws.close();
+        };
+      } catch {
+        setWsConnected(false);
+      }
+    }
+
+    connectWs();
+
+    return () => {
+      active = false;
+      if (timer) clearTimeout(timer);
+      wsRef.current?.close();
+      wsRef.current = null;
+    };
+  }, [selectedMatch?.id, token, user?.id, isNearBottom]);
 
   useEffect(() => {
     if (!token) return;
@@ -154,6 +301,9 @@ export default function AppScreen() {
 
   async function handleOpenMatch(match: any) {
     setSelectedMatch(match);
+    setShowNewMessagesPill(false);
+    setIsNearBottom(true);
+
     if (!token || !match.id || String(match.id).startsWith('demo-')) {
       setChatMessages([
         {
@@ -161,8 +311,10 @@ export default function AppScreen() {
           senderId: match.otherUserId || 'other',
           content: match.lastMessage || 'Muraho neza! Nshimishijwe no guhura nawe.',
           createdAt: new Date().toISOString(),
+          status: 'sent',
         },
       ]);
+      setTimeout(() => scrollToBottom(), 50);
       return;
     }
     try {
@@ -175,35 +327,57 @@ export default function AppScreen() {
           msgs.map(async (m: any) => ({
             ...m,
             content: await decryptMessage(m.content, match.id),
+            status: 'sent' as const,
           }))
         );
         setChatMessages(decryptedMsgs);
+        setTimeout(() => scrollToBottom(), 50);
       }
     } catch {
       // fallback
     }
   }
 
-  async function handleSendMessage(e: React.FormEvent) {
-    e.preventDefault();
-    const text = inputMessage.trim();
+  async function handleSendMessage(textToSend?: string, retryLocalId?: string) {
+    const text = (textToSend ?? inputMessage).trim();
     if (!text || !selectedMatch) return;
 
-    setInputMessage('');
-    const tempMsg = {
-      id: String(Date.now()),
+    const localId = retryLocalId || `local-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+    const tempMsg: WebChatMessage = {
+      id: localId,
       senderId: user?.id || 'me',
       content: text,
+      localPlaintext: text,
       createdAt: new Date().toISOString(),
+      status: 'sending',
     };
-    setChatMessages((prev) => [...prev, tempMsg]);
 
-    if (!token || !selectedMatch.id || String(selectedMatch.id).startsWith('demo-')) return;
+    if (retryLocalId) {
+      setChatMessages((prev) =>
+        prev.map((m) => (m.id === retryLocalId ? { ...m, status: 'sending' } : m))
+      );
+    } else {
+      setInputMessage('');
+      if (textareaRef.current) {
+        textareaRef.current.style.height = 'auto';
+      }
+      setChatMessages((prev) => [...prev, tempMsg]);
+      setTimeout(() => scrollToBottom(true), 50);
+    }
+
+    if (!token || !selectedMatch.id || String(selectedMatch.id).startsWith('demo-')) {
+      setTimeout(() => {
+        setChatMessages((prev) =>
+          prev.map((m) => (m.id === localId ? { ...m, status: 'sent' } : m))
+        );
+      }, 300);
+      return;
+    }
 
     try {
       setIsSendingMessage(true);
       const encrypted = await encryptMessage(text, selectedMatch.id);
-      await apiFetch(`/api/matches/${selectedMatch.id}/messages`, {
+      const res = await apiFetch(`/api/matches/${selectedMatch.id}/messages`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -211,12 +385,96 @@ export default function AppScreen() {
         },
         body: JSON.stringify({ content: encrypted }),
       });
+
+      if (!res.ok) throw new Error('Send failed');
+
+      const savedMessage = await res.json();
+      setChatMessages((prev) =>
+        prev.map((m) =>
+          m.id === localId
+            ? { ...m, id: savedMessage.id, status: 'sent' }
+            : m
+        )
+      );
     } catch {
-      // non-fatal
+      setChatMessages((prev) =>
+        prev.map((m) => (m.id === localId ? { ...m, status: 'failed' } : m))
+      );
     } finally {
       setIsSendingMessage(false);
     }
   }
+
+  async function handleCompletePhase() {
+    if (!token || !selectedMatch?.id || selectedMatch?.myPhaseComplete || isCompletingPhase) return;
+    setIsCompletingPhase(true);
+    try {
+      const res = await apiFetch(`/api/matches/${selectedMatch.id}/phase-complete`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      if (res.ok) {
+        const updated = await res.json();
+        setSelectedMatch((prev: any) => ({
+          ...prev,
+          ...updated,
+          myPhaseComplete: true,
+        }));
+      }
+    } catch {
+      // non-fatal
+    } finally {
+      setIsCompletingPhase(false);
+    }
+  }
+
+  const webChatItems = useMemo(() => {
+    if (chatMessages.length === 0) return [];
+
+    const sorted = [...chatMessages].sort(
+      (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+    );
+
+    const items: Array<
+      | { type: 'divider'; id: string; text: string }
+      | { type: 'message'; id: string; msg: WebChatMessage; isLastInGroup: boolean; timeText: string }
+    > = [];
+
+    let lastDateKey = '';
+
+    for (let i = 0; i < sorted.length; i++) {
+      const m = sorted[i];
+      const dateKey = getDateKey(m.createdAt);
+
+      if (dateKey !== lastDateKey) {
+        lastDateKey = dateKey;
+        items.push({
+          type: 'divider',
+          id: `divider-${dateKey}-${i}`,
+          text: formatDateDivider(m.createdAt, t),
+        });
+      }
+
+      const next = sorted[i + 1];
+      const isLastInGroup =
+        !next ||
+        next.senderId !== m.senderId ||
+        Math.abs(new Date(next.createdAt).getTime() - new Date(m.createdAt).getTime()) > 120000 ||
+        getDateKey(next.createdAt) !== dateKey;
+
+      items.push({
+        type: 'message',
+        id: m.id,
+        msg: m,
+        isLastInGroup,
+        timeText: formatMessageTime(m.createdAt),
+      });
+    }
+
+    return items;
+  }, [chatMessages, t]);
 
   useEffect(() => {
     if (!token) return;
@@ -759,7 +1017,7 @@ export default function AppScreen() {
           <div className="flex-1 flex flex-col p-4 gap-3">
             {selectedMatch ? (
               /* Active Conversation View */
-              <div className="flex-1 flex flex-col min-h-[460px]">
+              <div className="flex-1 flex flex-col min-h-[480px] relative">
                 {/* Chat Header */}
                 <div className="flex items-center justify-between pb-3 border-b border-[#21262D]">
                   <div className="flex items-center gap-2.5">
@@ -789,69 +1047,179 @@ export default function AppScreen() {
                         <span className="text-[10px] font-semibold text-[#2563EB]">
                           {t('matches.phase', { phase: selectedMatch.conversationPhase || 1 })}
                         </span>
-                        <span className="text-[9px] text-[#A8A49E] flex items-center gap-1">
-                          <Lock className="w-2.5 h-2.5 text-[#2563EB]" />
-                          {t('matches.e2eeBadge')}
-                        </span>
                       </div>
                     </div>
                   </div>
 
-                  {/* Voice Intro Player in Chat Header */}
-                  {(selectedMatch.voiceIntroPath || selectedMatch.otherUser?.voiceIntroPath) && (
+                  <div className="flex items-center gap-2">
+                    {/* Voice Intro Player in Chat Header */}
+                    {(selectedMatch.voiceIntroPath || selectedMatch.otherUser?.voiceIntroPath) && (
+                      <button
+                        type="button"
+                        onClick={() => toggleCandidateVoice(selectedMatch.voiceIntroPath || selectedMatch.otherUser?.voiceIntroPath)}
+                        className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#1A1A2E] border border-[#C9A84C]/40 text-[#C9A84C] text-[11px] font-semibold hover:border-[#C9A84C] transition-colors cursor-pointer"
+                      >
+                        {playingCandidateAudio ? <Pause className="w-3 h-3 fill-current" /> : <Play className="w-3 h-3 fill-current" />}
+                        <Volume2 className="w-3 h-3" />
+                      </button>
+                    )}
+
+                    {/* Complete Phase Button */}
                     <button
                       type="button"
-                      onClick={() => toggleCandidateVoice(selectedMatch.voiceIntroPath || selectedMatch.otherUser?.voiceIntroPath)}
-                      className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#1A1A2E] border border-[#C9A84C]/40 text-[#C9A84C] text-[11px] font-semibold hover:border-[#C9A84C] transition-colors cursor-pointer"
+                      onClick={handleCompletePhase}
+                      disabled={isCompletingPhase || selectedMatch?.myPhaseComplete}
+                      title={selectedMatch?.myPhaseComplete ? t('matches.phaseCompleted') : t('matches.completePhase')}
+                      aria-label={selectedMatch?.myPhaseComplete ? t('matches.phaseCompleted') : t('matches.completePhase')}
+                      className={`p-2 rounded-full border transition-all cursor-pointer ${
+                        selectedMatch?.myPhaseComplete
+                          ? 'border-emerald-500/50 bg-emerald-500/10 text-emerald-400 cursor-default'
+                          : 'border-[#21262D] bg-[#1A1A2E] text-[#A8A49E] hover:text-[#F0EDE6] hover:border-[#2563EB]'
+                      } disabled:opacity-70`}
                     >
-                      {playingCandidateAudio ? <Pause className="w-3 h-3 fill-current" /> : <Play className="w-3 h-3 fill-current" />}
-                      <Volume2 className="w-3 h-3" />
+                      {isCompletingPhase ? (
+                        <Loader2 className="w-4 h-4 animate-spin text-[#2563EB]" />
+                      ) : selectedMatch?.myPhaseComplete ? (
+                        <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                      ) : (
+                        <Check className="w-4 h-4" />
+                      )}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Connection Status Line */}
+                {!wsConnected && (
+                  <div className="flex items-center justify-center gap-1.5 py-1 bg-[#161B22] border-b border-[#21262D] text-[11px] text-[#A8A49E]">
+                    <Loader2 className="w-3 h-3 animate-spin text-[#2563EB]" />
+                    <span>{t('matches.reconnecting')}</span>
+                  </div>
+                )}
+
+                {/* Messages List Area */}
+                <div className="flex-1 relative flex flex-col min-h-0">
+                  <div
+                    ref={scrollContainerRef}
+                    onScroll={(e) => {
+                      const el = e.currentTarget;
+                      const near = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
+                      setIsNearBottom(near);
+                      if (near) setShowNewMessagesPill(false);
+                    }}
+                    className="flex-1 flex flex-col py-3 overflow-y-auto max-h-[380px] scroll-smooth"
+                  >
+                    {chatMessages.length === 0 ? (
+                      <div className="my-auto flex flex-col items-center justify-center py-12 gap-3 text-center">
+                        <MessageCircle className="w-10 h-10 text-[#4A4742]" />
+                        <span className="text-sm font-semibold text-[#A8A49E]">{t('matches.noMessages')}</span>
+                      </div>
+                    ) : (
+                      webChatItems.map((item) => {
+                        if (item.type === 'divider') {
+                          return (
+                            <div key={item.id} className="flex justify-center my-3">
+                              <span className="px-3 py-1 rounded-full bg-[#161B22] border border-[#21262D] text-[11px] font-semibold text-[#8B949E]">
+                                {item.text}
+                              </span>
+                            </div>
+                          );
+                        }
+                        const msg = item.msg;
+                        const isMe = msg.senderId === user?.id || msg.senderId === 'me';
+                        return (
+                          <div
+                            key={item.id}
+                            className={`flex flex-col ${isMe ? 'items-end' : 'items-start'} ${
+                              item.isLastInGroup ? 'mb-2.5' : 'mb-0.5'
+                            }`}
+                          >
+                            <div
+                              className={`max-w-[78%] px-4 py-2.5 rounded-2xl text-sm leading-relaxed break-words whitespace-pre-wrap ${
+                                isMe
+                                  ? 'bg-[#2563EB] text-[#F0EDE6] rounded-br-xs'
+                                  : 'bg-[#1A1A2E] border border-[#21262D] text-[#F0EDE6] rounded-bl-xs'
+                              }`}
+                            >
+                              {msg.content}
+                            </div>
+                            {item.isLastInGroup && (
+                              <div className={`flex items-center gap-1.5 mt-1 px-1 text-[10px] text-[#8B949E]`}>
+                                <span>{item.timeText}</span>
+                                {isMe && (
+                                  <span className="flex items-center">
+                                    {msg.status === 'sending' ? (
+                                      <Clock className="w-2.5 h-2.5 text-[#8B949E]" />
+                                    ) : msg.status === 'failed' ? (
+                                      <button
+                                        type="button"
+                                        onClick={() => handleSendMessage(msg.localPlaintext || msg.content, msg.id)}
+                                        title={t('matches.retry')}
+                                        className="text-red-400 hover:text-red-300 cursor-pointer"
+                                      >
+                                        <AlertCircle className="w-3 h-3 text-red-400" />
+                                      </button>
+                                    ) : (
+                                      <Check className="w-3 h-3 text-[#8B949E]" />
+                                    )}
+                                  </span>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+
+                  {/* New Messages Pill */}
+                  {showNewMessagesPill && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        scrollToBottom(true);
+                        setShowNewMessagesPill(false);
+                      }}
+                      className="absolute bottom-2 left-1/2 -translate-x-1/2 bg-[#2563EB] text-[#F0EDE6] text-xs font-semibold px-3.5 py-1.5 rounded-full shadow-lg flex items-center gap-1.5 hover:bg-[#1A4DB8] transition-all cursor-pointer z-20"
+                    >
+                      <ArrowDown className="w-3.5 h-3.5" />
+                      <span>{t('matches.newMessages')}</span>
                     </button>
                   )}
                 </div>
 
-                {/* Messages List */}
-                <div className="flex-1 flex flex-col gap-2.5 py-4 overflow-y-auto max-h-[380px]">
-                  {chatMessages.length === 0 ? (
-                    <div className="my-auto text-center py-8">
-                      <p className="text-xs text-[#A8A49E]">{t('matches.waitingFirstMessage')}</p>
-                    </div>
-                  ) : (
-                    chatMessages.map((msg) => {
-                      const isMe = msg.senderId === user?.id || msg.senderId === 'me';
-                      return (
-                        <div
-                          key={msg.id}
-                          className={`max-w-[78%] p-3 rounded-2xl text-sm leading-relaxed ${
-                            isMe
-                              ? 'self-end bg-[#2563EB] text-[#F0EDE6] rounded-br-xs'
-                              : 'self-start bg-[#1A1A2E] border border-[#21262D] text-[#F0EDE6] rounded-bl-xs'
-                          }`}
-                        >
-                          {msg.content}
-                        </div>
-                      );
-                    })
-                  )}
-                </div>
-
                 {/* Message Input Bar */}
-                <form onSubmit={handleSendMessage} className="flex items-center gap-2 pt-2 border-t border-[#21262D]">
-                  <input
-                    type="text"
+                <div className="flex items-end gap-2 pt-2 border-t border-[#21262D]">
+                  <textarea
+                    ref={textareaRef}
+                    rows={1}
                     placeholder={t('matches.typeMessage')}
                     value={inputMessage}
-                    onChange={(e) => setInputMessage(e.target.value)}
-                    className="flex-1 bg-[#1A1A2E] border border-[#21262D] focus:border-[#2563EB] rounded-full px-4 py-2.5 text-sm text-[#F0EDE6] placeholder-[#4A4742] outline-none"
+                    maxLength={1000}
+                    onChange={(e) => {
+                      setInputMessage(e.target.value);
+                      e.target.style.height = 'auto';
+                      e.target.style.height = `${Math.min(e.target.scrollHeight, 120)}px`;
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        if (inputMessage.trim() && !isSendingMessage) {
+                          handleSendMessage();
+                        }
+                      }
+                    }}
+                    className="flex-1 bg-[#1A1A2E] border border-[#21262D] focus:border-[#2563EB] rounded-2xl px-4 py-2 text-sm text-[#F0EDE6] placeholder-[#4A4742] outline-none resize-none max-h-[120px] leading-relaxed"
                   />
                   <button
-                    type="submit"
+                    type="button"
+                    onClick={() => handleSendMessage()}
                     disabled={isSendingMessage || !inputMessage.trim()}
-                    className="w-10 h-10 rounded-full bg-[#2563EB] text-[#F0EDE6] flex items-center justify-center hover:bg-[#1A4DB8] transition-colors disabled:opacity-50 cursor-pointer shrink-0"
+                    className="w-10 h-10 rounded-full bg-[#2563EB] text-[#F0EDE6] flex items-center justify-center hover:bg-[#1A4DB8] transition-colors disabled:opacity-40 cursor-pointer shrink-0 mb-0.5"
+                    aria-label={t('matches.send')}
                   >
                     <Send className="w-4 h-4" />
                   </button>
-                </form>
+                </div>
               </div>
             ) : (
               /* Match List */
