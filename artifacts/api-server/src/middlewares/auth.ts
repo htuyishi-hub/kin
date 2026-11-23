@@ -1,11 +1,11 @@
 import { Request, Response, NextFunction } from "express";
-import { verifyToken } from "../lib/jwt.js";
+import { verifyTokenAsync } from "../lib/jwt.js";
 
 export interface AuthedRequest extends Request {
   userId: string;
 }
 
-export function requireAuth(req: Request, res: Response, next: NextFunction): void {
+export async function requireAuth(req: Request, res: Response, next: NextFunction): Promise<void> {
   const auth = req.headers.authorization;
 
   // Temp debug logs to diagnose missing/invalid auth in browser builds.
@@ -29,7 +29,7 @@ export function requireAuth(req: Request, res: Response, next: NextFunction): vo
 
   try {
     const token = auth.slice(7);
-    const { userId } = verifyToken(token);
+    const { userId } = await verifyTokenAsync(token);
     (req as AuthedRequest).userId = userId;
 
     try {
@@ -40,6 +40,7 @@ export function requireAuth(req: Request, res: Response, next: NextFunction): vo
 
     next();
   } catch (err) {
+
     try {
       (req as any).log?.warn?.(
         { reason: err instanceof Error ? err.message : String(err) },

@@ -7,10 +7,10 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useColors } from "@/hooks/useColors";
 
 export default function IndexScreen() {
-  const { token, isLoading: authLoading } = useAuth();
+  const { token, isLoading: authLoading, signOut } = useAuth();
   const colors = useColors();
 
-  const { data: profile, isLoading: profileLoading } = useGetMe({
+  const { data: profile, isLoading: profileLoading, error: profileError } = useGetMe({
     query: { enabled: !!token, retry: false } as any,
   });
 
@@ -32,10 +32,21 @@ export default function IndexScreen() {
       return;
     }
 
+    // If profile request returns 401, the session is expired or invalid
+    if (profileError) {
+      const status = (profileError as any)?.status ?? (profileError as any)?.response?.status;
+      if (status === 401) {
+        signOut();
+        router.replace("/(onboarding)/welcome");
+        return;
+      }
+    }
+
     if (!profile?.onboardingComplete) {
       router.replace("/(onboarding)/personal");
       return;
     }
+
 
     const earlyAccess = (profile as any).earlyAccess === true;
     const isVerified = Boolean(

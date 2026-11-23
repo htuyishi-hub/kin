@@ -32,6 +32,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSessionState] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
+  const getDynamicToken = useCallback(async (): Promise<string | null> => {
+    try {
+      const { data: { session: currentSession } } = await supabase.auth.getSession();
+      return currentSession?.access_token ?? null;
+    } catch {
+      return null;
+    }
+  }, []);
+
   // Restore initial Supabase session
   useEffect(() => {
     let mounted = true;
@@ -50,7 +59,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setUser(initialSession.user);
           setToken(accessToken);
           setUserId(uid);
-          setAuthTokenGetter(() => accessToken);
+          setAuthTokenGetter(getDynamicToken);
         } else if (mounted) {
           setAuthTokenGetter(null);
         }
@@ -76,7 +85,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUser(currentSession.user);
         setToken(accessToken);
         setUserId(uid);
-        setAuthTokenGetter(() => accessToken);
+        setAuthTokenGetter(getDynamicToken);
       } else {
         setSessionState(null);
         setUser(null);
@@ -91,7 +100,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       mounted = false;
       subscription.unsubscribe();
     };
-  }, []);
+  }, [getDynamicToken]);
 
   const setSession = useCallback(async (newSession: Session | null) => {
     if (newSession) {
@@ -99,7 +108,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(newSession.user);
       setToken(newSession.access_token);
       setUserId(newSession.user.id);
-      setAuthTokenGetter(() => newSession.access_token);
+      setAuthTokenGetter(getDynamicToken);
     } else {
       setSessionState(null);
       setUser(null);
@@ -107,13 +116,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUserId(null);
       setAuthTokenGetter(null);
     }
-  }, []);
+  }, [getDynamicToken]);
 
   const signIn = useCallback(async (newToken: string, newUserId: string) => {
     setToken(newToken);
     setUserId(newUserId);
-    setAuthTokenGetter(() => newToken);
-  }, []);
+    setAuthTokenGetter(getDynamicToken);
+  }, [getDynamicToken]);
 
   const signOut = useCallback(async () => {
     try {

@@ -1,6 +1,6 @@
 import type { IncomingMessage, Server } from "http";
 import { WebSocket, WebSocketServer } from "ws";
-import { verifyToken } from "./jwt.js";
+import { verifyTokenAsync } from "./jwt.js";
 
 const rooms = new Map<string, Set<WebSocket>>();
 
@@ -36,13 +36,13 @@ export function createWsServer(httpServer: Server) {
     let subscribedMatchId: string | null = null;
     let authedUserId: string | null = null;
 
-    ws.on("message", (raw) => {
+    ws.on("message", async (raw) => {
       try {
         const msg = JSON.parse(raw.toString()) as Record<string, unknown>;
 
         if (msg["type"] === "auth" && typeof msg["token"] === "string") {
           try {
-            const payload = verifyToken(msg["token"]);
+            const payload = await verifyTokenAsync(msg["token"]);
             authedUserId = payload.userId;
             ws.send(JSON.stringify({ type: "authed", userId: authedUserId }));
           } catch {

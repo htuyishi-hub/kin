@@ -13,7 +13,6 @@ import { setBaseUrl } from "@workspace/api-client-react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
-import * as Notifications from "expo-notifications";
 import React, { useEffect } from "react";
 import { Platform } from "react-native";
 import { StatusBar } from "expo-status-bar";
@@ -38,17 +37,24 @@ setBaseUrl(apiBaseUrl);
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
+let Notifications: any = null;
 if (Platform.OS !== "web") {
-  Notifications.setNotificationHandler({
-    handleNotification: async () => ({
-      shouldShowAlert: true,
-      shouldPlaySound: true,
-      shouldSetBadge: true,
-      shouldShowBanner: true,
-      shouldShowList: true,
-    }),
-  });
+  try {
+    Notifications = require("expo-notifications");
+    Notifications?.setNotificationHandler({
+      handleNotification: async () => ({
+        shouldShowAlert: true,
+        shouldPlaySound: true,
+        shouldSetBadge: true,
+        shouldShowBanner: true,
+        shouldShowList: true,
+      }),
+    });
+  } catch {
+    // ignore
+  }
 }
+
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -68,7 +74,7 @@ const queryClient = new QueryClient({
 
 
 async function registerPushToken(token: string | null) {
-  if (Platform.OS === "web" || !token) return;
+  if (Platform.OS === "web" || !token || !Notifications) return;
   try {
     const { status: existing } = await Notifications.getPermissionsAsync();
     let finalStatus = existing;
