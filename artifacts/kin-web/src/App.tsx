@@ -19,6 +19,7 @@ import OnboardingUr from "@/pages/OnboardingUr";
 import OnboardingInvite from "@/pages/OnboardingInvite";
 import OnboardingWaiting from "@/pages/OnboardingWaiting";
 import AppScreen from "@/pages/AppScreen";
+import AuthCallback from "@/pages/AuthCallback";
 
 // Marketing & Fallback Pages
 import Home from "@/pages/home";
@@ -30,7 +31,15 @@ const queryClient = new QueryClient();
 
 function Router() {
   const [location] = useLocation();
-  const isMarketingRoute = location === "/landing" || location === "/terms" || location === "/download";
+  const isMarketingHost =
+    typeof window !== "undefined" &&
+    (window.location.hostname === "kinn.ink" || window.location.hostname === "www.kinn.ink");
+
+  const isMarketingRoute =
+    location === "/landing" ||
+    location === "/terms" ||
+    location === "/download" ||
+    (isMarketingHost && location === "/");
 
   if (isMarketingRoute) {
     return (
@@ -38,6 +47,7 @@ function Router() {
         <Navbar />
         <div className="flex-1">
           <Switch>
+            <Route path="/" component={Home} />
             <Route path="/landing" component={Home} />
             <Route path="/terms" component={Terms} />
             <Route path="/download" component={DownloadPage} />
@@ -52,6 +62,9 @@ function Router() {
     <MobileShell>
       <Switch>
         <Route path="/" component={WelcomeScreen} />
+        <Route path="/welcome" component={WelcomeScreen} />
+        <Route path="/auth/callback" component={AuthCallback} />
+        <Route path="/callback" component={AuthCallback} />
         <Route path="/signup" component={EmailScreen} />
         <Route path="/signin" component={SignInScreen} />
         <Route path="/forgot-account" component={ForgotAccountScreen} />

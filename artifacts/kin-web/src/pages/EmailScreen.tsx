@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useLocation, useSearch } from 'wouter';
 import { Loader2 } from 'lucide-react';
 import { useTranslation } from '@workspace/i18n';
@@ -40,13 +40,25 @@ export default function EmailScreen() {
   const role = params.get('role') || 'student';
   const isStudent = role === 'student';
   const { t } = useTranslation();
-  const { setSession, signIn } = useAuth();
+  const { user, isLoading, setSession, signIn } = useAuth();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isPending, setIsPending] = useState(false);
   const [isPendingGoogle, setIsPendingGoogle] = useState(false);
+
+  useEffect(() => {
+    if (!isLoading && user) {
+      fetchProfileRouting(user.id).then((routing) => {
+        if (routing.onboardingComplete) {
+          setLocation('/app');
+        } else {
+          setLocation('/onboarding/personal');
+        }
+      });
+    }
+  }, [user, isLoading, setLocation]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();

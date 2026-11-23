@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useLocation } from 'wouter';
 import { Loader2 } from 'lucide-react';
 import { useTranslation } from '@workspace/i18n';
@@ -36,7 +36,7 @@ function GoogleIcon() {
 export default function SignInScreen() {
   const [, setLocation] = useLocation();
   const { t } = useTranslation();
-  const { setSession, signIn } = useAuth();
+  const { user, isLoading, setSession, signIn } = useAuth();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -44,6 +44,18 @@ export default function SignInScreen() {
   const [isNotFound, setIsNotFound] = useState(false);
   const [isPending, setIsPending] = useState(false);
   const [isPendingGoogle, setIsPendingGoogle] = useState(false);
+
+  useEffect(() => {
+    if (!isLoading && user) {
+      fetchProfileRouting(user.id).then((routing) => {
+        if (routing.onboardingComplete) {
+          setLocation('/app');
+        } else {
+          setLocation('/onboarding/personal');
+        }
+      });
+    }
+  }, [user, isLoading, setLocation]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();

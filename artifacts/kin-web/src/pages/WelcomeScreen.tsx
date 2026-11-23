@@ -1,12 +1,27 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useLocation } from 'wouter';
 import { useTranslation, changeLanguage, getCurrentLanguage, type SupportedLanguage } from '@workspace/i18n';
 import { WelcomeAnimation } from '@/components/WelcomeAnimation';
+import { useAuth } from '@/contexts/AuthContext';
+import { fetchProfileRouting } from '@/lib/authService';
 
 export default function WelcomeScreen() {
   const [, setLocation] = useLocation();
+  const { user, isLoading } = useAuth();
   const { t } = useTranslation();
   const [currentLang, setCurrentLang] = useState<SupportedLanguage>(getCurrentLanguage());
+
+  useEffect(() => {
+    if (!isLoading && user) {
+      fetchProfileRouting(user.id).then((routing) => {
+        if (routing.onboardingComplete) {
+          setLocation('/app');
+        } else {
+          setLocation('/onboarding/personal');
+        }
+      });
+    }
+  }, [user, isLoading, setLocation]);
 
   async function handleLanguageSelect(lang: SupportedLanguage) {
     await changeLanguage(lang);

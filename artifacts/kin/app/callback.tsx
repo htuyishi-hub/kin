@@ -1,12 +1,17 @@
-import React, { useEffect, useState } from "react";
-import { Platform, StyleSheet, Text, View } from "react-native";
+import React, { useEffect } from "react";
+import { ActivityIndicator, Platform, StyleSheet, View } from "react-native";
 import * as WebBrowser from "expo-web-browser";
+import { router } from "expo-router";
+import { supabase } from "@/lib/supabase";
+import { fetchProfileRouting } from "@/services/authService";
+import { useColors } from "@/hooks/useColors";
 
 export default function Callback() {
-  const [status] = useState("Signing you in…");
+  const colors = useColors();
 
   useEffect(() => {
-    // Keep callback passive: only finalize the auth redirect for Expo/AuthSession.
+    let active = true;
+
     if (Platform.OS === "web") {
       try {
         WebBrowser.maybeCompleteAuthSession();
@@ -14,12 +19,72 @@ export default function Callback() {
         // ignore
       }
     }
+
+    async function handleSession() {
+      try {
+        if (Platform.OS === "web" && typeof window !== "undefined" && window.location.search) {
+          const params = new URLSearchParams(window.location.search);
+          const code = params.get("code");
+          if (code) {
+            const { data } = await supabase.auth.exchangeCodeForSession(code);
+            if (data?.session?.user && active) {
+              const routing = await fetchProfileRouting(data.session.user.id);
+              if (routing.onboardingComplete) {
+                router.replace("/(tabs)");
+              } else {
+                router.replace("/(onboarding)/personal");
+              }
+              return;
+            }
+          }
+        }
+
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user && active) {
+          const routing = await fetchProfileRouting(session.user.id);
+          if (routing.onboardingComplete) {
+            router.replace("/(tabs)");
+          } else {
+            router.replace("/(onboarding)/personal");
+          }
+          return;
+        }
+
+        const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, newSession) => {
+          if (newSession?.user && active) {
+            subscription.unsubscribe();
+            const routing = await fetchProfileRouting(newSession.user.id);
+            if (routing.onboardingComplete) {
+              router.replace("/(tabs)");
+            } else {
+              router.replace("/(onboarding)/personal");
+            }
+          }
+        });
+
+        setTimeout(() => {
+          if (active) {
+            subscription.unsubscribe();
+            router.replace("/(onboarding)/sign-in");
+          }
+        }, 4000);
+      } catch {
+        if (active) {
+          router.replace("/(onboarding)/sign-in");
+        }
+      }
+    }
+
+    handleSession();
+
+    return () => {
+      active = false;
+    };
   }, []);
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Processing login…</Text>
-      <Text style={styles.subtitle}>{status}</Text>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <ActivityIndicator color={colors.primary} size="large" />
     </View>
   );
 }
@@ -31,18 +96,4 @@ const styles = StyleSheet.create({
     alignItems: "center",
     padding: 20,
   },
-  title: {
-    fontSize: 18,
-    fontWeight: "600",
-    marginBottom: 8,
-  },
-  subtitle: {
-    fontSize: 14,
-    opacity: 0.7,
-  },
 });
-
-
-
-
-

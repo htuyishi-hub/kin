@@ -58,12 +58,12 @@ export default function Home() {
               <Download className="w-5 h-5" />
               <span>Download Android APK</span>
             </Link>
-            <Link
-              href="/"
+            <a
+              href="https://app.kinn.ink"
               className="bg-ink-raised border border-divider text-bone hover:border-gold/50 font-semibold px-7 py-4 text-base rounded-full inline-flex items-center justify-center transition-colors backdrop-blur-sm"
             >
               Open Web App
-            </Link>
+            </a>
             <Button
               variant="outline"
               className="px-6 py-4 text-sm rounded-full border-bone-ghost/40 text-bone hover:bg-bone hover:text-night transition-colors backdrop-blur-sm"

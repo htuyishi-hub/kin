@@ -1,4 +1,5 @@
 import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
+import { setAuthTokenGetter } from '@workspace/api-client-react';
 import { supabase } from '@/lib/supabase';
 import type { Session, User } from '@supabase/supabase-js';
 
@@ -43,10 +44,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
 
         if (mounted && initialSession) {
+          const accessToken = initialSession.access_token;
           setSessionState(initialSession);
           setUser(initialSession.user);
-          setToken(initialSession.access_token);
+          setToken(accessToken);
           setUserId(initialSession.user.id);
+          setAuthTokenGetter(() => accessToken);
+        } else if (mounted) {
+          setAuthTokenGetter(null);
         }
       } catch (err) {
         console.warn('[SupabaseAuth Web] restoreSession exception:', err);
@@ -63,15 +68,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (!mounted) return;
 
       if (currentSession) {
+        const accessToken = currentSession.access_token;
         setSessionState(currentSession);
         setUser(currentSession.user);
-        setToken(currentSession.access_token);
+        setToken(accessToken);
         setUserId(currentSession.user.id);
+        setAuthTokenGetter(() => accessToken);
       } else {
         setSessionState(null);
         setUser(null);
         setToken(null);
         setUserId(null);
+        setAuthTokenGetter(null);
       }
       setIsLoading(false);
     });
@@ -84,21 +92,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const setSession = useCallback(async (newSession: Session | null) => {
     if (newSession) {
+      const accessToken = newSession.access_token;
       setSessionState(newSession);
       setUser(newSession.user);
-      setToken(newSession.access_token);
+      setToken(accessToken);
       setUserId(newSession.user.id);
+      setAuthTokenGetter(() => accessToken);
     } else {
       setSessionState(null);
       setUser(null);
       setToken(null);
       setUserId(null);
+      setAuthTokenGetter(null);
     }
   }, []);
 
   const signIn = useCallback(async (newToken: string, newUserId: string) => {
     setToken(newToken);
     setUserId(newUserId);
+    setAuthTokenGetter(() => newToken);
   }, []);
 
   const signOut = useCallback(async () => {
@@ -111,6 +123,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(null);
     setToken(null);
     setUserId(null);
+    setAuthTokenGetter(null);
   }, []);
 
   return (

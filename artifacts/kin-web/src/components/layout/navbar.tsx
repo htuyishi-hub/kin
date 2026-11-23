@@ -7,7 +7,7 @@ export function Navbar() {
   return (
     <header className="fixed top-0 left-0 right-0 z-50 bg-night/80 backdrop-blur-md border-b border-divider">
       <div className="container mx-auto px-4 h-16 flex items-center justify-between">
-        <Link href="/landing" className="flex items-center gap-2.5 font-serif text-2xl font-bold text-bone group">
+        <Link href="/" className="flex items-center gap-2.5 font-serif text-2xl font-bold text-bone group">
           <img
             src={`${base}logo_mark_transparent.png`}
             alt="kinn"
@@ -16,8 +16,8 @@ export function Navbar() {
           <span className="tracking-tight text-bone group-hover:text-gold transition-colors">kinn</span>
         </Link>
         <nav className="hidden md:flex items-center gap-8 text-sm font-medium text-bone-dim">
-          <a href="/landing#how" className="hover:text-bone transition-colors">How it works</a>
-          <a href="/landing#why" className="hover:text-bone transition-colors">Why kinn</a>
+          <a href="/#how" className="hover:text-bone transition-colors">How it works</a>
+          <a href="/#why" className="hover:text-bone transition-colors">Why kinn</a>
           <Link href="/download" className="hover:text-bone transition-colors text-gold font-semibold">Download APK</Link>
           <Link href="/terms" className="hover:text-bone transition-colors">Terms</Link>
         </nav>
@@ -29,12 +29,12 @@ export function Navbar() {
             <Download className="w-3.5 h-3.5" />
             <span>Download APK</span>
           </Link>
-          <Link 
-            href="/" 
+          <a 
+            href="https://app.kinn.ink" 
             className="bg-gold text-night px-4 py-2 rounded-md font-semibold text-sm hover:bg-gold/90 transition-colors"
           >
             Open App
-          </Link>
+          </a>
         </div>
       </div>
     </header>

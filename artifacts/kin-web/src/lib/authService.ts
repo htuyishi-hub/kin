@@ -31,10 +31,14 @@ export function isValidEmail(email: string): boolean {
  */
 export async function signInWithGoogle(): Promise<AuthResult> {
   try {
+    const redirectUrl = typeof window !== 'undefined'
+      ? `${window.location.origin}/auth/callback`
+      : 'https://app.kinn.ink/auth/callback';
+
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: window.location.origin,
+        redirectTo: redirectUrl,
       },
     });
 
