@@ -267,7 +267,6 @@ router.patch("/me", requireAuth, async (req, res) => {
       res.status(400).json({ error: "underage", code: "UNDERAGE", message: "Must be at least 18 years old" });
       return;
     }
-    updates["verifiedAdult"] = true;
   }
 
   try {
@@ -397,7 +396,6 @@ router.post("/me/onboarding", requireAuth, async (req, res) => {
       fullName,
       gender,
       dateOfBirth,
-      verifiedAdult: true,
       onboardingComplete: true,
     })
     .where(
@@ -431,7 +429,6 @@ router.post("/me/onboarding", requireAuth, async (req, res) => {
         fullName,
         gender,
         dateOfBirth,
-        verifiedAdult: true,
         onboardingComplete: true,
       } as any)
       .onConflictDoNothing()
