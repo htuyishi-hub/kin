@@ -21,10 +21,14 @@ import {
   Square,
   Trash2,
   Check,
+  CheckCheck,
   CheckCircle2,
   AlertCircle,
   ArrowDown,
   Loader2,
+  Reply,
+  Edit2,
+  Flag,
 } from 'lucide-react';
 import { useTranslation, changeLanguage, getCurrentLanguage, type SupportedLanguage } from '@workspace/i18n';
 import { useAuth } from '@/contexts/AuthContext';
@@ -176,6 +180,12 @@ export default function AppScreen() {
     createdAt: string;
     status?: 'sending' | 'sent' | 'failed';
     localPlaintext?: string;
+    replyToId?: string | null;
+    replyTo?: { id: string; senderId: string; content: string } | null;
+    editedAt?: string | null;
+    deletedAt?: string | null;
+    deliveredAt?: string | null;
+    readAt?: string | null;
   };
 
   const [selectedMatch, setSelectedMatch] = useState<any | null>(null);
@@ -188,9 +198,21 @@ export default function AppScreen() {
   const [wsConnected, setWsConnected] = useState(true);
   const [realMatches, setRealMatches] = useState<any[]>([]);
 
+  // Part 2 state: replies, edits, reports, typing, read receipts
+  const [replyingToMessage, setReplyingToMessage] = useState<WebChatMessage | null>(null);
+  const [editingMessage, setEditingMessage] = useState<WebChatMessage | null>(null);
+  const [reportingMatch, setReportingMatch] = useState<{ reportedUserId: string; matchId: string } | null>(null);
+  const [reportReason, setReportReason] = useState<string>('harassment');
+  const [isSubmittingReport, setIsSubmittingReport] = useState(false);
+  const [reportSuccess, setReportSuccess] = useState(false);
+  const [isOtherTyping, setIsOtherTyping] = useState(false);
+  const [readReceiptsEnabled, setReadReceiptsEnabled] = useState(false);
+
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const wsRef = useRef<WebSocket | null>(null);
+  const typingTimeoutRef = useRef<any>(null);
+  const lastTypingSentRef = useRef<number>(0);
 
   function scrollToBottom(smooth = false) {
     if (scrollContainerRef.current) {
@@ -225,6 +247,7 @@ export default function AppScreen() {
           setWsConnected(true);
           ws.send(JSON.stringify({ type: 'auth', token }));
           ws.send(JSON.stringify({ type: 'subscribe', matchId: selectedMatch.id }));
+          ws.send(JSON.stringify({ type: 'delivered', matchId: selectedMatch.id }));
         };
 
         ws.onmessage = async (event) => {
@@ -249,11 +272,57 @@ export default function AppScreen() {
               } else {
                 setTimeout(() => scrollToBottom(true), 50);
               }
+              // Mark read & acknowledge delivery for incoming message
+              if (incoming.senderId !== (user?.id || 'me')) {
+                apiFetch(`/api/matches/${selectedMatch.id}/read`, {
+                  method: 'POST',
+                  headers: { Authorization: `Bearer ${token}` },
+                }).catch(() => {});
+                if (ws.readyState === WebSocket.OPEN) {
+                  ws.send(JSON.stringify({ type: 'delivered', matchId: selectedMatch.id }));
+                }
+              }
             } else if (data.type === 'phase_updated' && data.match) {
               setSelectedMatch((prev: any) => ({
                 ...prev,
                 ...data.match,
               }));
+            } else if (data.type === 'typing' && data.matchId === selectedMatch.id && data.userId !== (user?.id || 'me')) {
+              setIsOtherTyping(true);
+              if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+              typingTimeoutRef.current = setTimeout(() => setIsOtherTyping(false), 3500);
+            } else if (data.type === 'messages_delivered' && data.matchId === selectedMatch.id) {
+              setChatMessages((prev) =>
+                prev.map((m) => {
+                  if ((m.senderId === user?.id || m.senderId === 'me') && !m.deliveredAt) {
+                    return { ...m, deliveredAt: data.deliveredAt };
+                  }
+                  return m;
+                })
+              );
+            } else if (data.type === 'messages_read' && data.matchId === selectedMatch.id) {
+              setChatMessages((prev) =>
+                prev.map((m) => {
+                  if ((m.senderId === user?.id || m.senderId === 'me') && !m.readAt) {
+                    return { ...m, readAt: data.readAt, deliveredAt: m.deliveredAt || data.readAt };
+                  }
+                  return m;
+                })
+              );
+            } else if (data.type === 'message_edited' && data.message && data.message.matchId === selectedMatch.id) {
+              const updated = data.message;
+              const decrypted = await decryptMessage(updated.content, selectedMatch.id);
+              setChatMessages((prev) =>
+                prev.map((m) => (m.id === updated.id ? { ...m, ...updated, content: decrypted } : m))
+              );
+            } else if (data.type === 'message_deleted' && data.matchId === selectedMatch.id) {
+              setChatMessages((prev) =>
+                prev.map((m) =>
+                  m.id === data.messageId
+                    ? { ...m, deletedAt: data.deletedAt || new Date().toISOString(), content: '' }
+                    : m
+                )
+              );
             }
           } catch {}
         };
@@ -303,6 +372,8 @@ export default function AppScreen() {
     setSelectedMatch(match);
     setShowNewMessagesPill(false);
     setIsNearBottom(true);
+    setReplyingToMessage(null);
+    setEditingMessage(null);
 
     if (!token || !match.id || String(match.id).startsWith('demo-')) {
       setChatMessages([
@@ -326,15 +397,83 @@ export default function AppScreen() {
         const decryptedMsgs = await Promise.all(
           msgs.map(async (m: any) => ({
             ...m,
-            content: await decryptMessage(m.content, match.id),
+            content: m.deletedAt ? '' : await decryptMessage(m.content, match.id),
             status: 'sent' as const,
           }))
         );
         setChatMessages(decryptedMsgs);
         setTimeout(() => scrollToBottom(), 50);
       }
+      // Acknowledge read receipt on server
+      apiFetch(`/api/matches/${match.id}/read`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      }).catch(() => {});
+      if (wsRef.current?.readyState === WebSocket.OPEN) {
+        wsRef.current.send(JSON.stringify({ type: 'delivered', matchId: match.id }));
+      }
     } catch {
       // fallback
+    }
+  }
+
+  function handleStartReply(msg: WebChatMessage) {
+    setEditingMessage(null);
+    setReplyingToMessage(msg);
+    if (textareaRef.current) textareaRef.current.focus();
+  }
+
+  function handleStartEdit(msg: WebChatMessage) {
+    setReplyingToMessage(null);
+    setEditingMessage(msg);
+    setInputMessage(msg.content);
+    if (textareaRef.current) {
+      textareaRef.current.focus();
+      textareaRef.current.style.height = 'auto';
+      setTimeout(() => {
+        if (textareaRef.current) {
+          textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 120)}px`;
+        }
+      }, 10);
+    }
+  }
+
+  async function handleDeleteMessage(msgId: string) {
+    setChatMessages((prev) =>
+      prev.map((m) => (m.id === msgId ? { ...m, deletedAt: new Date().toISOString(), content: '' } : m))
+    );
+    try {
+      await apiFetch(`/api/messages/${msgId}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+    } catch {}
+  }
+
+  async function handleSubmitReport() {
+    if (!reportingMatch) return;
+    setIsSubmittingReport(true);
+    try {
+      await apiFetch('/api/reports', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          reportedUserId: reportingMatch.reportedUserId,
+          matchId: reportingMatch.matchId,
+          reason: reportReason,
+        }),
+      });
+      setReportSuccess(true);
+      setTimeout(() => {
+        setReportingMatch(null);
+        setReportSuccess(false);
+        setIsSubmittingReport(false);
+      }, 1500);
+    } catch {
+      setIsSubmittingReport(false);
     }
   }
 
@@ -342,12 +481,52 @@ export default function AppScreen() {
     const text = (textToSend ?? inputMessage).trim();
     if (!text || !selectedMatch) return;
 
+    if (editingMessage) {
+      const msgId = editingMessage.id;
+      setEditingMessage(null);
+      setInputMessage('');
+      if (textareaRef.current) textareaRef.current.style.height = 'auto';
+
+      setChatMessages((prev) =>
+        prev.map((m) =>
+          m.id === msgId ? { ...m, content: text, editedAt: new Date().toISOString() } : m
+        )
+      );
+
+      try {
+        const encrypted = await encryptMessage(text, selectedMatch.id);
+        const res = await apiFetch(`/api/messages/${msgId}`, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ content: encrypted }),
+        });
+        if (!res.ok) throw new Error('Edit failed');
+        const updated = await res.json();
+        setChatMessages((prev) =>
+          prev.map((m) => (m.id === msgId ? { ...m, ...updated, content: text } : m))
+        );
+      } catch {
+        // non-fatal
+      }
+      return;
+    }
+
+    const currentReply = replyingToMessage;
+    setReplyingToMessage(null);
+
     const localId = retryLocalId || `local-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
     const tempMsg: WebChatMessage = {
       id: localId,
       senderId: user?.id || 'me',
       content: text,
       localPlaintext: text,
+      replyToId: currentReply?.id ?? null,
+      replyTo: currentReply
+        ? { id: currentReply.id, senderId: currentReply.senderId, content: currentReply.content }
+        : null,
       createdAt: new Date().toISOString(),
       status: 'sending',
     };
@@ -383,7 +562,10 @@ export default function AppScreen() {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ content: encrypted }),
+        body: JSON.stringify({
+          content: encrypted,
+          replyToId: currentReply?.id ?? null,
+        }),
       });
 
       if (!res.ok) throw new Error('Send failed');
@@ -392,7 +574,7 @@ export default function AppScreen() {
       setChatMessages((prev) =>
         prev.map((m) =>
           m.id === localId
-            ? { ...m, id: savedMessage.id, status: 'sent' }
+            ? { ...m, id: savedMessage.id, status: 'sent', replyTo: tempMsg.replyTo }
             : m
         )
       );
@@ -488,10 +670,26 @@ export default function AppScreen() {
           if (typeof data.bio === 'string') setBioText(data.bio);
           if (typeof data.voiceIntroPath === 'string') setVoiceIntroPath(data.voiceIntroPath);
           if (typeof data.voiceIntroDurationMs === 'number') setVoiceIntroDurationMs(data.voiceIntroDurationMs);
+          if (typeof data.readReceiptsEnabled === 'boolean') setReadReceiptsEnabled(data.readReceiptsEnabled);
         }
       })
       .catch(() => {});
   }, [token]);
+
+  async function handleToggleReadReceipts() {
+    const nextVal = !readReceiptsEnabled;
+    setReadReceiptsEnabled(nextVal);
+    try {
+      await apiFetch('/api/me', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ readReceiptsEnabled: nextVal }),
+      });
+    } catch {}
+  }
 
   function toggleTag(tag: string) {
     setExtrasError(null);
@@ -1044,9 +1242,16 @@ export default function AppScreen() {
                         {selectedMatch.otherUserName || selectedMatch.name}
                       </h3>
                       <div className="flex items-center gap-2 mt-0.5">
-                        <span className="text-[10px] font-semibold text-[#2563EB]">
-                          {t('matches.phase', { phase: selectedMatch.conversationPhase || 1 })}
-                        </span>
+                        {isOtherTyping ? (
+                          <span className="text-[10px] font-medium text-emerald-400 animate-pulse flex items-center gap-1">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block" />
+                            {t('chat.typing')}
+                          </span>
+                        ) : (
+                          <span className="text-[10px] font-semibold text-[#2563EB]">
+                            {t('matches.phase', { phase: selectedMatch.conversationPhase || 1 })}
+                          </span>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -1063,6 +1268,17 @@ export default function AppScreen() {
                         <Volume2 className="w-3 h-3" />
                       </button>
                     )}
+
+                    {/* Report Match Button */}
+                    <button
+                      type="button"
+                      onClick={() => setReportingMatch({ reportedUserId: selectedMatch.otherUserId || selectedMatch.id, matchId: selectedMatch.id })}
+                      title={t('chat.report')}
+                      aria-label={t('chat.report')}
+                      className="p-2 rounded-full border border-[#21262D] bg-[#1A1A2E] text-[#A8A49E] hover:text-[#FF6B6B] hover:border-[#FF6B6B]/40 transition-all cursor-pointer"
+                    >
+                      <Flag className="w-4 h-4" />
+                    </button>
 
                     {/* Complete Phase Button */}
                     <button
@@ -1126,25 +1342,87 @@ export default function AppScreen() {
                         }
                         const msg = item.msg;
                         const isMe = msg.senderId === user?.id || msg.senderId === 'me';
+                        const isDeleted = Boolean(msg.deletedAt);
+                        const canEdit = isMe && !isDeleted && (Date.now() - new Date(msg.createdAt).getTime() <= 15 * 60 * 1000);
+
                         return (
                           <div
                             key={item.id}
-                            className={`flex flex-col ${isMe ? 'items-end' : 'items-start'} ${
+                            className={`group relative flex flex-col ${isMe ? 'items-end' : 'items-start'} ${
                               item.isLastInGroup ? 'mb-2.5' : 'mb-0.5'
                             }`}
                           >
-                            <div
-                              className={`max-w-[78%] px-4 py-2.5 rounded-2xl text-sm leading-relaxed break-words whitespace-pre-wrap ${
-                                isMe
-                                  ? 'bg-[#2563EB] text-[#F0EDE6] rounded-br-xs'
-                                  : 'bg-[#1A1A2E] border border-[#21262D] text-[#F0EDE6] rounded-bl-xs'
-                              }`}
-                            >
-                              {msg.content}
-                            </div>
+                            {isDeleted ? (
+                              <div className="px-3.5 py-1.5 rounded-2xl text-xs italic bg-[#161B22] border border-[#21262D] text-[#8B949E] flex items-center gap-1.5">
+                                <Trash2 className="w-3 h-3 text-[#6E7681]" />
+                                <span>{t('chat.deletedMessage')}</span>
+                              </div>
+                            ) : (
+                              <div className="relative group/bubble max-w-[78%]">
+                                <div
+                                  className={`px-4 py-2.5 rounded-2xl text-sm leading-relaxed break-words whitespace-pre-wrap ${
+                                    isMe
+                                      ? 'bg-[#2563EB] text-[#F0EDE6] rounded-br-xs'
+                                      : 'bg-[#1A1A2E] border border-[#21262D] text-[#F0EDE6] rounded-bl-xs'
+                                  }`}
+                                >
+                                  {msg.replyTo && (
+                                    <div className="text-[11px] bg-black/25 border-l-2 border-[#93C5FD] pl-2 py-1 mb-2 rounded-r text-[#CBD5E1] truncate">
+                                      <span className="font-semibold block text-[10px] text-[#BFDBFE]">
+                                        {msg.replyTo.senderId === user?.id || msg.replyTo.senderId === 'me'
+                                          ? t('chat.replyingTo')
+                                          : t('chat.reply')}
+                                      </span>
+                                      <span className="truncate block opacity-90">{msg.replyTo.content || t('chat.deletedMessage')}</span>
+                                    </div>
+                                  )}
+                                  {msg.content}
+                                </div>
+
+                                {/* Hover action buttons */}
+                                <div
+                                  className={`absolute top-1/2 -translate-y-1/2 ${
+                                    isMe ? '-left-16' : '-right-16'
+                                  } hidden group-hover/bubble:flex items-center gap-1 bg-[#161B22] border border-[#21262D] rounded-full px-1.5 py-0.5 shadow-md z-10`}
+                                >
+                                  <button
+                                    type="button"
+                                    onClick={() => handleStartReply(msg)}
+                                    title={t('chat.reply')}
+                                    className="p-1 hover:text-[#2563EB] text-[#8B949E] transition-colors cursor-pointer"
+                                  >
+                                    <Reply className="w-3.5 h-3.5" />
+                                  </button>
+                                  {canEdit && (
+                                    <button
+                                      type="button"
+                                      onClick={() => handleStartEdit(msg)}
+                                      title={t('chat.edit')}
+                                      className="p-1 hover:text-[#C9A84C] text-[#8B949E] transition-colors cursor-pointer"
+                                    >
+                                      <Edit2 className="w-3.5 h-3.5" />
+                                    </button>
+                                  )}
+                                  {isMe && (
+                                    <button
+                                      type="button"
+                                      onClick={() => handleDeleteMessage(msg.id)}
+                                      title={t('chat.delete')}
+                                      className="p-1 hover:text-[#FF6B6B] text-[#8B949E] transition-colors cursor-pointer"
+                                    >
+                                      <Trash2 className="w-3.5 h-3.5" />
+                                    </button>
+                                  )}
+                                </div>
+                              </div>
+                            )}
+
                             {item.isLastInGroup && (
                               <div className={`flex items-center gap-1.5 mt-1 px-1 text-[10px] text-[#8B949E]`}>
                                 <span>{item.timeText}</span>
+                                {msg.editedAt && (
+                                  <span className="italic text-[9px] text-[#6E7681]">({t('chat.edited')})</span>
+                                )}
                                 {isMe && (
                                   <span className="flex items-center">
                                     {msg.status === 'sending' ? (
@@ -1153,13 +1431,17 @@ export default function AppScreen() {
                                       <button
                                         type="button"
                                         onClick={() => handleSendMessage(msg.localPlaintext || msg.content, msg.id)}
-                                        title={t('matches.retry')}
+                                        title={t('chat.retry')}
                                         className="text-red-400 hover:text-red-300 cursor-pointer"
                                       >
                                         <AlertCircle className="w-3 h-3 text-red-400" />
                                       </button>
+                                    ) : msg.readAt ? (
+                                      <span title={t('chat.read')}><CheckCheck className="w-3.5 h-3.5 text-[#22C55E]" /></span>
+                                    ) : msg.deliveredAt ? (
+                                      <span title={t('chat.delivered')}><CheckCheck className="w-3.5 h-3.5 text-[#8B949E]" /></span>
                                     ) : (
-                                      <Check className="w-3 h-3 text-[#8B949E]" />
+                                      <span title={t('chat.sent')}><Check className="w-3 h-3 text-[#8B949E]" /></span>
                                     )}
                                   </span>
                                 )}
@@ -1187,6 +1469,46 @@ export default function AppScreen() {
                   )}
                 </div>
 
+                {/* Replying banner */}
+                {replyingToMessage && (
+                  <div className="flex items-center justify-between px-3 py-1.5 bg-[#161B22] border-l-4 border-[#2563EB] rounded-lg text-xs text-[#CBD5E1] mx-1 mb-1">
+                    <div className="flex flex-col truncate pr-2">
+                      <span className="font-semibold text-[11px] text-[#60A5FA]">{t('chat.replyingTo')}</span>
+                      <span className="truncate text-[11px] text-[#8B949E]">{replyingToMessage.content}</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setReplyingToMessage(null)}
+                      className="p-1 text-[#8B949E] hover:text-[#F0EDE6] cursor-pointer"
+                      title={t('chat.cancel')}
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                )}
+
+                {/* Editing banner */}
+                {editingMessage && (
+                  <div className="flex items-center justify-between px-3 py-1.5 bg-[#161B22] border-l-4 border-[#C9A84C] rounded-lg text-xs text-[#CBD5E1] mx-1 mb-1">
+                    <div className="flex items-center gap-1.5 truncate">
+                      <Edit2 className="w-3.5 h-3.5 text-[#C9A84C]" />
+                      <span className="font-semibold text-[11px] text-[#C9A84C]">{t('chat.editing')}</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEditingMessage(null);
+                        setInputMessage('');
+                        if (textareaRef.current) textareaRef.current.style.height = 'auto';
+                      }}
+                      className="p-1 text-[#8B949E] hover:text-[#F0EDE6] cursor-pointer"
+                      title={t('chat.cancel')}
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                )}
+
                 {/* Message Input Bar */}
                 <div className="flex items-end gap-2 pt-2 border-t border-[#21262D]">
                   <textarea
@@ -1199,6 +1521,12 @@ export default function AppScreen() {
                       setInputMessage(e.target.value);
                       e.target.style.height = 'auto';
                       e.target.style.height = `${Math.min(e.target.scrollHeight, 120)}px`;
+
+                      const now = Date.now();
+                      if (selectedMatch?.id && now - lastTypingSentRef.current > 3000 && wsRef.current?.readyState === WebSocket.OPEN) {
+                        lastTypingSentRef.current = now;
+                        wsRef.current.send(JSON.stringify({ type: 'typing', matchId: selectedMatch.id }));
+                      }
                     }}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter' && !e.shiftKey) {
@@ -1220,6 +1548,79 @@ export default function AppScreen() {
                     <Send className="w-4 h-4" />
                   </button>
                 </div>
+
+                {/* Report User Modal */}
+                {reportingMatch && (
+                  <div className="fixed inset-0 bg-black/70 flex items-center justify-center p-4 z-50">
+                    <div className="bg-[#1A1A2E] border border-[#21262D] rounded-2xl p-5 max-w-sm w-full flex flex-col gap-4 shadow-xl">
+                      <div className="flex items-center justify-between">
+                        <h3 className="font-serif text-base font-bold text-[#F0EDE6] flex items-center gap-2">
+                          <Flag className="w-4 h-4 text-[#FF6B6B]" />
+                          <span>{t('chat.report')}</span>
+                        </h3>
+                        <button
+                          type="button"
+                          onClick={() => setReportingMatch(null)}
+                          className="text-[#8B949E] hover:text-[#F0EDE6] cursor-pointer"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+
+                      {reportSuccess ? (
+                        <div className="py-6 flex flex-col items-center justify-center gap-2 text-center">
+                          <CheckCircle2 className="w-8 h-8 text-emerald-400" />
+                          <span className="text-sm font-semibold text-[#F0EDE6]">{t('chat.reportSubmitted')}</span>
+                        </div>
+                      ) : (
+                        <>
+                          <div className="flex flex-col gap-2">
+                            <span className="text-xs font-semibold text-[#8B949E]">{t('chat.selectReason')}</span>
+                            {(['harassment', 'wrong_intent', 'fake_profile', 'other'] as const).map((r) => {
+                              const labelKey = r === 'harassment' ? 'chat.reasonHarassment'
+                                : r === 'wrong_intent' ? 'chat.reasonInappropriate'
+                                : r === 'fake_profile' ? 'chat.reasonFake'
+                                : 'chat.reasonOther';
+                              return (
+                                <button
+                                  key={r}
+                                  type="button"
+                                  onClick={() => setReportReason(r)}
+                                  className={`py-2 px-3 rounded-xl border text-left text-xs font-medium transition-colors cursor-pointer ${
+                                    reportReason === r
+                                      ? 'border-[#2563EB] bg-[#2563EB]/15 text-[#F0EDE6]'
+                                      : 'border-[#21262D] bg-[#0D1117] text-[#8B949E] hover:text-[#F0EDE6]'
+                                  }`}
+                                >
+                                  {t(labelKey)}
+                                </button>
+                              );
+                            })}
+                          </div>
+
+                          <div className="flex items-center gap-2 mt-2">
+                            <button
+                              type="button"
+                              onClick={() => setReportingMatch(null)}
+                              className="flex-1 py-2 px-3 border border-[#21262D] text-[#8B949E] hover:text-[#F0EDE6] rounded-xl text-xs font-semibold cursor-pointer"
+                            >
+                              {t('chat.cancel')}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={handleSubmitReport}
+                              disabled={isSubmittingReport}
+                              className="flex-1 py-2 px-3 bg-[#FF6B6B] hover:bg-[#FF5252] text-white rounded-xl text-xs font-semibold disabled:opacity-50 flex items-center justify-center gap-1.5 cursor-pointer"
+                            >
+                              {isSubmittingReport && <Loader2 className="w-3 h-3 animate-spin" />}
+                              <span>{t('chat.report')}</span>
+                            </button>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
             ) : (
               /* Match List */
@@ -1523,6 +1924,27 @@ export default function AppScreen() {
                     {t('profile.languageRw')}
                   </button>
                 </div>
+              </div>
+
+              {/* Read Receipts Setting Row */}
+              <div className="p-4 bg-[#1A1A2E] border border-[#21262D] rounded-2xl flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <CheckCheck className="w-5 h-5 text-[#A8A49E]" />
+                  <span className="text-sm font-medium text-[#F0EDE6]">{t('profile.readReceipts')}</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleToggleReadReceipts}
+                  className={`w-11 h-6 flex items-center rounded-full p-1 cursor-pointer transition-colors ${
+                    readReceiptsEnabled ? 'bg-[#2563EB]' : 'bg-[#21262D]'
+                  }`}
+                >
+                  <div
+                    className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${
+                      readReceiptsEnabled ? 'translate-x-5' : 'translate-x-0'
+                    }`}
+                  />
+                </button>
               </div>
             </div>
 
