@@ -15,6 +15,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { KLogo } from "@/components/KLogo";
 import { TeaserCandidate, TeaserSwipeDeck } from "@/components/TeaserSwipeDeck";
+import { PostsFeed } from "@/components/PostsFeed";
 import { Colors } from "@/constants/colors";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTranslation } from "@workspace/i18n";
@@ -23,8 +24,17 @@ type ReactionType = "campus" | "coffee" | "serious";
 
 export default function DiscoverScreen() {
   const insets = useSafeAreaInsets();
-  const { token } = useAuth();
+  const { token, userId } = useAuth();
   const { t } = useTranslation();
+  const [selectedSegment, setSelectedSegment] = useState<"deck" | "posts" | "people">("deck");
+
+  const isFeedEnabled =
+    process.env.EXPO_PUBLIC_FEED_ENABLED === "true" ||
+    process.env.FEED_ENABLED === "true" ||
+    process.env.VITE_FEED_ENABLED === "true";
+  const isPeopleEnabled =
+    process.env.EXPO_PUBLIC_PEOPLE_ENABLED === "true" ||
+    process.env.PEOPLE_ENABLED === "true";
 
   const apiBaseUrl =
     process.env.EXPO_PUBLIC_API_URL ??
@@ -183,6 +193,57 @@ export default function DiscoverScreen() {
         </View>
       </View>
 
+      {/* Segmented Control (Deck, Posts, People) */}
+      {(isFeedEnabled || isPeopleEnabled) && (
+        <View style={styles.segmentContainer}>
+          <TouchableOpacity
+            style={[styles.segmentBtn, selectedSegment === "deck" && styles.segmentBtnActive]}
+            onPress={() => setSelectedSegment("deck")}
+            activeOpacity={0.8}
+          >
+            <Text
+              style={[styles.segmentBtnText, selectedSegment === "deck" && styles.segmentBtnTextActive]}
+            >
+              {t("posts.deck")}
+            </Text>
+          </TouchableOpacity>
+
+          {isFeedEnabled && (
+            <TouchableOpacity
+              style={[styles.segmentBtn, selectedSegment === "posts" && styles.segmentBtnActive]}
+              onPress={() => setSelectedSegment("posts")}
+              activeOpacity={0.8}
+            >
+              <Text
+                style={[
+                  styles.segmentBtnText,
+                  selectedSegment === "posts" && styles.segmentBtnTextActive,
+                ]}
+              >
+                {t("posts.title")}
+              </Text>
+            </TouchableOpacity>
+          )}
+
+          {isPeopleEnabled && (
+            <TouchableOpacity
+              style={[styles.segmentBtn, selectedSegment === "people" && styles.segmentBtnActive]}
+              onPress={() => setSelectedSegment("people")}
+              activeOpacity={0.8}
+            >
+              <Text
+                style={[
+                  styles.segmentBtnText,
+                  selectedSegment === "people" && styles.segmentBtnTextActive,
+                ]}
+              >
+                {t("posts.people")}
+              </Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      )}
+
       {/* MATCH NOTIFICATION OVERLAY */}
       {matchNotification && (
         <View style={styles.matchToast}>
@@ -191,8 +252,10 @@ export default function DiscoverScreen() {
         </View>
       )}
 
-      {/* Main Swipe Deck */}
-      {isLoading ? (
+      {/* Main Content Area */}
+      {selectedSegment === "posts" && isFeedEnabled ? (
+        <PostsFeed apiBaseUrl={apiBaseUrl} token={token} userId={userId ?? null} />
+      ) : isLoading ? (
         <View style={styles.center}>
           <ActivityIndicator color={Colors.trust} size="large" />
           <Text style={styles.loadingText}>Curating intent-gated matches...</Text>
@@ -312,5 +375,36 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_400Regular",
     fontSize: 14,
     color: Colors.boneDim,
+  },
+  segmentContainer: {
+    flexDirection: "row",
+    backgroundColor: Colors.inkRaised,
+    borderRadius: 14,
+    marginHorizontal: 20,
+    marginVertical: 8,
+    padding: 3,
+    borderWidth: 1,
+    borderColor: Colors.divider,
+  },
+  segmentBtn: {
+    flex: 1,
+    paddingVertical: 7,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 11,
+  },
+  segmentBtnActive: {
+    backgroundColor: Colors.night,
+    borderWidth: 1,
+    borderColor: Colors.goldDim,
+  },
+  segmentBtnText: {
+    fontFamily: "Inter_600SemiBold",
+    fontSize: 12,
+    color: Colors.boneDim,
+  },
+  segmentBtnTextActive: {
+    color: Colors.gold,
+    fontWeight: "700",
   },
 });
