@@ -25,11 +25,34 @@ async function ensureDatabaseSchema() {
   }
 }
 
+function startKeepAlive() {
+  const baseUrl = (process.env["RENDER_EXTERNAL_URL"] || process.env["KEEP_ALIVE_URL"] || "").replace(/\/+$/, "");
+  if (!baseUrl) return;
+
+  const target = `${baseUrl}/api/healthz`;
+  const intervalMs = 14 * 60 * 1000;
+
+  const timer = setInterval(async () => {
+    try {
+      const res = await fetch(target, { signal: AbortSignal.timeout(10000) });
+      if (!res.ok) {
+        logger.warn({ status: res.status, target }, "Keep-alive ping returned non-2xx");
+      }
+    } catch (err: any) {
+      logger.warn({ err: err?.message, target }, "Keep-alive ping failed");
+    }
+  }, intervalMs);
+
+  timer.unref();
+  logger.info({ target, intervalMs }, "Render keep-alive enabled");
+}
+
 const server = http.createServer(app);
 createWsServer(server);
 
 server.listen(port, () => {
   logger.info({ port }, "Server listening");
+  startKeepAlive();
   ensureDatabaseSchema().catch((err) => {
     logger.warn({ err: err?.message }, "Failed to run ensureDatabaseSchema");
   });
