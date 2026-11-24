@@ -343,6 +343,8 @@
     "maxActivePosts": "Ubutumwa 3 gusa bukora bwemewe.",
     "likeRateLimit": "Warengeje inshuro zo gukunda z'umunsi.",
     "interestDailyLimit": "Warengeje inshuro zo gushimishwa z'umunsi.",
+    "requestDailyLimit": "Warengeje inshuro zo gusaba z'umunsi.",
+    "requestAlreadySent": "Ubusabe buracyategereje.",
     "featureDisabled": "Iki kintu ntabwo kigikora."
   },
   "people": {
@@ -350,6 +352,15 @@
     "emptyTitle": "Nta banyamuryango babonetse",
     "approach": "Gushimishwa",
     "approached": "Wagaragaje ko ushishikajwe"
+  },
+  "requests": {
+    "title": "Abashaka kuvugana",
+    "badge": "Ashaka kuvugana",
+    "accept": "Kwemera",
+    "decline": "Guhakana",
+    "sendRequest": "Gusaba kuvugana",
+    "requestSent": "Ubusabe bwoherejwe",
+    "emptyTitle": "Nta busabe buhari ubu"
   },
   "posts": {
     "title": "Ubutumwa",

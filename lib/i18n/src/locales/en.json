@@ -344,6 +344,8 @@
     "maxActivePosts": "Maximum 3 live posts.",
     "likeRateLimit": "Daily like limit reached.",
     "interestDailyLimit": "Daily interest limit reached.",
+    "requestDailyLimit": "Daily request limit reached.",
+    "requestAlreadySent": "Request already pending.",
     "featureDisabled": "Feature disabled."
   },
   "people": {
@@ -351,6 +353,15 @@
     "emptyTitle": "No members right now",
     "approach": "Interested",
     "approached": "Expressed Interest"
+  },
+  "requests": {
+    "title": "Wants to talk",
+    "badge": "Wants to talk",
+    "accept": "Accept",
+    "decline": "Decline",
+    "sendRequest": "Request to talk",
+    "requestSent": "Request sent",
+    "emptyTitle": "No requests right now"
   },
   "posts": {
     "title": "Posts",
