@@ -222,7 +222,7 @@ router.post("/moderation/approve", requireAuth, async (req, res) => {
   if (candidate.accountStatus === "active") {
     res.json({
       success: true,
-      message: "Candidate is already active on Kin.",
+      message: "Candidate is already active on kinn.",
       activated: true,
       candidateId,
     });
@@ -306,7 +306,7 @@ router.post("/moderation/approve", requireAuth, async (req, res) => {
   res.json({
     success: true,
     message: activated
-      ? "Candidate reached community quorum and is now active on Kin!"
+      ? "Candidate reached community quorum and is now active on kinn!"
       : `Approval recorded with +${weight} weight. Needs ${Math.max(
           0,
           MIN_DISTINCT_APPROVERS - distinctApproverCount

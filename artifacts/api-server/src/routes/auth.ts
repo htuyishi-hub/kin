@@ -27,8 +27,8 @@ async function sendSmsOtp(phoneNumber: string, otp: string, lang: "en" | "rw" = 
   const sms = at.SMS;
 
   const message = lang === "rw"
-    ? `Kode yawe yo kwemeza ya Kin ni ${otp}. Irangira mu minota 10. Ntuyisangize undi muntu.`
-    : `Your Kin verification code is ${otp}. It expires in 10 minutes. Do not share it.`;
+    ? `Kode yawe yo kwemeza ya kinn ni ${otp}. Irangira mu minota 10. Ntuyisangize undi muntu.`
+    : `Your kinn verification code is ${otp}. It expires in 10 minutes. Do not share it.`;
 
   await sms.send({
     to:      [phoneNumber],

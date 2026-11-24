@@ -130,7 +130,7 @@
       "enterRegNumber": "Injiza registration number yawe y'imibare 9",
       "mustBe9Digits": "Nimero yo kwiyandikisha igomba kuba imibare 9",
       "selectCampusError": "Hitamo campus yawe",
-      "alreadyClaimed": "Iyi registration number yamaze guhuzwa n'indi konti ya Kin.",
+      "alreadyClaimed": "Iyi registration number yamaze guhuzwa n'indi konti ya kinn.",
       "verifyStudent": "Emeza ko Uri Umunyeshuri",
       "skipNotUr": "Simbuka / Ntabwo ndi umunyeshuri wa UR",
       "verifiedSuccess": "UR Badge yemejwe neza!"
@@ -144,7 +144,7 @@
       "continueToWaiting": "Komeza mu Cyumba cyo Gutegereza",
       "enterCodeError": "Injiza kode y'ubutumire",
       "invalidCode": "Kode y'ubutumire ntabwo yemewe cyangwa yarangiye.",
-      "verifiedByMember": "Yemejwe n'umunyamuryango wa Kin!"
+      "verifiedByMember": "Yemejwe n'umunyamuryango wa kinn!"
     }
   },
   "waiting": {
@@ -159,7 +159,7 @@
     "share": "Sangiza Umurongo w'Ubutumire",
     "previewDiscovery": "Reba Isura y'Ibanze",
     "earlyAccessTitle": "Uhawe kwinjira mbere",
-    "enterKin": "Injira muri Kin"
+    "enterKin": "Injira muri kinn"
   },
   "discover": {
     "tabTitle": "Vumbura",
@@ -255,7 +255,7 @@
     "statsTokens": "Amatike",
     "urStudentVerified": "Umunyeshuri wa UR wemejwe",
     "verifiedMember": "Umunyamuryango wemejwe",
-    "shareInviteMessage": "Injira muri Kin: {{link}}",
+    "shareInviteMessage": "Injira muri kinn: {{link}}",
     "tagsTitle": "Ibikuranga",
     "bioTitle": "Ibyo wivugaho",
     "bioPlaceholder": "Amagambo make akwerekeyeho",
@@ -308,8 +308,8 @@
   "notification": {
     "newMessageTitle": "Ubutumwa bushya kuva kuri {{name}}",
     "newMatchTitle": "Mwahujwe!",
-    "newMatchBody": "Wowe na {{name}} mwahujwe kuri Kin.",
-    "smsVerification": "Kode yawe yo kwemeza Kin ni {{otp}}. Irangira mu minota 10. Ntuyisangize undi muntu.",
+    "newMatchBody": "Wowe na {{name}} mwahujwe kuri kinn.",
+    "smsVerification": "Kode yawe yo kwemeza kinn ni {{otp}}. Irangira mu minota 10. Ntuyisangize undi muntu.",
     "smsFailed": "Ntibyashobotse kohereza ubutumwa bugufi. Ongera ugerageze."
   },
   "landing": {

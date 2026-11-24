@@ -268,7 +268,7 @@ router.get("/people", requireAuth, async (req, res) => {
   // 7. Strip private data: only first name, age, campus, faculty, city, tags, bio.
   // NEVER return hidden_tier, scores, full name, phone, email, or date of birth.
   const people = returnedCandidates.map((c) => {
-    const rawName = c.fullName?.trim() ?? "Kin Member";
+    const rawName = c.fullName?.trim() ?? "kinn Member";
     const firstName = rawName.split(" ")[0] ?? "Member";
     const age = c.dateOfBirth ? calculateAge(c.dateOfBirth) : null;
 

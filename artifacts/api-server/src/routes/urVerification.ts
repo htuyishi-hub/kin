@@ -163,7 +163,7 @@ export async function verifyURRegistration(req: Request, res: Response) {
   } catch (err: any) {
     if (err?.code === "already_claimed") {
       await safeAudit(profileId, reg, "already_claimed");
-      return respond(res, { status: "already_claimed", message: "This registration number is already linked to another Kin account." }, 200);
+      return respond(res, { status: "already_claimed", message: "This registration number is already linked to another kinn account." }, 200);
     }
 
     console.error("[UR Verification Error]", err);

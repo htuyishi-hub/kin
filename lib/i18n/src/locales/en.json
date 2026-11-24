@@ -130,7 +130,7 @@
       "enterRegNumber": "Enter your 9-digit registration number",
       "mustBe9Digits": "Registration number must be 9 digits",
       "selectCampusError": "Select your campus",
-      "alreadyClaimed": "This registration number is already linked to another Kin account.",
+      "alreadyClaimed": "This registration number is already linked to another kinn account.",
       "verifyStudent": "Verify Student",
       "skipNotUr": "Skip / Not a UR student",
       "verifiedSuccess": "UR Badge verified successfully!"
@@ -159,7 +159,7 @@
     "share": "Share Invite Link",
     "previewDiscovery": "Preview Discovery",
     "earlyAccessTitle": "Early access — you're in",
-    "enterKin": "Enter Kin"
+    "enterKin": "Enter kinn"
   },
   "discover": {
     "tabTitle": "Discover",
@@ -256,7 +256,7 @@
     "statsIntent": "Intent",
     "urStudentVerified": "UR Student Verified",
     "verifiedMember": "Verified Member",
-    "shareInviteMessage": "Join me on Kin: {{link}}",
+    "shareInviteMessage": "Join me on kinn: {{link}}",
     "tagsTitle": "Tags",
     "bioTitle": "Bio",
     "bioPlaceholder": "A few words about you",
@@ -309,8 +309,8 @@
   "notification": {
     "newMessageTitle": "New message from {{name}}",
     "newMatchTitle": "New Match!",
-    "newMatchBody": "You and {{name}} matched on Kin.",
-    "smsVerification": "Your Kin verification code is {{otp}}. It expires in 10 minutes. Do not share it.",
+    "newMatchBody": "You and {{name}} matched on kinn.",
+    "smsVerification": "Your kinn verification code is {{otp}}. It expires in 10 minutes. Do not share it.",
     "smsFailed": "Could not send verification SMS. Please try again."
   },
   "landing": {

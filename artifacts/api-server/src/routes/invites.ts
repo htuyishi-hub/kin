@@ -142,7 +142,7 @@ router.get("/invites/validate/:code", async (req, res) => {
 
   res.json({
     valid: true,
-    inviterName: inviter[0].fullName ?? "A Kin Member",
+    inviterName: inviter[0].fullName ?? "A kinn Member",
     campusName: inviter[0].campusName ?? null,
   });
 });
@@ -346,7 +346,7 @@ router.post("/invites/claim", requireAuth, async (req, res) => {
   res.json({
     success: true,
     isVerified: true,
-    inviterName: inviter[0].fullName ?? "A Kin Member",
+    inviterName: inviter[0].fullName ?? "A kinn Member",
     message: "Invite accepted! Your account is now verified.",
   });
 });

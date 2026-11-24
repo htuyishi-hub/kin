@@ -38,9 +38,9 @@
   ],
   "shortcuts": [
     {
-      "name": "Open Kin",
+      "name": "Open kinn",
       "short_name": "Open",
-      "description": "Go to the Kin app",
+      "description": "Go to the kinn app",
       "url": ".",
       "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }]
     }

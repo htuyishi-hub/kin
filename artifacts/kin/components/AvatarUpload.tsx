@@ -78,7 +78,7 @@ export function AvatarUpload({
       if (result.code === 'permission_denied') {
         Alert.alert(
           'Camera Roll Access Needed',
-          'Kin needs access to your photos to set your profile picture. Please allow access in Settings.',
+          'kinn needs access to your photos to set your profile picture. Please allow access in Settings.',
           [
             { text: 'Cancel', style: 'cancel' },
             { text: 'Open Settings', onPress: () => Linking.openSettings() },

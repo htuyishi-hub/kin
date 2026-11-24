@@ -53,7 +53,7 @@ router.get("/match-queue", requireAuth, async (req, res) => {
   if (!isVerifiedUser) {
     res.status(403).json({
       error: "not_ready",
-      message: "You must be approved by an existing Kin member or verified with your University of Rwanda registration number to join the match pool.",
+      message: "You must be approved by an existing kinn member or verified with your University of Rwanda registration number to join the match pool.",
     });
     return;
   }
@@ -226,7 +226,7 @@ router.get("/match-queue", requireAuth, async (req, res) => {
   // 7. Format Teaser Swipe Deck payload:
   //    STRICT maximum of 2 photos, and ONLY the user's First Name.
   const result = ranked.map(({ c, isGoldenBid, incomingReaction }) => {
-    const rawName = c.fullName?.trim() ?? "Kin Member";
+    const rawName = c.fullName?.trim() ?? "kinn Member";
     const firstName = rawName.split(" ")[0] ?? "Member";
     const candidatePhotos = photoMap.get(c.id) ?? [];
 

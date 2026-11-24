@@ -131,7 +131,7 @@ export default function WaitingScreen() {
       await Share.share({
         message: t("profile.shareInviteMessage", { link: myInviteLink }),
         url: myInviteLink,
-        title: "Kin",
+        title: "kinn",
       });
     } catch {
       // Fallback

@@ -195,7 +195,7 @@ router.get("/requests/pending", requireAuth, async (req, res) => {
   // Strip private data: only first name, age, campus, faculty, city, bio, tags.
   // NEVER return hidden_tier, scores, full name, phone, email, or date of birth.
   const requests = pendingRows.map((r) => {
-    const rawName = r.senderFullName?.trim() ?? "Kin Member";
+    const rawName = r.senderFullName?.trim() ?? "kinn Member";
     const firstName = rawName.split(" ")[0] ?? "Member";
     const age = r.senderDateOfBirth ? calculateAge(r.senderDateOfBirth) : null;
 
