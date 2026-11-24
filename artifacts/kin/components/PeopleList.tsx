@@ -47,6 +47,10 @@ export function PeopleList({
     ScreenCapture.usePreventScreenCapture();
   }
 
+  const isRequestsEnabled =
+    process.env.EXPO_PUBLIC_REQUESTS_ENABLED === "true" ||
+    process.env.REQUESTS_ENABLED === "true";
+
   const [people, setPeople] = useState<PersonItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -55,6 +59,8 @@ export function PeopleList({
   const [hasMore, setHasMore] = useState(true);
   const [dailyLimitReached, setDailyLimitReached] = useState(false);
   const [approachingIds, setApproachingIds] = useState<Set<string>>(new Set());
+  const [requestingIds, setRequestingIds] = useState<Set<string>>(new Set());
+  const [requestedIds, setRequestedIds] = useState<Set<string>>(new Set());
 
   // Fetch people list
   const fetchPeople = useCallback(
@@ -164,6 +170,49 @@ export function PeopleList({
     }
   };
 
+  const handleSendRequest = async (person: PersonItem) => {
+    if (!token || requestedIds.has(person.id) || requestingIds.has(person.id)) return;
+    if (Platform.OS !== "web") {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    }
+    setRequestingIds((prev) => new Set(prev).add(person.id));
+    try {
+      const res = await fetch(`${apiBaseUrl}/api/requests`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ toUserId: person.id }),
+      });
+      if (res.status === 429) {
+        Alert.alert("", t("errors.requestDailyLimit"));
+        return;
+      }
+      if (!res.ok) {
+        const err = await res.json().catch(() => null);
+        if (err?.code === "DUPLICATE_REQUEST") {
+          Alert.alert("", t("errors.requestAlreadySent"));
+        } else {
+          Alert.alert("", t("errors.generic"));
+        }
+        return;
+      }
+      setRequestedIds((prev) => new Set(prev).add(person.id));
+      if (Platform.OS !== "web") {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      }
+    } catch {
+      Alert.alert("", t("errors.generic"));
+    } finally {
+      setRequestingIds((prev) => {
+        const next = new Set(prev);
+        next.delete(person.id);
+        return next;
+      });
+    }
+  };
+
   const handleLoadMore = () => {
     if (!isLoading && !isLoadingMore && hasMore && nextOffset !== null && !dailyLimitReached) {
       fetchPeople(nextOffset);
@@ -215,27 +264,60 @@ export function PeopleList({
           </View>
         )}
 
-        {/* Action Button: Approach / Interested */}
-        <TouchableOpacity
-          style={[styles.approachBtn, item.hasInterested && styles.approachBtnDone]}
-          onPress={() => handleApproach(item)}
-          disabled={item.hasInterested || isApproaching}
-          activeOpacity={0.8}
-        >
-          {isApproaching ? (
-            <ActivityIndicator size="small" color={Colors.bone} />
-          ) : item.hasInterested ? (
-            <>
-              <Feather name="check" size={16} color={Colors.boneDim} />
-              <Text style={styles.approachBtnTextDone}>{t("people.approached")}</Text>
-            </>
-          ) : (
-            <>
-              <Feather name="heart" size={16} color={Colors.bone} />
-              <Text style={styles.approachBtnText}>{t("people.approach")}</Text>
-            </>
+        <View style={isRequestsEnabled ? styles.buttonsRow : undefined}>
+          {/* Action Button: Approach / Interested */}
+          <TouchableOpacity
+            style={[
+              styles.approachBtn,
+              item.hasInterested && styles.approachBtnDone,
+              isRequestsEnabled && styles.flexBtn,
+            ]}
+            onPress={() => handleApproach(item)}
+            disabled={item.hasInterested || isApproaching}
+            activeOpacity={0.8}
+          >
+            {isApproaching ? (
+              <ActivityIndicator size="small" color={Colors.bone} />
+            ) : item.hasInterested ? (
+              <>
+                <Feather name="check" size={16} color={Colors.boneDim} />
+                <Text style={styles.approachBtnTextDone}>{t("people.approached")}</Text>
+              </>
+            ) : (
+              <>
+                <Feather name="heart" size={16} color={Colors.bone} />
+                <Text style={styles.approachBtnText}>{t("people.approach")}</Text>
+              </>
+            )}
+          </TouchableOpacity>
+
+          {isRequestsEnabled && (
+            <TouchableOpacity
+              style={[
+                styles.requestBtn,
+                requestedIds.has(item.id) && styles.requestBtnDone,
+                styles.flexBtn,
+              ]}
+              onPress={() => handleSendRequest(item)}
+              disabled={requestedIds.has(item.id) || requestingIds.has(item.id)}
+              activeOpacity={0.8}
+            >
+              {requestingIds.has(item.id) ? (
+                <ActivityIndicator size="small" color={Colors.gold} />
+              ) : requestedIds.has(item.id) ? (
+                <>
+                  <Feather name="check" size={16} color={Colors.boneDim} />
+                  <Text style={styles.requestBtnTextDone}>{t("requests.requestSent")}</Text>
+                </>
+              ) : (
+                <>
+                  <Feather name="message-circle" size={16} color={Colors.gold} />
+                  <Text style={styles.requestBtnText}>{t("requests.sendRequest")}</Text>
+                </>
+              )}
+            </TouchableOpacity>
           )}
-        </TouchableOpacity>
+        </View>
       </View>
     );
   };
@@ -378,6 +460,40 @@ const styles = StyleSheet.create({
   },
   approachBtnTextDone: {
     fontSize: 14,
+    fontWeight: "600",
+    color: Colors.boneDim,
+  },
+  buttonsRow: {
+    flexDirection: "row",
+    gap: 8,
+    marginTop: 14,
+  },
+  flexBtn: {
+    flex: 1,
+    marginTop: 0,
+  },
+  requestBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(201, 168, 76, 0.15)",
+    borderWidth: 1,
+    borderColor: Colors.gold,
+    paddingVertical: 10,
+    borderRadius: 12,
+    gap: 6,
+  },
+  requestBtnDone: {
+    backgroundColor: Colors.inkRaised,
+    borderColor: Colors.divider,
+  },
+  requestBtnText: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: Colors.gold,
+  },
+  requestBtnTextDone: {
+    fontSize: 13,
     fontWeight: "600",
     color: Colors.boneDim,
   },

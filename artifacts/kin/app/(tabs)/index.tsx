@@ -1,5 +1,11 @@
 import { Feather } from "@expo/vector-icons";
-import { useGetMatchQueue, useGetMe } from "@workspace/api-client-react";
+import {
+  useGetMatchQueue,
+  useGetMe,
+  useGetPendingRequests,
+  useAcceptTalkRequest,
+  useDeclineTalkRequest,
+} from "@workspace/api-client-react";
 import * as Haptics from "expo-haptics";
 import { router } from "expo-router";
 import React, { useState } from "react";
@@ -17,6 +23,7 @@ import { KLogo } from "@/components/KLogo";
 import { TeaserCandidate, TeaserSwipeDeck } from "@/components/TeaserSwipeDeck";
 import { PostsFeed } from "@/components/PostsFeed";
 import { PeopleList } from "@/components/PeopleList";
+import { PendingRequestCard, type PendingRequestItem } from "@/components/PendingRequestCard";
 import { Colors } from "@/constants/colors";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTranslation } from "@workspace/i18n";
@@ -36,6 +43,9 @@ export default function DiscoverScreen() {
   const isPeopleEnabled =
     process.env.EXPO_PUBLIC_PEOPLE_ENABLED === "true" ||
     process.env.PEOPLE_ENABLED === "true";
+  const isRequestsEnabled =
+    process.env.EXPO_PUBLIC_REQUESTS_ENABLED === "true" ||
+    process.env.REQUESTS_ENABLED === "true";
 
   const apiBaseUrl =
     process.env.EXPO_PUBLIC_API_URL ??
@@ -58,6 +68,53 @@ export default function DiscoverScreen() {
       } as any,
     }
   );
+
+  const {
+    data: pendingRequests = [],
+    refetch: refetchRequests,
+  } = useGetPendingRequests(
+    {
+      query: {
+        enabled: isRequestsEnabled && Boolean(token),
+        staleTime: 30_000,
+        refetchOnMount: true,
+      } as any,
+    }
+  );
+
+  const { mutate: acceptRequest, isPending: isAcceptingRequest } = useAcceptTalkRequest();
+  const { mutate: declineRequest, isPending: isDecliningRequest } = useDeclineTalkRequest();
+
+  const currentPendingRequest =
+    isRequestsEnabled && Array.isArray(pendingRequests) && pendingRequests.length > 0
+      ? (pendingRequests[0] as PendingRequestItem)
+      : null;
+
+  const handleAcceptRequest = (requestId: string) => {
+    acceptRequest(
+      { requestId },
+      {
+        onSuccess: (data: any) => {
+          refetchRequests();
+          refetch();
+          if (data?.matchId) {
+            router.push(`/match/${data.matchId}`);
+          }
+        },
+      }
+    );
+  };
+
+  const handleDeclineRequest = (requestId: string) => {
+    declineRequest(
+      { requestId },
+      {
+        onSuccess: () => {
+          refetchRequests();
+        },
+      }
+    );
+  };
 
   const [matchNotification, setMatchNotification] = useState<string | null>(null);
 
@@ -258,6 +315,14 @@ export default function DiscoverScreen() {
         <PostsFeed apiBaseUrl={apiBaseUrl} token={token} userId={userId ?? null} />
       ) : selectedSegment === "people" && isPeopleEnabled ? (
         <PeopleList apiBaseUrl={apiBaseUrl} token={token} userId={userId ?? null} />
+      ) : currentPendingRequest ? (
+        <PendingRequestCard
+          request={currentPendingRequest}
+          onAccept={handleAcceptRequest}
+          onDecline={handleDeclineRequest}
+          isAccepting={isAcceptingRequest}
+          isDeclining={isDecliningRequest}
+        />
       ) : isLoading ? (
         <View style={styles.center}>
           <ActivityIndicator color={Colors.trust} size="large" />
