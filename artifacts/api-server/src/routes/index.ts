@@ -16,6 +16,7 @@ import passesRouter from "./passes.js";
 import moderationRouter from "./moderation.js";
 import postsRouter from "./posts.js";
 import peopleRouter from "./people.js";
+import requestsRouter from "./requests.js";
 import { requireAuth } from "../middlewares/auth.js";
 import { verifyURRegistration } from "./urVerification.js";
 
@@ -38,6 +39,7 @@ router.use(reportsRouter);
 router.use(paymentsRouter);
 router.use(postsRouter);
 router.use(peopleRouter);
+router.use(requestsRouter);
 
 // Phase 2: UR registration verification
 router.post("/me/ur/verify-registration", requireAuth, verifyURRegistration);
