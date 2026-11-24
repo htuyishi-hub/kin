@@ -40,6 +40,27 @@ router.post("/interests", requireAuth, async (req, res) => {
     return;
   }
 
+  // Enforce INTEREST_DAILY_LIMIT (default 10)
+  const INTEREST_DAILY_LIMIT = parseInt(process.env.INTEREST_DAILY_LIMIT || "10", 10);
+  const [dailyCount] = await db
+    .select({ count: sql<number>`count(*)::int` })
+    .from(interestsTable)
+    .where(
+      and(
+        eq(interestsTable.fromUser, userId),
+        sql`${interestsTable.createdAt} >= CURRENT_DATE`
+      )
+    );
+
+  if ((dailyCount?.count ?? 0) >= INTEREST_DAILY_LIMIT) {
+    res.status(429).json({
+      code: "INTEREST_DAILY_LIMIT",
+      error: "rate_limited",
+      message: "Daily interest limit reached.",
+    });
+    return;
+  }
+
   const selectedReaction: ReactionType = VALID_REACTIONS.includes(reactionType as any)
     ? (reactionType as ReactionType)
     : "campus";
