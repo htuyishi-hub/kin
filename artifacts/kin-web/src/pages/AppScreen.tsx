@@ -33,6 +33,7 @@ import {
   MoreHorizontal,
   EyeOff,
   Camera,
+  Users,
 } from 'lucide-react';
 import { useTranslation, changeLanguage, getCurrentLanguage, type SupportedLanguage } from '@workspace/i18n';
 import { useAuth } from '@/contexts/AuthContext';
@@ -211,6 +212,30 @@ export default function AppScreen() {
   const [reportSuccess, setReportSuccess] = useState(false);
   const [isOtherTyping, setIsOtherTyping] = useState(false);
   const [readReceiptsEnabled, setReadReceiptsEnabled] = useState(false);
+  const [hideFromPeople, setHideFromPeople] = useState(false);
+
+  // Discover Part B state: People list
+  type WebPersonItem = {
+    id: string;
+    firstName: string;
+    age?: number | null;
+    campusName?: string | null;
+    faculty?: string | null;
+    city?: string | null;
+    district?: string | null;
+    bio?: string | null;
+    tags: string[];
+    photoUrl?: string | null;
+    isVerified: boolean;
+    hasInterested: boolean;
+  };
+
+  const [people, setPeople] = useState<WebPersonItem[]>([]);
+  const [isLoadingPeople, setIsLoadingPeople] = useState(false);
+  const [peopleOffset, setPeopleOffset] = useState<number | null>(0);
+  const [hasMorePeople, setHasMorePeople] = useState(true);
+  const [dailyPeopleLimitReached, setDailyPeopleLimitReached] = useState(false);
+  const [approachingPeopleIds, setApproachingPeopleIds] = useState<Set<string>>(new Set());
 
   // Discover Part A state: Posts feed
   type WebPostItem = {
@@ -289,6 +314,73 @@ export default function AppScreen() {
       fetchWebPosts();
     }
   }, [activeTab, discoverSegment, fetchWebPosts]);
+
+  const fetchWebPeople = useCallback(async (offset = 0) => {
+    if (!token) return;
+    try {
+      setIsLoadingPeople(true);
+      const res = await apiFetch(`/api/people?limit=10&offset=${offset}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        const incoming: WebPersonItem[] = data.people ?? [];
+        if (offset === 0) {
+          setPeople(incoming);
+        } else {
+          setPeople((prev) => {
+            const seen = new Set(prev.map((p) => p.id));
+            return [...prev, ...incoming.filter((p) => !seen.has(p.id))];
+          });
+        }
+        setPeopleOffset(data.nextOffset ?? null);
+        setHasMorePeople(Boolean(data.hasMore));
+        setDailyPeopleLimitReached(Boolean(data.dailyLimitReached));
+      }
+    } catch {
+      // non-fatal
+    } finally {
+      setIsLoadingPeople(false);
+    }
+  }, [token]);
+
+  useEffect(() => {
+    if (activeTab === 'discover' && discoverSegment === 'people') {
+      fetchWebPeople(0);
+    }
+  }, [activeTab, discoverSegment, fetchWebPeople]);
+
+  const handleWebApproach = async (person: WebPersonItem) => {
+    if (!token || person.hasInterested || approachingPeopleIds.has(person.id)) return;
+    setApproachingPeopleIds((prev) => new Set(prev).add(person.id));
+    try {
+      const res = await apiFetch('/api/interests', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ toUserId: person.id }),
+      });
+      if (res.status === 429) {
+        alert(t('errors.interestDailyLimit'));
+        return;
+      }
+      if (res.ok) {
+        setPeople((prev) =>
+          prev.map((p) => (p.id === person.id ? { ...p, hasInterested: true } : p))
+        );
+      }
+    } catch {
+      alert(t('errors.generic'));
+    } finally {
+      setApproachingPeopleIds((prev) => {
+        const next = new Set(prev);
+        next.delete(person.id);
+        return next;
+      });
+    }
+  };
 
   const handleToggleLikePost = async (postId: string) => {
     setPosts((prev) =>
@@ -930,6 +1022,7 @@ export default function AppScreen() {
           if (typeof data.voiceIntroPath === 'string') setVoiceIntroPath(data.voiceIntroPath);
           if (typeof data.voiceIntroDurationMs === 'number') setVoiceIntroDurationMs(data.voiceIntroDurationMs);
           if (typeof data.readReceiptsEnabled === 'boolean') setReadReceiptsEnabled(data.readReceiptsEnabled);
+          if (typeof data.hideFromPeople === 'boolean') setHideFromPeople(data.hideFromPeople);
         }
       })
       .catch(() => {});
@@ -946,6 +1039,21 @@ export default function AppScreen() {
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
         body: JSON.stringify({ readReceiptsEnabled: nextVal }),
+      });
+    } catch {}
+  }
+
+  async function handleToggleHideFromPeople() {
+    const nextVal = !hideFromPeople;
+    setHideFromPeople(nextVal);
+    try {
+      await apiFetch('/api/me', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ hideFromPeople: nextVal }),
       });
     } catch {}
   }
@@ -1519,6 +1627,136 @@ export default function AppScreen() {
                         </div>
                       </div>
                     ))
+                  )}
+                </div>
+              </div>
+            ) : discoverSegment === 'people' && isPeopleEnabled ? (
+              <div className="flex-1 flex flex-col overflow-hidden">
+                {/* Notice bar */}
+                <div className="px-4 py-2 bg-[#161B22] border-b border-[#21262D] flex items-center justify-between text-xs text-[#A8A49E] shrink-0">
+                  <span className="text-[11px]">🛡️ {t('posts.webCaptureNotice')}</span>
+                </div>
+
+                {/* People list */}
+                <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                  {isLoadingPeople && people.length === 0 ? (
+                    <div className="flex justify-center py-12">
+                      <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-[#2563EB]" />
+                    </div>
+                  ) : people.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-16 text-center text-[#A8A49E] space-y-2">
+                      <Users className="w-10 h-10 text-[#4A4742]" />
+                      <p className="text-sm font-semibold">{t('people.emptyTitle')}</p>
+                    </div>
+                  ) : (
+                    people.map((person) => {
+                      const locationStr =
+                        person.campusName || person.faculty
+                          ? [person.faculty, person.campusName].filter(Boolean).join(' · ')
+                          : [person.city, person.district].filter(Boolean).join(' · ');
+
+                      const isApproaching = approachingPeopleIds.has(person.id);
+
+                      return (
+                        <div
+                          key={person.id}
+                          className="p-4 bg-[#1A1A2E] border border-[#21262D] rounded-2xl flex flex-col gap-3 shadow-sm"
+                        >
+                          {/* Card Header: Avatar, Name, Location */}
+                          <div className="flex items-center gap-3">
+                            {person.photoUrl ? (
+                              <img
+                                src={person.photoUrl}
+                                alt={person.firstName}
+                                className="w-12 h-12 rounded-full object-cover bg-[#242438] shrink-0"
+                              />
+                            ) : (
+                              <div className="w-12 h-12 rounded-full bg-[#242438] flex items-center justify-center shrink-0">
+                                <User className="w-6 h-6 text-[#A8A49E]" />
+                              </div>
+                            )}
+
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-1.5">
+                                <span className="font-bold text-base text-[#F0EDE6] truncate">
+                                  {person.firstName}
+                                  {person.age ? `, ${person.age}` : ''}
+                                </span>
+                                {person.isVerified && (
+                                  <CheckCircle2 className="w-4 h-4 text-[#2563EB] shrink-0" />
+                                )}
+                              </div>
+                              {locationStr && (
+                                <p className="text-xs text-[#A8A49E] truncate">{locationStr}</p>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Bio */}
+                          {person.bio && (
+                            <p className="text-sm text-[#F0EDE6] leading-relaxed break-words whitespace-pre-wrap">
+                              {person.bio}
+                            </p>
+                          )}
+
+                          {/* Tags */}
+                          {Array.isArray(person.tags) && person.tags.length > 0 && (
+                            <div className="flex flex-wrap gap-1.5">
+                              {person.tags.map((tag, idx) => (
+                                <span
+                                  key={idx}
+                                  className="px-2 py-0.5 bg-[#242438] text-[11px] text-[#A8A49E] rounded-md font-medium"
+                                >
+                                  #{tag}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+
+                          {/* Action Button: Approach / Interested */}
+                          <button
+                            onClick={() => handleWebApproach(person)}
+                            disabled={person.hasInterested || isApproaching}
+                            className={`w-full py-2.5 rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition-colors cursor-pointer ${
+                              person.hasInterested
+                                ? 'bg-[#242438] text-[#A8A49E] border border-[#21262D] cursor-not-allowed'
+                                : 'bg-[#2563EB] text-[#F0EDE6] hover:bg-[#1D4ED8]'
+                            }`}
+                          >
+                            {isApproaching ? (
+                              <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-white" />
+                            ) : person.hasInterested ? (
+                              <>
+                                <Check className="w-4 h-4" />
+                                <span>{t('people.approached')}</span>
+                              </>
+                            ) : (
+                              <>
+                                <Heart className="w-4 h-4" />
+                                <span>{t('people.approach')}</span>
+                              </>
+                            )}
+                          </button>
+                        </div>
+                      );
+                    })
+                  )}
+
+                  {/* Load More Button */}
+                  {hasMorePeople && !dailyPeopleLimitReached && people.length > 0 && (
+                    <div className="flex justify-center pt-2 pb-4">
+                      <button
+                        onClick={() => peopleOffset !== null && fetchWebPeople(peopleOffset)}
+                        disabled={isLoadingPeople}
+                        className="px-4 py-2 bg-[#1A1A2E] border border-[#21262D] rounded-xl text-xs font-semibold text-[#A8A49E] hover:text-[#F0EDE6] transition-colors cursor-pointer"
+                      >
+                        {isLoadingPeople ? (
+                          <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-[#2563EB]" />
+                        ) : (
+                          'Load more'
+                        )}
+                      </button>
+                    </div>
                   )}
                 </div>
               </div>
@@ -2382,6 +2620,27 @@ export default function AppScreen() {
                   <div
                     className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${
                       readReceiptsEnabled ? 'translate-x-5' : 'translate-x-0'
+                    }`}
+                  />
+                </button>
+              </div>
+
+              {/* Hide from People Setting Row */}
+              <div className="p-4 bg-[#1A1A2E] border border-[#21262D] rounded-2xl flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <EyeOff className="w-5 h-5 text-[#A8A49E]" />
+                  <span className="text-sm font-medium text-[#F0EDE6]">{t('profile.hideFromPeople')}</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleToggleHideFromPeople}
+                  className={`w-11 h-6 flex items-center rounded-full p-1 cursor-pointer transition-colors ${
+                    hideFromPeople ? 'bg-[#2563EB]' : 'bg-[#21262D]'
+                  }`}
+                >
+                  <div
+                    className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${
+                      hideFromPeople ? 'translate-x-5' : 'translate-x-0'
                     }`}
                   />
                 </button>
