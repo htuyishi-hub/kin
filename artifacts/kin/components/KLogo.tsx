@@ -1,5 +1,5 @@
 import React, { useEffect, useId } from 'react';
-import Svg, { Defs, LinearGradient, Stop, Path } from 'react-native-svg';
+import Svg, { Defs, LinearGradient, Stop, Path, Rect } from 'react-native-svg';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -7,6 +7,7 @@ import Animated, {
   withTiming,
   Easing,
 } from 'react-native-reanimated';
+import { Colors } from '../constants/colors';
 
 type Props = {
   size?:    number;
@@ -57,6 +58,7 @@ export function KLogo({
             </LinearGradient>
           </Defs>
         )}
+        <Rect x="-76" y="-76" width="152" height="152" rx="28" fill={Colors.night} />
         <Path
           d="M -65.73 -50 L -65.73 50"
           stroke={stroke}

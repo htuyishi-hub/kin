@@ -29,6 +29,7 @@ export function KinnLogo({ size = 36, pulse = false, className = '' }: Props) {
             <stop offset="100%" stopColor="#2563EB" />
           </linearGradient>
         </defs>
+        <rect x="-76" y="-76" width="152" height="152" rx="28" fill="#0D1117" />
         <path
           d="M -65.73 -50 L -65.73 50"
           stroke={`url(#${gradId})`}
