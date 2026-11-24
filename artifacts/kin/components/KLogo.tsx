@@ -1,5 +1,5 @@
-import React, { useEffect } from 'react';
-import { Image } from 'react-native';
+import React, { useEffect, useId } from 'react';
+import Svg, { Defs, LinearGradient, Stop, Path } from 'react-native-svg';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -17,8 +17,10 @@ type Props = {
 
 export function KLogo({
   size    = 40,
+  color,
   pulse   = false,
 }: Props) {
+  const gradId  = useId();
   const scale   = useSharedValue(1);
   const opacity = useSharedValue(1);
 
@@ -42,13 +44,41 @@ export function KLogo({
     opacity: opacity.value,
   }));
 
+  const stroke = color || `url(#${gradId})`;
+
   return (
     <Animated.View style={animStyle}>
-      <Image
-        source={require('../assets/logo_mark_transparent.png')}
-        style={{ width: size, height: size }}
-        resizeMode="contain"
-      />
+      <Svg width={size} height={size} viewBox="-76 -76 152 152" fill="none">
+        {!color && (
+          <Defs>
+            <LinearGradient id={gradId} x1="-70" y1="0" x2="70" y2="0" gradientUnits="userSpaceOnUse">
+              <Stop offset="0%" stopColor="#38BDF8" />
+              <Stop offset="100%" stopColor="#2563EB" />
+            </LinearGradient>
+          </Defs>
+        )}
+        <Path
+          d="M -65.73 -50 L -65.73 50"
+          stroke={stroke}
+          strokeWidth={9.5}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+        <Path
+          d="M -57.34 38.11 C -51.75 15.38 -39.86 -3.85 -23.08 -17.13"
+          stroke={stroke}
+          strokeWidth={9.5}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+        <Path
+          d="M -43.71 11.89 C -34.97 25.87 -26.22 46.50 -12.59 46.50 C -1.75 46.50 2.80 27.62 4.20 3.15 C 4.90 -10.84 17.48 -15.73 33.22 -15.73 C 50.70 -15.73 65.73 -8.04 65.73 10.14 L 65.73 49.30"
+          stroke={stroke}
+          strokeWidth={9.5}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </Svg>
     </Animated.View>
   );
 }

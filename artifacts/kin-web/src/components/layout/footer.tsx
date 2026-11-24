@@ -1,18 +1,13 @@
 import { Link } from "wouter";
+import { KinnLogo } from "@/components/KinnLogo";
 
 export function Footer() {
-  const base = import.meta.env.BASE_URL;
-
   return (
     <footer className="bg-ink border-t border-divider py-12 md:py-16 mt-20">
       <div className="container mx-auto px-4 grid grid-cols-1 md:grid-cols-4 gap-8">
         <div className="col-span-1 md:col-span-2 space-y-4">
           <Link href="/" className="flex items-center gap-2.5 font-serif text-3xl font-bold text-bone">
-            <img
-              src={`${base}logo_mark_transparent.png`}
-              alt="kinn"
-              className="w-9 h-9 rounded-lg object-contain"
-            />
+            <KinnLogo size={36} />
             <span>kinn</span>
           </Link>
           <p className="text-bone-dim max-w-sm">

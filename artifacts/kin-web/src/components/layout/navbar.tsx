@@ -1,18 +1,13 @@
 import { Link } from "wouter";
 import { Download } from "lucide-react";
+import { KinnLogo } from "@/components/KinnLogo";
 
 export function Navbar() {
-  const base = import.meta.env.BASE_URL;
-
   return (
     <header className="fixed top-0 left-0 right-0 z-50 bg-night/80 backdrop-blur-md border-b border-divider">
       <div className="container mx-auto px-4 h-16 flex items-center justify-between">
         <Link href="/" className="flex items-center gap-2.5 font-serif text-2xl font-bold text-bone group">
-          <img
-            src={`${base}logo_mark_transparent.png`}
-            alt="kinn"
-            className="w-8 h-8 rounded-lg object-contain shadow-sm"
-          />
+          <KinnLogo size={32} />
           <span className="tracking-tight text-bone group-hover:text-gold transition-colors">kinn</span>
         </Link>
         <nav className="hidden md:flex items-center gap-8 text-sm font-medium text-bone-dim">
