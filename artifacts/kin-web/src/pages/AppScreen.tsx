@@ -259,6 +259,32 @@ export default function AppScreen() {
   const isPeopleEnabled =
     import.meta.env.VITE_PEOPLE_ENABLED === 'true' ||
     import.meta.env.PEOPLE_ENABLED === 'true';
+  const isRequestsEnabled =
+    import.meta.env.VITE_REQUESTS_ENABLED === 'true' ||
+    import.meta.env.REQUESTS_ENABLED === 'true';
+
+  // Discover Part C state: Wants to talk requests
+  type WebTalkRequestItem = {
+    id: string;
+    senderId: string;
+    firstName: string;
+    age?: number | null;
+    campusName?: string | null;
+    faculty?: string | null;
+    city?: string | null;
+    district?: string | null;
+    bio?: string | null;
+    tags: string[];
+    photoUrl?: string | null;
+    isVerified: boolean;
+    createdAt: string;
+  };
+
+  const [pendingRequests, setPendingRequests] = useState<WebTalkRequestItem[]>([]);
+  const [isLoadingRequests, setIsLoadingRequests] = useState(false);
+  const [isAcceptingRequest, setIsAcceptingRequest] = useState(false);
+  const [isDecliningRequest, setIsDecliningRequest] = useState(false);
+  const [sentRequestIds, setSentRequestIds] = useState<Set<string>>(new Set());
 
   const [discoverSegment, setDiscoverSegment] = useState<'deck' | 'posts' | 'people'>('deck');
   const [posts, setPosts] = useState<WebPostItem[]>([]);
@@ -379,6 +405,105 @@ export default function AppScreen() {
         next.delete(person.id);
         return next;
       });
+    }
+  };
+
+  const fetchWebPendingRequests = useCallback(async () => {
+    if (!token || !isRequestsEnabled) return;
+    try {
+      setIsLoadingRequests(true);
+      const res = await apiFetch('/api/requests/pending', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setPendingRequests(data ?? []);
+      }
+    } catch {
+      // non-fatal
+    } finally {
+      setIsLoadingRequests(false);
+    }
+  }, [token, isRequestsEnabled]);
+
+  useEffect(() => {
+    if (activeTab === 'discover' && discoverSegment === 'deck') {
+      fetchWebPendingRequests();
+    }
+  }, [activeTab, discoverSegment, fetchWebPendingRequests]);
+
+  const handleAcceptTalkRequest = async (requestId: string) => {
+    if (!token || isAcceptingRequest) return;
+    setIsAcceptingRequest(true);
+    const req = pendingRequests.find((r) => r.id === requestId);
+    try {
+      const res = await apiFetch(`/api/requests/${requestId}/accept`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        setPendingRequests((prev) => prev.filter((r) => r.id !== requestId));
+        setMatchAlert(req?.firstName ? t('discover.matchAlert', { name: req.firstName }) : t('matches.newMatchTitle'));
+        setTimeout(() => setMatchAlert(null), 4000);
+        apiFetch('/api/matches', { headers: { Authorization: `Bearer ${token}` } })
+          .then((r) => (r.ok ? r.json() : []))
+          .then((data) => {
+            if (Array.isArray(data)) setRealMatches(data);
+          })
+          .catch(() => {});
+      }
+    } catch {
+      alert(t('errors.generic'));
+    } finally {
+      setIsAcceptingRequest(false);
+    }
+  };
+
+  const handleDeclineTalkRequest = async (requestId: string) => {
+    if (!token || isDecliningRequest) return;
+    setIsDecliningRequest(true);
+    try {
+      const res = await apiFetch(`/api/requests/${requestId}/decline`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        setPendingRequests((prev) => prev.filter((r) => r.id !== requestId));
+      }
+    } catch {
+      alert(t('errors.generic'));
+    } finally {
+      setIsDecliningRequest(false);
+    }
+  };
+
+  const handleSendTalkRequest = async (person: WebPersonItem) => {
+    if (!token || sentRequestIds.has(person.id)) return;
+    try {
+      const res = await apiFetch('/api/requests', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ toUserId: person.id }),
+      });
+      if (res.status === 429) {
+        alert(t('errors.requestDailyLimit'));
+        return;
+      }
+      if (!res.ok) {
+        const err = await res.json().catch(() => null);
+        if (err?.code === 'DUPLICATE_REQUEST') {
+          alert(t('errors.requestAlreadySent'));
+        } else {
+          alert(t('errors.generic'));
+        }
+        return;
+      }
+      setSentRequestIds((prev) => new Set(prev).add(person.id));
+    } catch {
+      alert(t('errors.generic'));
     }
   };
 
@@ -1713,30 +1838,56 @@ export default function AppScreen() {
                             </div>
                           )}
 
-                          {/* Action Button: Approach / Interested */}
-                          <button
-                            onClick={() => handleWebApproach(person)}
-                            disabled={person.hasInterested || isApproaching}
-                            className={`w-full py-2.5 rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition-colors cursor-pointer ${
-                              person.hasInterested
-                                ? 'bg-[#242438] text-[#A8A49E] border border-[#21262D] cursor-not-allowed'
-                                : 'bg-[#2563EB] text-[#F0EDE6] hover:bg-[#1D4ED8]'
-                            }`}
-                          >
-                            {isApproaching ? (
-                              <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-white" />
-                            ) : person.hasInterested ? (
-                              <>
-                                <Check className="w-4 h-4" />
-                                <span>{t('people.approached')}</span>
-                              </>
-                            ) : (
-                              <>
-                                <Heart className="w-4 h-4" />
-                                <span>{t('people.approach')}</span>
-                              </>
+                          {/* Action Buttons: Approach and Request */}
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => handleWebApproach(person)}
+                              disabled={person.hasInterested || isApproaching}
+                              className={`flex-1 py-2.5 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer ${
+                                person.hasInterested
+                                  ? 'bg-[#242438] text-[#A8A49E] border border-[#21262D] cursor-not-allowed'
+                                  : 'bg-[#2563EB] text-[#F0EDE6] hover:bg-[#1D4ED8]'
+                              }`}
+                            >
+                              {isApproaching ? (
+                                <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-white" />
+                              ) : person.hasInterested ? (
+                                <>
+                                  <Check className="w-4 h-4" />
+                                  <span>{t('people.approached')}</span>
+                                </>
+                              ) : (
+                                <>
+                                  <Heart className="w-4 h-4" />
+                                  <span>{t('people.approach')}</span>
+                                </>
+                              )}
+                            </button>
+
+                            {isRequestsEnabled && (
+                              <button
+                                onClick={() => handleSendTalkRequest(person)}
+                                disabled={sentRequestIds.has(person.id)}
+                                className={`flex-1 py-2.5 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer ${
+                                  sentRequestIds.has(person.id)
+                                    ? 'bg-[#242438] text-[#A8A49E] border border-[#21262D] cursor-not-allowed'
+                                    : 'bg-[#C9A84C]/15 border border-[#C9A84C] text-[#C9A84C] hover:bg-[#C9A84C]/25'
+                                }`}
+                              >
+                                {sentRequestIds.has(person.id) ? (
+                                  <>
+                                    <Check className="w-4 h-4" />
+                                    <span>{t('requests.requestSent')}</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <MessageCircle className="w-4 h-4" />
+                                    <span>{t('requests.sendRequest')}</span>
+                                  </>
+                                )}
+                              </button>
                             )}
-                          </button>
+                          </div>
                         </div>
                       );
                     })
@@ -1758,6 +1909,113 @@ export default function AppScreen() {
                       </button>
                     </div>
                   )}
+                </div>
+              </div>
+            ) : isRequestsEnabled && pendingRequests.length > 0 ? (
+              <div className="flex-1 flex flex-col px-4 py-3 justify-between relative">
+                {/* Match Toast Notification */}
+                {matchAlert && (
+                  <div className="absolute top-4 left-4 right-4 z-30 p-3 bg-[#3FB950] text-[#0D1117] rounded-xl font-bold text-center text-xs shadow-xl animate-bounce">
+                    🎉 {matchAlert}
+                  </div>
+                )}
+
+                {/* Pending Talk Request Card */}
+                <div className="w-full flex-1 rounded-3xl bg-[#1A1A2E] border-2 border-[#C9A84C]/60 overflow-hidden flex flex-col relative shadow-2xl">
+                  {/* Photo Area */}
+                  <div className="relative h-64 w-full bg-[#242438] overflow-hidden">
+                    {pendingRequests[0].photoUrl ? (
+                      <img
+                        src={pendingRequests[0].photoUrl}
+                        alt={pendingRequests[0].firstName}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center bg-[#242438]">
+                        <User className="w-16 h-16 text-[#A8A49E]" />
+                      </div>
+                    )}
+                    <div className="absolute inset-0 bg-gradient-to-t from-[#1A1A2E] via-transparent to-black/30" />
+
+                    {/* Badge: Wants to talk */}
+                    <div className="absolute top-3 left-3 flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#0D1117]/85 border border-[#C9A84C] text-[#C9A84C] text-xs font-bold shadow">
+                      <Sparkles className="w-3.5 h-3.5 text-[#C9A84C]" />
+                      <span>{t('requests.badge')}</span>
+                    </div>
+                  </div>
+
+                  {/* Body Content */}
+                  <div className="p-4 flex-1 flex flex-col justify-between">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h2 className="text-xl font-bold text-[#F0EDE6]">
+                          {pendingRequests[0].firstName}
+                          {pendingRequests[0].age ? `, ${pendingRequests[0].age}` : ''}
+                        </h2>
+                        {pendingRequests[0].isVerified && (
+                          <CheckCircle2 className="w-5 h-5 text-[#2563EB]" />
+                        )}
+                      </div>
+
+                      {(pendingRequests[0].campusName || pendingRequests[0].faculty || pendingRequests[0].city) && (
+                        <p className="text-xs text-[#A8A49E] mt-1">
+                          {[pendingRequests[0].faculty, pendingRequests[0].campusName, pendingRequests[0].city].filter(Boolean).join(' · ')}
+                        </p>
+                      )}
+
+                      {pendingRequests[0].bio && (
+                        <p className="text-sm text-[#F0EDE6] mt-3 leading-relaxed">
+                          {pendingRequests[0].bio}
+                        </p>
+                      )}
+
+                      {Array.isArray(pendingRequests[0].tags) && pendingRequests[0].tags.length > 0 && (
+                        <div className="flex flex-wrap gap-1.5 mt-3">
+                          {pendingRequests[0].tags.map((tag, idx) => (
+                            <span
+                              key={idx}
+                              className="px-2 py-0.5 bg-[#242438] text-[11px] text-[#A8A49E] rounded-md font-medium"
+                            >
+                              #{tag}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Action Buttons: Decline and Accept */}
+                    <div className="flex items-center gap-3 pt-4 border-t border-[#21262D]">
+                      <button
+                        onClick={() => handleDeclineTalkRequest(pendingRequests[0].id)}
+                        disabled={isDecliningRequest || isAcceptingRequest}
+                        className="flex-1 py-3 bg-[#E5534B]/15 border border-[#E5534B] text-[#E5534B] rounded-2xl font-bold text-xs flex items-center justify-center gap-2 hover:bg-[#E5534B]/25 transition-colors cursor-pointer"
+                      >
+                        {isDecliningRequest ? (
+                          <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-[#E5534B]" />
+                        ) : (
+                          <>
+                            <X className="w-4 h-4" />
+                            <span>{t('requests.decline')}</span>
+                          </>
+                        )}
+                      </button>
+
+                      <button
+                        onClick={() => handleAcceptTalkRequest(pendingRequests[0].id)}
+                        disabled={isDecliningRequest || isAcceptingRequest}
+                        className="flex-1 py-3 bg-[#2563EB] text-[#F0EDE6] rounded-2xl font-bold text-xs flex items-center justify-center gap-2 hover:bg-[#1D4ED8] transition-colors cursor-pointer shadow-lg"
+                      >
+                        {isAcceptingRequest ? (
+                          <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-white" />
+                        ) : (
+                          <>
+                            <Heart className="w-4 h-4" />
+                            <span>{t('requests.accept')}</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  </div>
                 </div>
               </div>
             ) : (
