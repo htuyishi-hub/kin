@@ -35,6 +35,7 @@ export interface MyProfile {
   voiceIntroPath?: string | null;
   voiceIntroDurationMs?: number | null;
   readReceiptsEnabled?: boolean;
+  hideFromPeople?: boolean;
   createdAt: Date;
   lastActive: Date;
 }

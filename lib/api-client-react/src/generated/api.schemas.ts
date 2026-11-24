@@ -89,6 +89,7 @@ export interface MyProfile {
   voiceIntroPath?: string | null;
   voiceIntroDurationMs?: number | null;
   readReceiptsEnabled?: boolean;
+  hideFromPeople?: boolean;
   createdAt: string;
   lastActive: string;
 }
@@ -114,6 +115,7 @@ export interface UpdateProfileRequest {
   district?: string;
   proximityConsent?: boolean;
   readReceiptsEnabled?: boolean;
+  hideFromPeople?: boolean;
 }
 
 export interface UpdateProfileExtrasRequest {
@@ -415,6 +417,29 @@ export interface PostLikeResponse {
   likeCount?: number | null;
 }
 
+export interface PersonItem {
+  id: string;
+  firstName: string;
+  age?: number | null;
+  campusName?: string | null;
+  faculty?: string | null;
+  city?: string | null;
+  district?: string | null;
+  bio?: string | null;
+  tags: string[];
+  photoUrl?: string | null;
+  isVerified: boolean;
+  hasInterested: boolean;
+}
+
+export interface PeopleListResponse {
+  people: PersonItem[];
+  nextOffset?: number | null;
+  hasMore?: boolean;
+  dailyLimitReached: boolean;
+  totalViewedToday: number;
+}
+
 export type VerifyURRegistrationBody = {
   /** Student registration number (9 digits) */
   registration_number: string;
@@ -498,5 +523,10 @@ export type ReportPostBody = {
 
 export type ReportPost200 = {
   reported?: boolean;
+};
+
+export type GetPeopleParams = {
+limit?: number;
+offset?: number;
 };
 

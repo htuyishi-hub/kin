@@ -32,6 +32,7 @@ import type {
   ExpressInterestRequest,
   GetMatchQueueParams,
   GetMessagesParams,
+  GetPeopleParams,
   GetPostPhotoUploadUrl200,
   GetPostsParams,
   HealthStatus,
@@ -47,6 +48,7 @@ import type {
   OnboardingRequest,
   PauseProfileBody,
   Payment,
+  PeopleListResponse,
   Photo,
   PostItem,
   PostLikeResponse,
@@ -2873,4 +2875,88 @@ export const useReportPost = <TError = ErrorType<unknown>,
       > => {
       return useMutation(getReportPostMutationOptions(options));
     }
+
+export const getGetPeopleUrl = (params?: GetPeopleParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/people?${stringifiedParams}` : `/api/people`
+}
+
+/**
+ * @summary Get discoverable members list (ordered by daily viewer seed, max 30/day)
+ */
+export const getPeople = async (params?: GetPeopleParams, options?: RequestInit): Promise<PeopleListResponse> => {
+
+  return customFetch<PeopleListResponse>(getGetPeopleUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetPeopleQueryKey = (params?: GetPeopleParams,) => {
+    return [
+    `/api/people`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetPeopleQueryOptions = <TData = Awaited<ReturnType<typeof getPeople>>, TError = ErrorType<ErrorResponse>>(params?: GetPeopleParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPeople>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetPeopleQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getPeople>>> = ({ signal }) => getPeople(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getPeople>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetPeopleQueryResult = NonNullable<Awaited<ReturnType<typeof getPeople>>>
+export type GetPeopleQueryError = ErrorType<ErrorResponse>
+
+
+/**
+ * @summary Get discoverable members list (ordered by daily viewer seed, max 30/day)
+ */
+
+export function useGetPeople<TData = Awaited<ReturnType<typeof getPeople>>, TError = ErrorType<ErrorResponse>>(
+ params?: GetPeopleParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPeople>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetPeopleQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 

@@ -80,6 +80,7 @@ export const GetMeResponse = zod.object({
   "voiceIntroPath": zod.string().nullish(),
   "voiceIntroDurationMs": zod.number().nullish(),
   "readReceiptsEnabled": zod.boolean().optional(),
+  "hideFromPeople": zod.boolean().optional(),
   "createdAt": zod.coerce.date(),
   "lastActive": zod.coerce.date()
 })
@@ -99,7 +100,8 @@ export const UpdateMeBody = zod.object({
   "city": zod.string().optional(),
   "district": zod.string().optional(),
   "proximityConsent": zod.boolean().optional(),
-  "readReceiptsEnabled": zod.boolean().optional()
+  "readReceiptsEnabled": zod.boolean().optional(),
+  "hideFromPeople": zod.boolean().optional()
 })
 
 export const UpdateMeResponse = zod.object({
@@ -129,6 +131,7 @@ export const UpdateMeResponse = zod.object({
   "voiceIntroPath": zod.string().nullish(),
   "voiceIntroDurationMs": zod.number().nullish(),
   "readReceiptsEnabled": zod.boolean().optional(),
+  "hideFromPeople": zod.boolean().optional(),
   "createdAt": zod.coerce.date(),
   "lastActive": zod.coerce.date()
 })
@@ -174,6 +177,7 @@ export const CompleteOnboardingResponse = zod.object({
   "voiceIntroPath": zod.string().nullish(),
   "voiceIntroDurationMs": zod.number().nullish(),
   "readReceiptsEnabled": zod.boolean().optional(),
+  "hideFromPeople": zod.boolean().optional(),
   "createdAt": zod.coerce.date(),
   "lastActive": zod.coerce.date()
 })
@@ -222,6 +226,7 @@ export const UpdateProfileExtrasResponse = zod.object({
   "voiceIntroPath": zod.string().nullish(),
   "voiceIntroDurationMs": zod.number().nullish(),
   "readReceiptsEnabled": zod.boolean().optional(),
+  "hideFromPeople": zod.boolean().optional(),
   "createdAt": zod.coerce.date(),
   "lastActive": zod.coerce.date()
 })
@@ -267,6 +272,7 @@ export const UploadVoiceIntroResponse = zod.object({
   "voiceIntroPath": zod.string().nullish(),
   "voiceIntroDurationMs": zod.number().nullish(),
   "readReceiptsEnabled": zod.boolean().optional(),
+  "hideFromPeople": zod.boolean().optional(),
   "createdAt": zod.coerce.date(),
   "lastActive": zod.coerce.date()
 })
@@ -302,6 +308,7 @@ export const DeleteVoiceIntroResponse = zod.object({
   "voiceIntroPath": zod.string().nullish(),
   "voiceIntroDurationMs": zod.number().nullish(),
   "readReceiptsEnabled": zod.boolean().optional(),
+  "hideFromPeople": zod.boolean().optional(),
   "createdAt": zod.coerce.date(),
   "lastActive": zod.coerce.date()
 })
@@ -357,6 +364,7 @@ export const PauseProfileResponse = zod.object({
   "voiceIntroPath": zod.string().nullish(),
   "voiceIntroDurationMs": zod.number().nullish(),
   "readReceiptsEnabled": zod.boolean().optional(),
+  "hideFromPeople": zod.boolean().optional(),
   "createdAt": zod.coerce.date(),
   "lastActive": zod.coerce.date()
 })
@@ -906,6 +914,39 @@ export const ReportPostBody = zod.object({
 
 export const ReportPostResponse = zod.object({
   "reported": zod.boolean().optional()
+})
+
+
+/**
+ * @summary Get discoverable members list (ordered by daily viewer seed, max 30/day)
+ */
+export const getPeopleQueryLimitDefault = 10;
+export const getPeopleQueryOffsetDefault = 0;
+
+export const GetPeopleQueryParams = zod.object({
+  "limit": zod.coerce.number().default(getPeopleQueryLimitDefault),
+  "offset": zod.coerce.number().default(getPeopleQueryOffsetDefault)
+})
+
+export const GetPeopleResponse = zod.object({
+  "people": zod.array(zod.object({
+  "id": zod.string(),
+  "firstName": zod.string(),
+  "age": zod.number().nullish(),
+  "campusName": zod.string().nullish(),
+  "faculty": zod.string().nullish(),
+  "city": zod.string().nullish(),
+  "district": zod.string().nullish(),
+  "bio": zod.string().nullish(),
+  "tags": zod.array(zod.string()),
+  "photoUrl": zod.string().nullish(),
+  "isVerified": zod.boolean(),
+  "hasInterested": zod.boolean()
+})),
+  "nextOffset": zod.number().nullish(),
+  "hasMore": zod.boolean().optional(),
+  "dailyLimitReached": zod.boolean(),
+  "totalViewedToday": zod.number()
 })
 
 

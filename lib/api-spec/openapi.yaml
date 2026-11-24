@@ -469,6 +469,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+        "429":
+          description: Daily interest limit reached
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
 
   # ── Matches ──────────────────────────────────────────────────────────────────
   /matches:
@@ -1044,6 +1050,47 @@ paths:
                   reported:
                     type: boolean
 
+  # ── People ───────────────────────────────────────────────────────────────────
+  /people:
+    get:
+      operationId: getPeople
+      tags: [people]
+      summary: Get discoverable members list (ordered by daily viewer seed, max 30/day)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 10
+        - name: offset
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 0
+      responses:
+        "200":
+          description: People list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PeopleListResponse"
+        "403":
+          description: Forbidden - Not verified or active
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Feature disabled
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
 # ── Schemas ──────────────────────────────────────────────────────────────────
 components:
   securitySchemes:
@@ -1191,6 +1238,8 @@ components:
           nullable: true
         readReceiptsEnabled:
           type: boolean
+        hideFromPeople:
+          type: boolean
         createdAt:
           type: string
           format: date-time
@@ -1238,6 +1287,8 @@ components:
         proximityConsent:
           type: boolean
         readReceiptsEnabled:
+          type: boolean
+        hideFromPeople:
           type: boolean
 
     UpdateProfileExtrasRequest:
@@ -1710,3 +1761,68 @@ components:
         likeCount:
           type: integer
           nullable: true
+
+    PersonItem:
+      type: object
+      required:
+        - id
+        - firstName
+        - isVerified
+        - tags
+        - hasInterested
+      properties:
+        id:
+          type: string
+        firstName:
+          type: string
+        age:
+          type: integer
+          nullable: true
+        campusName:
+          type: string
+          nullable: true
+        faculty:
+          type: string
+          nullable: true
+        city:
+          type: string
+          nullable: true
+        district:
+          type: string
+          nullable: true
+        bio:
+          type: string
+          nullable: true
+        tags:
+          type: array
+          items:
+            type: string
+        photoUrl:
+          type: string
+          nullable: true
+        isVerified:
+          type: boolean
+        hasInterested:
+          type: boolean
+
+    PeopleListResponse:
+      type: object
+      required:
+        - people
+        - dailyLimitReached
+        - totalViewedToday
+      properties:
+        people:
+          type: array
+          items:
+            $ref: "#/components/schemas/PersonItem"
+        nextOffset:
+          type: integer
+          nullable: true
+        hasMore:
+          type: boolean
+        dailyLimitReached:
+          type: boolean
+        totalViewedToday:
+          type: integer
+

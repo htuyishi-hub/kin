@@ -19,4 +19,5 @@ export interface UpdateProfileRequest {
   district?: string;
   proximityConsent?: boolean;
   readReceiptsEnabled?: boolean;
+  hideFromPeople?: boolean;
 }
