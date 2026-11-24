@@ -59,6 +59,7 @@ export const profilesTable = pgTable("profiles", {
   onboardingComplete: boolean("onboarding_complete").default(false),
   language: text("language").$type<"en" | "rw">().default("en"),
   readReceiptsEnabled: boolean("read_receipts_enabled").default(false),
+  hideFromPeople: boolean("hide_from_people").default(false),
 
   // Profile extras (optional)
   bio: text("bio"),
