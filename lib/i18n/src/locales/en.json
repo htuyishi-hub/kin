@@ -234,6 +234,7 @@
     "tabTitle": "Profile",
     "myProfile": "My Profile",
     "readReceipts": "Read receipts",
+    "hideFromPeople": "Hide from People list",
     "language": "Language",
     "languageEn": "English",
     "languageRw": "Kinyarwanda",
@@ -342,7 +343,14 @@
     "postDailyLimit": "Maximum 1 post per day.",
     "maxActivePosts": "Maximum 3 live posts.",
     "likeRateLimit": "Daily like limit reached.",
+    "interestDailyLimit": "Daily interest limit reached.",
     "featureDisabled": "Feature disabled."
+  },
+  "people": {
+    "title": "People",
+    "emptyTitle": "No members right now",
+    "approach": "Interested",
+    "approached": "Expressed Interest"
   },
   "posts": {
     "title": "Posts",

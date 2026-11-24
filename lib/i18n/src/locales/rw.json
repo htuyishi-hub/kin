@@ -234,6 +234,7 @@
     "tabTitle": "Umwirondoro",
     "myProfile": "Umwirondoro Wange",
     "readReceipts": "Kumenya ko byasomwe",
+    "hideFromPeople": "Hisha ku rutonde rw'abanyamuryango",
     "language": "Ururimi",
     "languageEn": "English",
     "languageRw": "Ikinyarwanda",
@@ -341,7 +342,14 @@
     "postDailyLimit": "Ubutumwa 1 gusa ku munsi bwemewe.",
     "maxActivePosts": "Ubutumwa 3 gusa bukora bwemewe.",
     "likeRateLimit": "Warengeje inshuro zo gukunda z'umunsi.",
+    "interestDailyLimit": "Warengeje inshuro zo gushimishwa z'umunsi.",
     "featureDisabled": "Iki kintu ntabwo kigikora."
+  },
+  "people": {
+    "title": "Abanyamuryango",
+    "emptyTitle": "Nta banyamuryango babonetse",
+    "approach": "Gushimishwa",
+    "approached": "Wagaragaje ko ushishikajwe"
   },
   "posts": {
     "title": "Ubutumwa",
