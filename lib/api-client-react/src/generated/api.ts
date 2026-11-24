@@ -20,11 +20,13 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
+  AcceptTalkRequestResponse,
   AddPhotoRequest,
   AuthSession,
   ConfirmPostPhotoUpload200,
   ConfirmPostPhotoUploadBody,
   CreatePostRequest,
+  DeclineTalkRequestResponse,
   DeletePost200,
   EditMessageRequest,
   ErrorResponse,
@@ -59,6 +61,9 @@ import type {
   SendMessageRequest,
   SendOtpRequest,
   SendOtpResponse,
+  SendTalkRequestRequest,
+  SendTalkRequestResponse,
+  TalkRequestItem,
   UpdateProfileExtrasRequest,
   UpdateProfileRequest,
   UploadVoiceIntroRequest,
@@ -2959,4 +2964,294 @@ export function useGetPeople<TData = Awaited<ReturnType<typeof getPeople>>, TErr
 
 
 
+
+export const getGetPendingRequestsUrl = () => {
+
+
+
+
+  return `/api/requests/pending`
+}
+
+/**
+ * @summary Get pending wants to talk requests for current user
+ */
+export const getPendingRequests = async ( options?: RequestInit): Promise<TalkRequestItem[]> => {
+
+  return customFetch<TalkRequestItem[]>(getGetPendingRequestsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetPendingRequestsQueryKey = () => {
+    return [
+    `/api/requests/pending`
+    ] as const;
+    }
+
+
+export const getGetPendingRequestsQueryOptions = <TData = Awaited<ReturnType<typeof getPendingRequests>>, TError = ErrorType<ErrorResponse>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPendingRequests>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetPendingRequestsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getPendingRequests>>> = ({ signal }) => getPendingRequests({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getPendingRequests>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetPendingRequestsQueryResult = NonNullable<Awaited<ReturnType<typeof getPendingRequests>>>
+export type GetPendingRequestsQueryError = ErrorType<ErrorResponse>
+
+
+/**
+ * @summary Get pending wants to talk requests for current user
+ */
+
+export function useGetPendingRequests<TData = Awaited<ReturnType<typeof getPendingRequests>>, TError = ErrorType<ErrorResponse>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPendingRequests>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetPendingRequestsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getSendTalkRequestUrl = () => {
+
+
+
+
+  return `/api/requests`
+}
+
+/**
+ * @summary Send a wants to talk request to a member
+ */
+export const sendTalkRequest = async (sendTalkRequestRequest: SendTalkRequestRequest, options?: RequestInit): Promise<SendTalkRequestResponse> => {
+
+  return customFetch<SendTalkRequestResponse>(getSendTalkRequestUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(sendTalkRequestRequest)
+  }
+);}
+
+
+
+
+
+export const getSendTalkRequestMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof sendTalkRequest>>, TError,{data: BodyType<SendTalkRequestRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof sendTalkRequest>>, TError,{data: BodyType<SendTalkRequestRequest>}, TContext> => {
+
+const mutationKey = ['sendTalkRequest'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof sendTalkRequest>>, {data: BodyType<SendTalkRequestRequest>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  sendTalkRequest(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SendTalkRequestMutationResult = NonNullable<Awaited<ReturnType<typeof sendTalkRequest>>>
+    export type SendTalkRequestMutationBody = BodyType<SendTalkRequestRequest>
+    export type SendTalkRequestMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Send a wants to talk request to a member
+ */
+export const useSendTalkRequest = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof sendTalkRequest>>, TError,{data: BodyType<SendTalkRequestRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof sendTalkRequest>>,
+        TError,
+        {data: BodyType<SendTalkRequestRequest>},
+        TContext
+      > => {
+      return useMutation(getSendTalkRequestMutationOptions(options));
+    }
+
+export const getAcceptTalkRequestUrl = (requestId: string,) => {
+
+
+
+
+  return `/api/requests/${requestId}/accept`
+}
+
+/**
+ * @summary Accept a wants to talk request and create a match
+ */
+export const acceptTalkRequest = async (requestId: string, options?: RequestInit): Promise<AcceptTalkRequestResponse> => {
+
+  return customFetch<AcceptTalkRequestResponse>(getAcceptTalkRequestUrl(requestId),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getAcceptTalkRequestMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof acceptTalkRequest>>, TError,{requestId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof acceptTalkRequest>>, TError,{requestId: string}, TContext> => {
+
+const mutationKey = ['acceptTalkRequest'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof acceptTalkRequest>>, {requestId: string}> = (props) => {
+          const {requestId} = props ?? {};
+
+          return  acceptTalkRequest(requestId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type AcceptTalkRequestMutationResult = NonNullable<Awaited<ReturnType<typeof acceptTalkRequest>>>
+
+    export type AcceptTalkRequestMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Accept a wants to talk request and create a match
+ */
+export const useAcceptTalkRequest = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof acceptTalkRequest>>, TError,{requestId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof acceptTalkRequest>>,
+        TError,
+        {requestId: string},
+        TContext
+      > => {
+      return useMutation(getAcceptTalkRequestMutationOptions(options));
+    }
+
+export const getDeclineTalkRequestUrl = (requestId: string,) => {
+
+
+
+
+  return `/api/requests/${requestId}/decline`
+}
+
+/**
+ * @summary Decline a wants to talk request
+ */
+export const declineTalkRequest = async (requestId: string, options?: RequestInit): Promise<DeclineTalkRequestResponse> => {
+
+  return customFetch<DeclineTalkRequestResponse>(getDeclineTalkRequestUrl(requestId),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getDeclineTalkRequestMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof declineTalkRequest>>, TError,{requestId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof declineTalkRequest>>, TError,{requestId: string}, TContext> => {
+
+const mutationKey = ['declineTalkRequest'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof declineTalkRequest>>, {requestId: string}> = (props) => {
+          const {requestId} = props ?? {};
+
+          return  declineTalkRequest(requestId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeclineTalkRequestMutationResult = NonNullable<Awaited<ReturnType<typeof declineTalkRequest>>>
+
+    export type DeclineTalkRequestMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Decline a wants to talk request
+ */
+export const useDeclineTalkRequest = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof declineTalkRequest>>, TError,{requestId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof declineTalkRequest>>,
+        TError,
+        {requestId: string},
+        TContext
+      > => {
+      return useMutation(getDeclineTalkRequestMutationOptions(options));
+    }
 

@@ -440,6 +440,40 @@ export interface PeopleListResponse {
   totalViewedToday: number;
 }
 
+export interface TalkRequestItem {
+  id: string;
+  senderId: string;
+  firstName: string;
+  age?: number | null;
+  campusName?: string | null;
+  faculty?: string | null;
+  city?: string | null;
+  district?: string | null;
+  bio?: string | null;
+  tags: string[];
+  photoUrl?: string | null;
+  isVerified: boolean;
+  createdAt: string;
+}
+
+export interface SendTalkRequestRequest {
+  toUserId: string;
+}
+
+export interface SendTalkRequestResponse {
+  success: boolean;
+  requestId: string;
+}
+
+export interface AcceptTalkRequestResponse {
+  success: boolean;
+  matchId: string;
+}
+
+export interface DeclineTalkRequestResponse {
+  success: boolean;
+}
+
 export type VerifyURRegistrationBody = {
   /** Student registration number (9 digits) */
   registration_number: string;

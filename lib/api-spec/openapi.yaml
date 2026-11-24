@@ -1091,6 +1091,135 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
+  # ── Requests ─────────────────────────────────────────────────────────────────
+  /requests/pending:
+    get:
+      operationId: getPendingRequests
+      tags: [requests]
+      summary: Get pending wants to talk requests for current user
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: List of pending talk requests
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/TalkRequestItem"
+        "403":
+          description: Forbidden - Not verified or active
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Feature disabled
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /requests:
+    post:
+      operationId: sendTalkRequest
+      tags: [requests]
+      summary: Send a wants to talk request to a member
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SendTalkRequestRequest"
+      responses:
+        "201":
+          description: Request sent
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SendTalkRequestResponse"
+        "400":
+          description: Invalid request or already pending
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Forbidden - Not verified or active
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Feature disabled
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "429":
+          description: Daily request limit reached
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /requests/{requestId}/accept:
+    post:
+      operationId: acceptTalkRequest
+      tags: [requests]
+      summary: Accept a wants to talk request and create a match
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: requestId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Request accepted and match created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AcceptTalkRequestResponse"
+        "404":
+          description: Request not found or feature disabled
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /requests/{requestId}/decline:
+    post:
+      operationId: declineTalkRequest
+      tags: [requests]
+      summary: Decline a wants to talk request
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: requestId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Request declined
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeclineTalkRequestResponse"
+        "404":
+          description: Request not found or feature disabled
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
 # ── Schemas ──────────────────────────────────────────────────────────────────
 components:
   securitySchemes:
@@ -1825,4 +1954,90 @@ components:
           type: boolean
         totalViewedToday:
           type: integer
+
+    TalkRequestItem:
+      type: object
+      required:
+        - id
+        - senderId
+        - firstName
+        - isVerified
+        - tags
+        - createdAt
+      properties:
+        id:
+          type: string
+        senderId:
+          type: string
+        firstName:
+          type: string
+        age:
+          type: integer
+          nullable: true
+        campusName:
+          type: string
+          nullable: true
+        faculty:
+          type: string
+          nullable: true
+        city:
+          type: string
+          nullable: true
+        district:
+          type: string
+          nullable: true
+        bio:
+          type: string
+          nullable: true
+        tags:
+          type: array
+          items:
+            type: string
+        photoUrl:
+          type: string
+          nullable: true
+        isVerified:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+
+    SendTalkRequestRequest:
+      type: object
+      required:
+        - toUserId
+      properties:
+        toUserId:
+          type: string
+
+    SendTalkRequestResponse:
+      type: object
+      required:
+        - success
+        - requestId
+      properties:
+        success:
+          type: boolean
+        requestId:
+          type: string
+
+    AcceptTalkRequestResponse:
+      type: object
+      required:
+        - success
+        - matchId
+      properties:
+        success:
+          type: boolean
+        matchId:
+          type: string
+
+    DeclineTalkRequestResponse:
+      type: object
+      required:
+        - success
+      properties:
+        success:
+          type: boolean
+
 

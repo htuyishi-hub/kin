@@ -950,3 +950,62 @@ export const GetPeopleResponse = zod.object({
 })
 
 
+/**
+ * @summary Get pending wants to talk requests for current user
+ */
+export const GetPendingRequestsResponseItem = zod.object({
+  "id": zod.string(),
+  "senderId": zod.string(),
+  "firstName": zod.string(),
+  "age": zod.number().nullish(),
+  "campusName": zod.string().nullish(),
+  "faculty": zod.string().nullish(),
+  "city": zod.string().nullish(),
+  "district": zod.string().nullish(),
+  "bio": zod.string().nullish(),
+  "tags": zod.array(zod.string()),
+  "photoUrl": zod.string().nullish(),
+  "isVerified": zod.boolean(),
+  "createdAt": zod.coerce.date()
+})
+export const GetPendingRequestsResponse = zod.array(GetPendingRequestsResponseItem)
+
+
+/**
+ * @summary Send a wants to talk request to a member
+ */
+export const SendTalkRequestBody = zod.object({
+  "toUserId": zod.string()
+})
+
+export const SendTalkRequestResponse = zod.object({
+  "success": zod.boolean(),
+  "requestId": zod.string()
+})
+
+
+/**
+ * @summary Accept a wants to talk request and create a match
+ */
+export const AcceptTalkRequestParams = zod.object({
+  "requestId": zod.coerce.string()
+})
+
+export const AcceptTalkRequestResponse = zod.object({
+  "success": zod.boolean(),
+  "matchId": zod.string()
+})
+
+
+/**
+ * @summary Decline a wants to talk request
+ */
+export const DeclineTalkRequestParams = zod.object({
+  "requestId": zod.coerce.string()
+})
+
+export const DeclineTalkRequestResponse = zod.object({
+  "success": zod.boolean()
+})
+
+
