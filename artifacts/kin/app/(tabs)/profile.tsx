@@ -3,6 +3,7 @@ import {
   useGetMe, useAddPhoto,
   usePauseProfile,
   useUpdateProfileExtras,
+  useUpdateMe,
   useUploadVoiceIntro,
   useDeleteVoiceIntro,
 } from "@workspace/api-client-react";
@@ -331,23 +332,39 @@ export default function ProfileScreen() {
     }
   };
 
+  const { mutate: updateMe } = useUpdateMe();
   const [readReceiptsEnabled, setReadReceiptsEnabled] = useState(false);
+  const [hideFromPeople, setHideFromPeople] = useState(false);
 
   useEffect(() => {
     if (profile) {
       setReadReceiptsEnabled(Boolean((profile as any).readReceiptsEnabled));
+      setHideFromPeople(Boolean((profile as any).hideFromPeople));
     }
   }, [profile]);
 
   const handleToggleReadReceipts = async () => {
     const nextVal = !readReceiptsEnabled;
     setReadReceiptsEnabled(nextVal);
-    try {
-      if (profile?.id) {
-        await supabase.from('profiles').update({ read_receipts_enabled: nextVal }).eq('id', profile.id);
+    updateMe(
+      { data: { readReceiptsEnabled: nextVal } },
+      {
+        onSuccess: () => refetch(),
+        onError: () => setReadReceiptsEnabled(!nextVal),
       }
-      refetch();
-    } catch {}
+    );
+  };
+
+  const handleToggleHideFromPeople = async () => {
+    const nextVal = !hideFromPeople;
+    setHideFromPeople(nextVal);
+    updateMe(
+      { data: { hideFromPeople: nextVal } },
+      {
+        onSuccess: () => refetch(),
+        onError: () => setHideFromPeople(!nextVal),
+      }
+    );
   };
 
   const [primaryPhotoUrl, setPrimaryPhotoUrl] = useState<string | null>(null);
@@ -697,6 +714,19 @@ export default function ProfileScreen() {
               activeOpacity={0.8}
             >
               <View style={[styles.receiptToggleThumb, readReceiptsEnabled && styles.receiptToggleThumbActive]} />
+            </TouchableOpacity>
+          </View>
+
+          {/* Hide from People Switch */}
+          <View style={styles.actionRow}>
+            <Feather name="eye-off" size={18} color={Colors.bone} />
+            <Text style={styles.actionText}>{t('profile.hideFromPeople')}</Text>
+            <TouchableOpacity
+              onPress={handleToggleHideFromPeople}
+              style={[styles.receiptToggleTrack, hideFromPeople && styles.receiptToggleTrackActive]}
+              activeOpacity={0.8}
+            >
+              <View style={[styles.receiptToggleThumb, hideFromPeople && styles.receiptToggleThumbActive]} />
             </TouchableOpacity>
           </View>
 

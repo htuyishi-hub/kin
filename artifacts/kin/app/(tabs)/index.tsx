@@ -16,6 +16,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { KLogo } from "@/components/KLogo";
 import { TeaserCandidate, TeaserSwipeDeck } from "@/components/TeaserSwipeDeck";
 import { PostsFeed } from "@/components/PostsFeed";
+import { PeopleList } from "@/components/PeopleList";
 import { Colors } from "@/constants/colors";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTranslation } from "@workspace/i18n";
@@ -255,6 +256,8 @@ export default function DiscoverScreen() {
       {/* Main Content Area */}
       {selectedSegment === "posts" && isFeedEnabled ? (
         <PostsFeed apiBaseUrl={apiBaseUrl} token={token} userId={userId ?? null} />
+      ) : selectedSegment === "people" && isPeopleEnabled ? (
+        <PeopleList apiBaseUrl={apiBaseUrl} token={token} userId={userId ?? null} />
       ) : isLoading ? (
         <View style={styles.center}>
           <ActivityIndicator color={Colors.trust} size="large" />
