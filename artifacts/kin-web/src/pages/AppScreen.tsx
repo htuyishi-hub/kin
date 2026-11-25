@@ -3088,8 +3088,8 @@ export default function AppScreen() {
                           </span>
                         </div>
 
-                        {/* Dark Bottom Gradient + Rich Info Overlay */}
-                        <div className="absolute inset-x-0 bottom-0 z-20 bg-gradient-to-t from-[#0D1117] via-[#0D1117]/85 to-transparent pt-16 pb-4 px-4 flex flex-col gap-1.5 pointer-events-none">
+                        {/* Dark Bottom Gradient + Rich Info Overlay (TikTok-style bottom-left) */}
+                        <div className="absolute inset-x-0 bottom-0 z-20 bg-gradient-to-t from-[#0D1117] via-[#0D1117]/85 to-transparent pt-16 pb-4 pl-4 pr-16 flex flex-col gap-1.5 pointer-events-none">
                           <div className="flex items-end justify-between gap-2">
                             <div className="min-w-0">
                               <div className="flex items-center gap-1.5">
@@ -3112,27 +3112,6 @@ export default function AppScreen() {
                                   </span>
                                 )}
                               </div>
-                            </div>
-
-                            {/* Action Icons: Photo Compliment (200 RWF) + Info */}
-                            <div className="flex items-center gap-2 shrink-0">
-                              <button
-                                type="button"
-                                onClick={() => setComplimentModalOpen(true)}
-                                aria-label={t('compliment.title')}
-                                title={t('compliment.title')}
-                                className="pointer-events-auto w-9 h-9 rounded-full bg-[#C9A84C]/90 text-[#0D1117] flex items-center justify-center hover:bg-[#C9A84C] transition-colors cursor-pointer"
-                              >
-                                <MessageCircle className="w-4 h-4" />
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => setShowProfileDetail(true)}
-                                aria-label={t('discover.fullProfile')}
-                                className="pointer-events-auto w-9 h-9 rounded-full bg-white/15 backdrop-blur-md border border-white/20 text-[#F0EDE6] flex items-center justify-center hover:bg-white/25 transition-colors cursor-pointer"
-                              >
-                                <Info className="w-4 h-4" />
-                              </button>
                             </div>
                           </div>
 
@@ -3178,13 +3157,84 @@ export default function AppScreen() {
                             </p>
                           )}
                         </div>
+
+                        {/* TIKTOK-STYLE VERTICAL RIGHT RAIL */}
+                        <div className="flex flex-col items-center gap-3 absolute right-3 bottom-5 z-30">
+                          {/* 💚 Like */}
+                          <button
+                            type="button"
+                            onClick={() => handleSwipe('like')}
+                            title={t('discover.like')}
+                            aria-label={t('discover.like')}
+                            className="w-12 h-12 rounded-full bg-[#3FB950]/20 backdrop-blur-md border-2 border-[#3FB950] text-[#3FB950] flex items-center justify-center hover:scale-105 active:scale-95 transition-all shadow-lg cursor-pointer"
+                          >
+                            <Heart className="w-6 h-6 fill-current" />
+                          </button>
+
+                          {/* 💬 Compliment (200 RWF) */}
+                          <button
+                            type="button"
+                            onClick={() => setComplimentModalOpen(true)}
+                            title={t('compliment.title')}
+                            aria-label={t('compliment.title')}
+                            className="w-10 h-10 rounded-full bg-[#0D1117]/75 backdrop-blur-md border border-[#C9A84C]/60 text-[#C9A84C] flex items-center justify-center hover:border-[#C9A84C] active:scale-95 transition-all shadow-md cursor-pointer"
+                          >
+                            <MessageCircle className="w-4 h-4" />
+                          </button>
+
+                          {/* ☕ Buy Coffee (100 RWF) */}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (!token || !currentProfile) return;
+                              apiFetch('/api/deck/drink', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                                body: JSON.stringify({ targetUserId: currentProfile.id, drinkType: 'coffee' }),
+                              }).catch(() => {});
+                            }}
+                            title={t('deck.sendCoffee')}
+                            className="w-10 h-10 rounded-full bg-[#0D1117]/75 backdrop-blur-md border border-white/20 text-base flex items-center justify-center hover:border-[#C9A84C] active:scale-95 transition-all shadow-md cursor-pointer"
+                          >
+                            ☕
+                          </button>
+
+                          {/* 🔗 Share with Bestie */}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const url = `https://kinn.ink/p/${currentProfile.id}`;
+                              if (navigator.share) {
+                                navigator.share({ url }).catch(() => {});
+                              } else {
+                                window.open(`https://wa.me/?text=${encodeURIComponent(url)}`, '_blank', 'noopener,noreferrer');
+                              }
+                            }}
+                            title={t('deck.shareProfile')}
+                            aria-label={t('deck.shareProfile')}
+                            className="w-10 h-10 rounded-full bg-[#0D1117]/75 backdrop-blur-md border border-white/20 text-[#F0EDE6] flex items-center justify-center hover:border-white/50 active:scale-95 transition-all shadow-md cursor-pointer"
+                          >
+                            <Share2 className="w-4 h-4" />
+                          </button>
+
+                          {/* ℹ️ Profile Info */}
+                          <button
+                            type="button"
+                            onClick={() => setShowProfileDetail(true)}
+                            title={t('discover.fullProfile')}
+                            aria-label={t('discover.fullProfile')}
+                            className="w-10 h-10 rounded-full bg-[#0D1117]/75 backdrop-blur-md border border-white/20 text-[#F0EDE6] flex items-center justify-center hover:border-white/50 active:scale-95 transition-all shadow-md cursor-pointer"
+                          >
+                            <Info className="w-4 h-4" />
+                          </button>
+                        </div>
                       </div>
                     </div>
                   );
                 })()}
 
-                {/* Action Dock: Rewind, Coffee (100), Pass, Like, Cocktail (200), Super Like */}
-                <div className="flex items-center justify-center gap-3 py-3">
+                {/* Bottom Utility Bar: Rewind, Pass, Super Like */}
+                <div className="flex items-center justify-center gap-6 py-3">
                   {/* Rewind */}
                   <button
                     type="button"
@@ -3192,26 +3242,9 @@ export default function AppScreen() {
                     disabled={swipeHistory.length === 0}
                     title={t('discover.rewind')}
                     aria-label={t('discover.rewind')}
-                    className="w-10 h-10 rounded-full bg-[#1A1A2E] border border-[#21262D] text-[#F59E0B] flex items-center justify-center hover:border-[#F59E0B] active:scale-95 transition-all shadow-md disabled:opacity-35 cursor-pointer"
+                    className="w-11 h-11 rounded-full bg-[#1A1A2E] border border-[#21262D] text-[#F59E0B] flex items-center justify-center hover:border-[#F59E0B] active:scale-95 transition-all shadow-md disabled:opacity-35 cursor-pointer"
                   >
-                    <RotateCcw className="w-4 h-4" />
-                  </button>
-
-                  {/* Send Coffee (100 RWF) */}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (!token || !currentProfile) return;
-                      apiFetch('/api/deck/drink', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-                        body: JSON.stringify({ targetUserId: currentProfile.id, drinkType: 'coffee' }),
-                      }).catch(() => {});
-                    }}
-                    title={t('deck.sendCoffee')}
-                    className="w-10 h-10 rounded-full bg-[#1A1A2E] border border-[#C9A84C]/50 text-base flex items-center justify-center hover:border-[#C9A84C] active:scale-95 transition-all shadow-md cursor-pointer"
-                  >
-                    ☕
+                    <RotateCcw className="w-5 h-5" />
                   </button>
 
                   {/* Pass */}
@@ -3225,34 +3258,6 @@ export default function AppScreen() {
                     <X className="w-7 h-7" />
                   </button>
 
-                  {/* Like */}
-                  <button
-                    type="button"
-                    onClick={() => handleSwipe('like')}
-                    title={t('discover.like')}
-                    aria-label={t('discover.like')}
-                    className="w-14 h-14 rounded-full bg-[#1A1A2E] border border-[#21262D] text-[#3FB950] flex items-center justify-center hover:border-[#3FB950] active:scale-95 transition-all shadow-md cursor-pointer"
-                  >
-                    <Heart className="w-7 h-7 fill-current" />
-                  </button>
-
-                  {/* Send Cocktail (200 RWF) */}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (!token || !currentProfile) return;
-                      apiFetch('/api/deck/drink', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-                        body: JSON.stringify({ targetUserId: currentProfile.id, drinkType: 'cocktail' }),
-                      }).catch(() => {});
-                    }}
-                    title={t('deck.sendCocktail')}
-                    className="w-10 h-10 rounded-full bg-[#1A1A2E] border border-[#FF6B6B]/50 text-base flex items-center justify-center hover:border-[#FF6B6B] active:scale-95 transition-all shadow-md cursor-pointer"
-                  >
-                    🍸
-                  </button>
-
                   {/* Super Like */}
                   <button
                     type="button"
@@ -3260,9 +3265,9 @@ export default function AppScreen() {
                     disabled={goldenBids <= 0}
                     title={t('discover.superLike')}
                     aria-label={t('discover.superLike')}
-                    className="w-10 h-10 rounded-full bg-[#2563EB] text-white flex items-center justify-center font-bold active:scale-95 transition-all shadow-[0_0_16px_rgba(37,99,235,0.4)] disabled:opacity-40 cursor-pointer"
+                    className="w-11 h-11 rounded-full bg-[#2563EB] text-white flex items-center justify-center font-bold active:scale-95 transition-all shadow-[0_0_16px_rgba(37,99,235,0.4)] disabled:opacity-40 cursor-pointer"
                   >
-                    <Star className="w-4 h-4 fill-current" />
+                    <Star className="w-5 h-5 fill-current" />
                   </button>
                 </div>
 

@@ -547,54 +547,154 @@ export function TeaserSwipeDeck({
                   )}
                 </View>
               </View>
-              <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-                <TouchableOpacity
-                  onPress={() => {
-                    setComplimentSent(false);
-                    setComplimentModalVisible(true);
-                  }}
-                  style={{ width: 34, height: 34, borderRadius: 17, backgroundColor: "rgba(201,168,76,0.22)", borderWidth: 1, borderColor: "rgba(201,168,76,0.5)", alignItems: "center", justifyContent: "center" }}
-                  activeOpacity={0.8}
-                >
-                  <Feather name="message-circle" size={16} color={Colors.gold} />
-                </TouchableOpacity>
-                <TouchableOpacity
-                  onPress={() => setInfoModalVisible(true)}
-                  style={{ width: 34, height: 34, borderRadius: 17, backgroundColor: "rgba(255,255,255,0.15)", alignItems: "center", justifyContent: "center" }}
-                  activeOpacity={0.8}
-                >
-                  <Feather name="info" size={17} color={Colors.bone} />
-                </TouchableOpacity>
-              </View>
             </View>
 
-            {currentCandidate.tags && currentCandidate.tags.length > 0 && (
-              <View style={styles.tagsRow}>
-                {currentCandidate.tags.slice(0, 4).map((tag) => (
-                  <View key={tag} style={styles.tagChip}>
-                    <Text style={styles.tagChipText}>#{t(`tags.${tag}`, { defaultValue: tag })}</Text>
-                  </View>
-                ))}
-              </View>
-            )}
-            {!!currentCandidate.voiceIntroPath && (
-              <CandidateVoicePlayer
-                key={currentCandidate.id + "_" + currentCandidate.voiceIntroPath}
-                candidateId={currentCandidate.id}
-                path={currentCandidate.voiceIntroPath}
-                durationMs={currentCandidate.voiceIntroDurationMs}
-              />
-            )}
-            {!!currentCandidate.bio && (
-              <Text style={styles.bioText} numberOfLines={2}>
-                {currentCandidate.bio}
-              </Text>
-            )}
+            <View style={{ paddingRight: 58, gap: 6 }}>
+              {currentCandidate.tags && currentCandidate.tags.length > 0 && (
+                <View style={styles.tagsRow}>
+                  {currentCandidate.tags.slice(0, 4).map((tag) => (
+                    <View key={tag} style={styles.tagChip}>
+                      <Text style={styles.tagChipText}>#{t(`tags.${tag}`, { defaultValue: tag })}</Text>
+                    </View>
+                  ))}
+                </View>
+              )}
+              {!!currentCandidate.voiceIntroPath && (
+                <CandidateVoicePlayer
+                  key={currentCandidate.id + "_" + currentCandidate.voiceIntroPath}
+                  candidateId={currentCandidate.id}
+                  path={currentCandidate.voiceIntroPath}
+                  durationMs={currentCandidate.voiceIntroDurationMs}
+                />
+              )}
+              {!!currentCandidate.bio && (
+                <Text style={styles.bioText} numberOfLines={2}>
+                  {currentCandidate.bio}
+                </Text>
+              )}
+            </View>
+          </View>
+
+          {/* TIKTOK-STYLE VERTICAL RIGHT RAIL */}
+          <View
+            style={{
+              position: "absolute",
+              right: 12,
+              bottom: 20,
+              zIndex: 30,
+              alignItems: "center",
+              gap: 12,
+            }}
+          >
+            {/* 💚 Like */}
+            <TouchableOpacity
+              onPress={() => triggerLikeVibeSelect(currentCandidate)}
+              activeOpacity={0.85}
+              style={{
+                width: 48,
+                height: 48,
+                borderRadius: 24,
+                backgroundColor: "rgba(63,185,80,0.22)",
+                borderWidth: 1.5,
+                borderColor: "#3FB950",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <Feather name="heart" size={22} color="#3FB950" />
+            </TouchableOpacity>
+
+            {/* 💬 Compliment (200 RWF) */}
+            <TouchableOpacity
+              onPress={() => {
+                setComplimentSent(false);
+                setComplimentModalVisible(true);
+              }}
+              activeOpacity={0.85}
+              style={{
+                width: 42,
+                height: 42,
+                borderRadius: 21,
+                backgroundColor: "rgba(13,17,23,0.72)",
+                borderWidth: 1,
+                borderColor: "rgba(201,168,76,0.6)",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <Feather name="message-circle" size={18} color={Colors.gold} />
+            </TouchableOpacity>
+
+            {/* ☕ Buy Coffee (100 RWF) */}
+            <TouchableOpacity
+              onPress={() => {
+                if (!token || !currentCandidate) return;
+                fetch(`${apiBaseUrl}/api/deck/drink`, {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+                  body: JSON.stringify({ targetUserId: currentCandidate.id, drinkType: "coffee" }),
+                }).then(() => Haptics.notificationAsync?.(Haptics.NotificationFeedbackType.Success)).catch(() => {});
+              }}
+              activeOpacity={0.85}
+              style={{
+                width: 42,
+                height: 42,
+                borderRadius: 21,
+                backgroundColor: "rgba(13,17,23,0.72)",
+                borderWidth: 1,
+                borderColor: "rgba(255,255,255,0.2)",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <Text style={{ fontSize: 17 }}>☕</Text>
+            </TouchableOpacity>
+
+            {/* 🔗 Share with Bestie */}
+            <TouchableOpacity
+              onPress={() => {
+                const { Share } = require("react-native");
+                Share.share({
+                  message: `https://kinn.ink/p/${currentCandidate.id}`,
+                }).catch(() => {});
+              }}
+              activeOpacity={0.85}
+              style={{
+                width: 42,
+                height: 42,
+                borderRadius: 21,
+                backgroundColor: "rgba(13,17,23,0.72)",
+                borderWidth: 1,
+                borderColor: "rgba(255,255,255,0.2)",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <Feather name="share-2" size={17} color={Colors.bone} />
+            </TouchableOpacity>
+
+            {/* ℹ️ Profile Info */}
+            <TouchableOpacity
+              onPress={() => setInfoModalVisible(true)}
+              activeOpacity={0.85}
+              style={{
+                width: 42,
+                height: 42,
+                borderRadius: 21,
+                backgroundColor: "rgba(13,17,23,0.72)",
+                borderWidth: 1,
+                borderColor: "rgba(255,255,255,0.2)",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <Feather name="info" size={17} color={Colors.bone} />
+            </TouchableOpacity>
           </View>
         </Animated.View>
       </GestureDetector>
 
-      {/* 4-BUTTON ACTION DOCK: Rewind, Pass, Like, Super Like */}
+      {/* BOTTOM UTILITY BAR: Rewind, Pass, Spark */}
       <View style={styles.actionButtonsRow}>
         {/* Rewind (Undo) */}
         <TouchableOpacity
@@ -603,23 +703,7 @@ export function TeaserSwipeDeck({
           disabled={currentIndex <= 0}
           activeOpacity={0.8}
         >
-          <Feather name="rotate-ccw" size={18} color="#F59E0B" />
-        </TouchableOpacity>
-
-        {/* Send Coffee (100 RWF) */}
-        <TouchableOpacity
-          style={[styles.actionBtn, { width: 42, height: 42, borderColor: "rgba(201,168,76,0.5)", backgroundColor: Colors.inkRaised }]}
-          onPress={() => {
-            if (!token || !currentCandidate) return;
-            fetch(`${apiBaseUrl}/api/deck/drink`, {
-              method: "POST",
-              headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-              body: JSON.stringify({ targetUserId: currentCandidate.id, drinkType: "coffee" }),
-            }).then(() => Haptics.notificationAsync?.(Haptics.NotificationFeedbackType.Success)).catch(() => {});
-          }}
-          activeOpacity={0.8}
-        >
-          <Text style={{ fontSize: 16 }}>☕</Text>
+          <Feather name="rotate-ccw" size={20} color="#F59E0B" />
         </TouchableOpacity>
 
         {/* Pass */}
@@ -628,32 +712,7 @@ export function TeaserSwipeDeck({
           onPress={() => handleHardReject(currentCandidate)}
           activeOpacity={0.8}
         >
-          <Feather name="x" size={24} color={Colors.danger} />
-        </TouchableOpacity>
-
-        {/* Like */}
-        <TouchableOpacity
-          style={[styles.actionBtn, styles.likeBtn]}
-          onPress={() => triggerLikeVibeSelect(currentCandidate)}
-          activeOpacity={0.8}
-        >
-          <Feather name="heart" size={24} color={Colors.success} />
-        </TouchableOpacity>
-
-        {/* Send Cocktail (200 RWF) */}
-        <TouchableOpacity
-          style={[styles.actionBtn, { width: 42, height: 42, borderColor: "rgba(255,107,107,0.5)", backgroundColor: Colors.inkRaised }]}
-          onPress={() => {
-            if (!token || !currentCandidate) return;
-            fetch(`${apiBaseUrl}/api/deck/drink`, {
-              method: "POST",
-              headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-              body: JSON.stringify({ targetUserId: currentCandidate.id, drinkType: "cocktail" }),
-            }).then(() => Haptics.notificationAsync?.(Haptics.NotificationFeedbackType.Success)).catch(() => {});
-          }}
-          activeOpacity={0.8}
-        >
-          <Text style={{ fontSize: 16 }}>🍸</Text>
+          <Feather name="x" size={26} color={Colors.danger} />
         </TouchableOpacity>
 
         {/* Super Like (Golden Bid) */}
