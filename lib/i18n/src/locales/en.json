@@ -242,6 +242,28 @@
     "downloadApk": "Download Android APK",
     "downloadSubtitle": "Direct install package for Android"
   },
+  "playground": {
+    "activeNow": "Active now",
+    "activeAgo": "Active {{minutes}}m ago",
+    "streakDays": "🔥 {{count}}d",
+    "icebreaker1": "Perfect Saturday in Kigali?",
+    "icebreaker2": "Nyabugogo traffic song?",
+    "icebreaker3": "Favorite local food spot?",
+    "questionGame": "Question Game",
+    "answerToReveal": "Answer to reveal",
+    "yourAnswer": "Your answer...",
+    "submitAnswer": "Submit",
+    "waitingPartnerAnswer": "Waiting for partner",
+    "giftRose": "🌹 Rose · 100 RWF",
+    "giftChampagne": "🥂 Champagne · 200 RWF",
+    "giftCrown": "👑 Crown · 500 RWF",
+    "matchExpired": "Match expired",
+    "reviveMatch": "Revive 72h · 300 RWF",
+    "peekReadTime": "Peek read time · 100 RWF",
+    "seenAt": "Seen {{time}}",
+    "recordVoice": "Voice note",
+    "recording": "Recording..."
+  },
   "serious": {
     "tabTitle": "Serious",
     "queueTitle": "Serious Queue",

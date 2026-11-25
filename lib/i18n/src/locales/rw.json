@@ -242,6 +242,28 @@
     "downloadApk": "Kura APK ya Android",
     "downloadSubtitle": "Gushyira muri telefone ya Android"
   },
+  "playground": {
+    "activeNow": "Ariho ubu",
+    "activeAgo": "Yaherukaga {{minutes}}m",
+    "streakDays": "🔥 Iminsi {{count}}",
+    "icebreaker1": "Ku wa Gatandatu mwiza i Kigali?",
+    "icebreaker2": "Indirimbo mu muhanda wa Nyabugogo?",
+    "icebreaker3": "Ahantu ukunda kurya?",
+    "questionGame": "Umukino w'Ikibazo",
+    "answerToReveal": "Subiza kugira ngo ufunguke",
+    "yourAnswer": "Igisubizo cyawe...",
+    "submitAnswer": "Ohereza",
+    "waitingPartnerAnswer": "Tegereza igisubizo cye",
+    "giftRose": "🌹 Iroza · 100 RWF",
+    "giftChampagne": "🥂 Champagne · 200 RWF",
+    "giftCrown": "👑 Ikamba · 500 RWF",
+    "matchExpired": "Igihe cyarangiye",
+    "reviveMatch": "Ongera 72h · 300 RWF",
+    "peekReadTime": "Reba igihe yasomewe · 100 RWF",
+    "seenAt": "Yasomwe {{time}}",
+    "recordVoice": "Ijwi",
+    "recording": "Birafatwa..."
+  },
   "serious": {
     "tabTitle": "Abiyemeje",
     "queueTitle": "Umurongo w'Abiyemeje",
