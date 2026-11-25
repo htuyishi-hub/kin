@@ -48,6 +48,17 @@ async function ensureDatabaseSchema() {
         created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
       );
     `);
+    await pool.query("CREATE INDEX IF NOT EXISTS idx_photo_comments_target ON photo_comments(target_profile_id);");
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS blocked_contacts (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+        blocked_phone TEXT NOT NULL,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+    `);
+    await pool.query("CREATE INDEX IF NOT EXISTS idx_blocked_contacts_user ON blocked_contacts(user_id);");
+    await pool.query("CREATE INDEX IF NOT EXISTS idx_blocked_contacts_phone ON blocked_contacts(blocked_phone);");
     await pool.query(`
       CREATE TABLE IF NOT EXISTS date_invites (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

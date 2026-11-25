@@ -9,8 +9,10 @@ import {
   reportsTable,
   vouchesTable,
   passesTable,
+  blockedContactsTable,
 } from "@workspace/db";
 import { requireAuth, type AuthedRequest } from "../middlewares/auth.js";
+import { normalizeRwandaPhone } from "./contacts.js";
 
 const router = Router();
 
@@ -134,7 +136,34 @@ router.get("/match-queue", requireAuth, async (req, res) => {
     return;
   }
 
-  const candidateIds = candidates.map((c) => c.id);
+  // Filter out Hide Friends / Blocked Contacts (both directions)
+  const myBlockedRows = await db
+    .select({ blockedPhone: blockedContactsTable.blockedPhone })
+    .from(blockedContactsTable)
+    .where(eq(blockedContactsTable.userId, userId));
+  const myBlockedPhones = new Set(myBlockedRows.map((r) => normalizeRwandaPhone(r.blockedPhone)));
+
+  const myNormalizedPhone = myProfile.phoneNumber ? normalizeRwandaPhone(myProfile.phoneNumber) : "";
+  const blockedMeRows = myNormalizedPhone
+    ? await db
+        .select({ userId: blockedContactsTable.userId })
+        .from(blockedContactsTable)
+        .where(eq(blockedContactsTable.blockedPhone, myNormalizedPhone))
+    : [];
+  const blockedMeIds = new Set(blockedMeRows.map((r) => r.userId));
+
+  const visibleCandidates = candidates.filter((c) => {
+    if (blockedMeIds.has(c.id)) return false;
+    if (c.phoneNumber && myBlockedPhones.has(normalizeRwandaPhone(c.phoneNumber))) return false;
+    return true;
+  });
+
+  if (visibleCandidates.length === 0) {
+    res.json([]);
+    return;
+  }
+
+  const candidateIds = visibleCandidates.map((c) => c.id);
 
   // 3. Fetch incoming interests from candidates to current user (to detect Golden Bids & Reactions)
   const incomingInterests = await db
@@ -195,7 +224,7 @@ router.get("/match-queue", requireAuth, async (req, res) => {
   }
 
   // 6. Rank candidates with GOLDEN BID PRIORITY (+100000 boost to top of stack)
-  const ranked = candidates
+  const ranked = visibleCandidates
     .map((c) => {
       const incoming = incomingMap.get(c.id);
       const isGoldenBid = Boolean(incoming?.isGoldenBid);

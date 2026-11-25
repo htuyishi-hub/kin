@@ -9,6 +9,7 @@ import {
   X,
   Star,
   GraduationCap,
+  Shield,
   ShieldCheck,
   Clock,
   LogOut,
@@ -1552,6 +1553,59 @@ export default function AppScreen() {
         body: JSON.stringify({ isIncognito: next }),
       });
     } catch {}
+  }
+
+  const [blockedContacts, setBlockedContacts] = useState<{ id: string; blockedPhone: string }[]>([]);
+  const [blockPhoneInput, setBlockPhoneInput] = useState('');
+  const [blockingPhone, setBlockingPhone] = useState(false);
+  const [photoCompliments, setPhotoCompliments] = useState<{ id: string; senderFirstName: string; commentText: string }[]>([]);
+
+  useEffect(() => {
+    if (!token) return;
+    apiFetch('/api/contacts/blocked', {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (d && Array.isArray(d.contacts)) setBlockedContacts(d.contacts);
+      })
+      .catch(() => {});
+    apiFetch('/api/photos/compliments', {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (Array.isArray(d)) setPhotoCompliments(d);
+      })
+      .catch(() => {});
+  }, [token]);
+
+  async function handleBlockPhone() {
+    if (!token || !blockPhoneInput.trim()) return;
+    setBlockingPhone(true);
+    try {
+      const res = await apiFetch('/api/contacts/block', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ phoneNumber: blockPhoneInput.trim() }),
+      });
+      if (res.ok) {
+        const d = await res.json();
+        setBlockedContacts(Array.isArray(d.contacts) ? d.contacts : []);
+        setBlockPhoneInput('');
+      }
+    } finally {
+      setBlockingPhone(false);
+    }
+  }
+
+  async function handleUnblockPhone(id: string) {
+    if (!token) return;
+    setBlockedContacts((prev) => prev.filter((c) => c.id !== id));
+    await apiFetch(`/api/contacts/block/${id}`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${token}` },
+    }).catch(() => {});
   }
 
   async function handleSendDateInvite(spot: { name: string; area: string }) {
@@ -3838,6 +3892,18 @@ export default function AppScreen() {
               )}
             </div>
 
+            {/* Received Photo Compliments */}
+            {photoCompliments.length > 0 && (
+              <div className="flex flex-col gap-2">
+                {photoCompliments.map((c) => (
+                  <div key={c.id} className="px-3.5 py-2.5 rounded-2xl bg-[#C9A84C]/10 border border-[#C9A84C]/40 flex items-center gap-2">
+                    <span className="text-xs font-bold text-[#C9A84C]">{c.senderFirstName}:</span>
+                    <span className="text-xs text-[#F0EDE6] italic truncate">"{c.commentText}"</span>
+                  </div>
+                ))}
+              </div>
+            )}
+
             {/* Name Search & Who Searched Your Name (300 RWF) */}
             <div className="flex flex-col gap-2">
               <input
@@ -4051,6 +4117,47 @@ export default function AppScreen() {
                     }`}
                   />
                 </button>
+              </div>
+
+              {/* Hide Friends & Block Contacts */}
+              <div className="p-4 bg-[#1A1A2E] border border-[#21262D] rounded-2xl flex flex-col gap-3">
+                <div className="flex items-center gap-2">
+                  <Shield className="w-4 h-4 text-[#C9A84C]" />
+                  <span className="text-sm font-semibold text-[#F0EDE6]">{t('contacts.title')}</span>
+                </div>
+                <div className="flex gap-2">
+                  <input
+                    type="tel"
+                    value={blockPhoneInput}
+                    onChange={(e) => setBlockPhoneInput(e.target.value)}
+                    placeholder={t('contacts.placeholder')}
+                    className="flex-1 bg-[#161B22] border border-[#21262D] focus:border-[#C9A84C] rounded-xl px-3 py-2 text-xs text-[#F0EDE6] placeholder-[#4A4742] outline-none"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleBlockPhone}
+                    disabled={blockingPhone || !blockPhoneInput.trim()}
+                    className="px-3.5 py-2 rounded-xl bg-[#C9A84C] text-[#0D1117] text-xs font-bold disabled:opacity-50 cursor-pointer"
+                  >
+                    {t('contacts.block')}
+                  </button>
+                </div>
+                {blockedContacts.length > 0 && (
+                  <div className="flex flex-col gap-1.5">
+                    {blockedContacts.map((c) => (
+                      <div key={c.id} className="flex items-center justify-between px-3 py-1.5 rounded-xl bg-[#161B22] border border-[#21262D]">
+                        <span className="text-xs text-[#F0EDE6] font-mono">{c.blockedPhone}</span>
+                        <button
+                          type="button"
+                          onClick={() => handleUnblockPhone(c.id)}
+                          className="text-[11px] font-semibold text-[#FF6B6B] hover:underline cursor-pointer"
+                        >
+                          {t('contacts.unblock')}
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
               <button

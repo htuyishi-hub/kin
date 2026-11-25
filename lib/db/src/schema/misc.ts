@@ -73,9 +73,21 @@ export const dateInvitesTable = pgTable("date_invites", {
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
+// Hide Friends & Block Contacts
+export const blockedContactsTable = pgTable("blocked_contacts", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: uuid("user_id").notNull().references(() => profilesTable.id, { onDelete: "cascade" }),
+  blockedPhone: text("blocked_phone").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+}, (table) => [
+  index("idx_blocked_contacts_user").on(table.userId),
+  index("idx_blocked_contacts_phone").on(table.blockedPhone),
+]);
+
 export type OtpSession = typeof otpSessionsTable.$inferSelect;
 export type TrustEvent = typeof trustEventsTable.$inferSelect;
 export type Report = typeof reportsTable.$inferSelect;
 export type NameSearch = typeof nameSearchesTable.$inferSelect;
 export type PhotoComment = typeof photoCommentsTable.$inferSelect;
 export type DateInvite = typeof dateInvitesTable.$inferSelect;
+export type BlockedContact = typeof blockedContactsTable.$inferSelect;

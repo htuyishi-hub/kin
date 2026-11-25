@@ -306,6 +306,13 @@
     "iosStep1": "Tap Share",
     "iosStep2": "Add to Home Screen"
   },
+  "contacts": {
+    "title": "Hide Friends",
+    "placeholder": "078...",
+    "block": "Block",
+    "unblock": "Unblock",
+    "empty": "No blocked contacts"
+  },
   "serious": {
     "tabTitle": "Serious",
     "queueTitle": "Serious Queue",

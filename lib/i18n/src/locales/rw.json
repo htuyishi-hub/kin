@@ -306,6 +306,13 @@
     "iosStep1": "Kanda Share",
     "iosStep2": "Add to Home Screen"
   },
+  "contacts": {
+    "title": "Hisha Inshuti",
+    "placeholder": "078...",
+    "block": "Funga",
+    "unblock": "Fungura",
+    "empty": "Nta nimero zifunzwe"
+  },
   "serious": {
     "tabTitle": "Abiyemeje",
     "queueTitle": "Umurongo w'Abiyemeje",

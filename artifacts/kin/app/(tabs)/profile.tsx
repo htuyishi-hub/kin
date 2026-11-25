@@ -340,6 +340,9 @@ export default function ProfileScreen() {
   const [verificationStatus, setVerificationStatus] = useState<string>("unverified");
   const [verifyModalOpen, setVerifyModalOpen] = useState(false);
   const [verifyingSelfie, setVerifyingSelfie] = useState(false);
+  const [blockedContacts, setBlockedContacts] = useState<{ id: string; blockedPhone: string }[]>([]);
+  const [blockPhoneInput, setBlockPhoneInput] = useState("");
+  const [blockingPhone, setBlockingPhone] = useState(false);
 
   const apiBaseUrl =
     process.env.EXPO_PUBLIC_API_URL ??
@@ -347,6 +350,49 @@ export default function ProfileScreen() {
     (process.env.EXPO_PUBLIC_DOMAIN
       ? `https://${process.env.EXPO_PUBLIC_DOMAIN}`
       : "https://kin-x81d.onrender.com");
+
+  useEffect(() => {
+    if (!token) return;
+    fetch(`${apiBaseUrl}/api/contacts/blocked`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (d && Array.isArray(d.contacts)) setBlockedContacts(d.contacts);
+      })
+      .catch(() => {});
+  }, [token]);
+
+  const handleBlockPhone = async () => {
+    if (!token || !blockPhoneInput.trim()) return;
+    setBlockingPhone(true);
+    try {
+      const res = await fetch(`${apiBaseUrl}/api/contacts/block`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ phoneNumber: blockPhoneInput.trim() }),
+      });
+      if (res.ok) {
+        const d = await res.json();
+        setBlockedContacts(Array.isArray(d.contacts) ? d.contacts : []);
+        setBlockPhoneInput("");
+      }
+    } finally {
+      setBlockingPhone(false);
+    }
+  };
+
+  const handleUnblockPhone = async (id: string) => {
+    if (!token) return;
+    setBlockedContacts((prev) => prev.filter((c) => c.id !== id));
+    fetch(`${apiBaseUrl}/api/contacts/block/${id}`, {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${token}` },
+    }).catch(() => {});
+  };
 
   useEffect(() => {
     if (profile) {
@@ -860,6 +906,73 @@ export default function ProfileScreen() {
               </View>
             </View>
           </Modal>
+
+          {/* Hide Friends & Block Contacts */}
+          <View style={{ backgroundColor: Colors.inkRaised, borderRadius: 14, padding: 12, gap: 10, borderWidth: 1, borderColor: "rgba(255,255,255,0.06)" }}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+              <Feather name="user-x" size={16} color={Colors.gold} />
+              <Text style={{ color: Colors.bone, fontSize: 14, fontFamily: "Inter_600SemiBold" }}>
+                {t('contacts.title')}
+              </Text>
+            </View>
+            <View style={{ flexDirection: "row", gap: 8 }}>
+              <TextInput
+                value={blockPhoneInput}
+                onChangeText={setBlockPhoneInput}
+                placeholder={t('contacts.placeholder')}
+                placeholderTextColor={Colors.boneGhost}
+                keyboardType="phone-pad"
+                style={{
+                  flex: 1,
+                  backgroundColor: Colors.ink,
+                  color: Colors.bone,
+                  borderRadius: 10,
+                  paddingHorizontal: 12,
+                  paddingVertical: 8,
+                  fontSize: 13,
+                  borderWidth: 1,
+                  borderColor: "rgba(255,255,255,0.08)",
+                }}
+              />
+              <TouchableOpacity
+                onPress={handleBlockPhone}
+                disabled={blockingPhone || !blockPhoneInput.trim()}
+                style={{
+                  backgroundColor: Colors.gold,
+                  paddingHorizontal: 14,
+                  borderRadius: 10,
+                  justifyContent: "center",
+                  opacity: blockingPhone || !blockPhoneInput.trim() ? 0.5 : 1,
+                }}
+                activeOpacity={0.85}
+              >
+                <Text style={{ color: "#0D1117", fontSize: 12, fontFamily: "Inter_700Bold" }}>
+                  {t('contacts.block')}
+                </Text>
+              </TouchableOpacity>
+            </View>
+            {blockedContacts.map((c) => (
+              <View
+                key={c.id}
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  backgroundColor: Colors.ink,
+                  paddingHorizontal: 12,
+                  paddingVertical: 8,
+                  borderRadius: 10,
+                }}
+              >
+                <Text style={{ color: Colors.bone, fontSize: 12 }}>{c.blockedPhone}</Text>
+                <TouchableOpacity onPress={() => handleUnblockPhone(c.id)}>
+                  <Text style={{ color: "#FF6B6B", fontSize: 12, fontFamily: "Inter_600SemiBold" }}>
+                    {t('contacts.unblock')}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            ))}
+          </View>
 
           <TouchableOpacity
             style={styles.actionRow}

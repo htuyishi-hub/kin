@@ -44,6 +44,7 @@ export default function AdmirersScreen() {
   const [searchesUnmasked, setSearchesUnmasked] = useState(false);
   const [searchers, setSearchers] = useState<{ id: string; firstName: string; campus: string }[]>([]);
   const [revealingSearches, setRevealingSearches] = useState(false);
+  const [photoCompliments, setPhotoCompliments] = useState<{ id: string; senderFirstName: string; commentText: string }[]>([]);
 
   const apiBaseUrl =
     process.env.EXPO_PUBLIC_API_URL ??
@@ -58,11 +59,14 @@ export default function AdmirersScreen() {
       return;
     }
     try {
-      const [likesRes, searchRes] = await Promise.all([
+      const [likesRes, searchRes, complimentsRes] = await Promise.all([
         fetch(`${apiBaseUrl}/api/likes/received`, {
           headers: { Authorization: `Bearer ${token}` },
         }),
         fetch(`${apiBaseUrl}/api/notifications/searches`, {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
+        fetch(`${apiBaseUrl}/api/photos/compliments`, {
           headers: { Authorization: `Bearer ${token}` },
         }),
       ]);
@@ -77,6 +81,10 @@ export default function AdmirersScreen() {
         setSearchCount(sData.count ?? 0);
         setSearchesUnmasked(Boolean(sData.isUnmasked));
         setSearchers(Array.isArray(sData.searchers) ? sData.searchers : []);
+      }
+      if (complimentsRes.ok) {
+        const cData = await complimentsRes.json();
+        if (Array.isArray(cData)) setPhotoCompliments(cData);
       }
     } finally {
       setLoading(false);
@@ -209,6 +217,34 @@ export default function AdmirersScreen() {
               ))}
             </View>
           )}
+        </View>
+      )}
+
+      {photoCompliments.length > 0 && (
+        <View style={{ marginHorizontal: 16, marginBottom: 8, gap: 6 }}>
+          {photoCompliments.map((c) => (
+            <View
+              key={c.id}
+              style={{
+                backgroundColor: "rgba(201,168,76,0.12)",
+                borderWidth: 1,
+                borderColor: "rgba(201,168,76,0.45)",
+                borderRadius: 12,
+                paddingHorizontal: 12,
+                paddingVertical: 8,
+                flexDirection: "row",
+                alignItems: "center",
+                gap: 6,
+              }}
+            >
+              <Text style={{ color: Colors.gold, fontSize: 12, fontFamily: "Inter_700Bold" }}>
+                {c.senderFirstName}:
+              </Text>
+              <Text style={{ color: Colors.bone, fontSize: 12, fontStyle: "italic", flexShrink: 1 }} numberOfLines={1}>
+                "{c.commentText}"
+              </Text>
+            </View>
+          ))}
         </View>
       )}
 
