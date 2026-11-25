@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { eq, and, or } from "drizzle-orm";
-import { db, dateInvitesTable, matchesTable, messagesTable } from "@workspace/db";
+import { db, dateInvitesTable, matchesTable, messagesTable, profilesTable } from "@workspace/db";
 import { requireAuth, type AuthedRequest } from "../middlewares/auth.js";
 import { broadcastToMatch } from "../lib/ws-manager.js";
 
@@ -145,6 +145,42 @@ router.post("/matches/:matchId/date-invite/respond", requireAuth, async (req, re
   }
 
   res.json({ success: true, status, invite: updated });
+});
+
+// GET /dates/:inviteId/share-card — Safe date details for sharing with Bestie
+router.get("/dates/:inviteId/share-card", requireAuth, async (req, res) => {
+  const userId = (req as AuthedRequest).userId;
+  const inviteId = String(req.params["inviteId"] ?? "");
+
+  const [invite] = await db
+    .select()
+    .from(dateInvitesTable)
+    .where(eq(dateInvitesTable.id, inviteId))
+    .limit(1);
+
+  if (!invite) {
+    res.status(404).json({ error: "not_found" });
+    return;
+  }
+
+  const partnerId = invite.senderId === userId ? invite.recipientId : invite.senderId;
+  const [partner] = await db
+    .select({
+      fullName: profilesTable.fullName,
+      isVerified: profilesTable.isVerified,
+      verificationStatus: profilesTable.verificationStatus,
+    })
+    .from(profilesTable)
+    .where(eq(profilesTable.id, partnerId))
+    .limit(1);
+
+  res.json({
+    partnerName: partner?.fullName?.trim().split(" ")[0] ?? "kinn Member",
+    spotName: `${invite.spotName} (${invite.spotArea})`,
+    time: invite.proposedTime,
+    verifiedBadge: Boolean(partner?.isVerified || partner?.verificationStatus === "verified"),
+    link: `https://kinn.ink/p/${partnerId}`,
+  });
 });
 
 export default router;

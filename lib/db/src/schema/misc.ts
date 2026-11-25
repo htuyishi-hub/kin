@@ -49,13 +49,14 @@ export const nameSearchesTable = pgTable("name_searches", {
   index("idx_name_searches_target").on(table.targetProfileId),
 ]);
 
-// Photo compliments (200 RWF)
+// Photo compliments (200 RWF) & Deck Drinks (100/200 RWF)
 export const photoCommentsTable = pgTable("photo_comments", {
   id: uuid("id").primaryKey().defaultRandom(),
   senderId: uuid("sender_id").notNull().references(() => profilesTable.id, { onDelete: "cascade" }),
   targetProfileId: uuid("target_profile_id").notNull().references(() => profilesTable.id, { onDelete: "cascade" }),
-  photoUrl: text("photo_url").notNull(),
+  photoUrl: text("photo_url"),
   commentText: text("comment_text").notNull(),
+  giftType: text("gift_type").default("comment"),
   amountRwf: integer("amount_rwf").default(200).notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });

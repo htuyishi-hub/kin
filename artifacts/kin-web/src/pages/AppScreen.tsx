@@ -1613,6 +1613,31 @@ export default function AppScreen() {
   }
 
   const [bulkPasteText, setBulkPasteText] = useState('');
+  const [isFreeTonight, setIsFreeTonight] = useState(false);
+  const [passportCity, setPassportCity] = useState<string | null>(null);
+
+  async function handleToggleFreeTonight() {
+    const next = !isFreeTonight;
+    setIsFreeTonight(next);
+    if (!token) return;
+    await apiFetch('/api/me/free-tonight', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ isFreeTonight: next }),
+    }).catch(() => {});
+  }
+
+  async function handleActivatePassport(city: string) {
+    if (!token) return;
+    const res = await apiFetch('/api/me/passport', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ city }),
+    });
+    if (res.ok) {
+      setPassportCity(city);
+    }
+  }
 
   async function submitBulkPhones(rawNumbers: string[]) {
     if (!token || rawNumbers.length === 0) return;
@@ -3000,8 +3025,8 @@ export default function AppScreen() {
                   );
                 })()}
 
-                {/* 4-Button Action Dock: Rewind, Pass, Like, Super Like */}
-                <div className="flex items-center justify-center gap-4 py-3">
+                {/* Action Dock: Rewind, Coffee (100), Pass, Like, Cocktail (200), Super Like */}
+                <div className="flex items-center justify-center gap-3 py-3">
                   {/* Rewind */}
                   <button
                     type="button"
@@ -3009,9 +3034,26 @@ export default function AppScreen() {
                     disabled={swipeHistory.length === 0}
                     title={t('discover.rewind')}
                     aria-label={t('discover.rewind')}
-                    className="w-11 h-11 rounded-full bg-[#1A1A2E] border border-[#21262D] text-[#F59E0B] flex items-center justify-center hover:border-[#F59E0B] active:scale-95 transition-all shadow-md disabled:opacity-35 cursor-pointer"
+                    className="w-10 h-10 rounded-full bg-[#1A1A2E] border border-[#21262D] text-[#F59E0B] flex items-center justify-center hover:border-[#F59E0B] active:scale-95 transition-all shadow-md disabled:opacity-35 cursor-pointer"
                   >
-                    <RotateCcw className="w-5 h-5" />
+                    <RotateCcw className="w-4 h-4" />
+                  </button>
+
+                  {/* Send Coffee (100 RWF) */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!token || !currentProfile) return;
+                      apiFetch('/api/deck/drink', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                        body: JSON.stringify({ targetUserId: currentProfile.id, drinkType: 'coffee' }),
+                      }).catch(() => {});
+                    }}
+                    title={t('deck.sendCoffee')}
+                    className="w-10 h-10 rounded-full bg-[#1A1A2E] border border-[#C9A84C]/50 text-base flex items-center justify-center hover:border-[#C9A84C] active:scale-95 transition-all shadow-md cursor-pointer"
+                  >
+                    ☕
                   </button>
 
                   {/* Pass */}
@@ -3036,6 +3078,23 @@ export default function AppScreen() {
                     <Heart className="w-7 h-7 fill-current" />
                   </button>
 
+                  {/* Send Cocktail (200 RWF) */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!token || !currentProfile) return;
+                      apiFetch('/api/deck/drink', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                        body: JSON.stringify({ targetUserId: currentProfile.id, drinkType: 'cocktail' }),
+                      }).catch(() => {});
+                    }}
+                    title={t('deck.sendCocktail')}
+                    className="w-10 h-10 rounded-full bg-[#1A1A2E] border border-[#FF6B6B]/50 text-base flex items-center justify-center hover:border-[#FF6B6B] active:scale-95 transition-all shadow-md cursor-pointer"
+                  >
+                    🍸
+                  </button>
+
                   {/* Super Like */}
                   <button
                     type="button"
@@ -3043,9 +3102,9 @@ export default function AppScreen() {
                     disabled={goldenBids <= 0}
                     title={t('discover.superLike')}
                     aria-label={t('discover.superLike')}
-                    className="w-11 h-11 rounded-full bg-[#2563EB] text-white flex items-center justify-center font-bold active:scale-95 transition-all shadow-[0_0_16px_rgba(37,99,235,0.4)] disabled:opacity-40 cursor-pointer"
+                    className="w-10 h-10 rounded-full bg-[#2563EB] text-white flex items-center justify-center font-bold active:scale-95 transition-all shadow-[0_0_16px_rgba(37,99,235,0.4)] disabled:opacity-40 cursor-pointer"
                   >
-                    <Star className="w-5 h-5 fill-current" />
+                    <Star className="w-4 h-4 fill-current" />
                   </button>
                 </div>
 
@@ -3221,6 +3280,23 @@ export default function AppScreen() {
                       className="p-2 rounded-full border border-[#21262D] bg-[#1A1A2E] text-[#38BDF8] hover:border-[#38BDF8]/60 transition-all cursor-pointer"
                     >
                       <MapPin className="w-4 h-4" />
+                    </button>
+
+                    {/* Nudge Button */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (!token || !selectedMatch?.id) return;
+                        apiFetch(`/api/matches/${selectedMatch.id}/nudge`, {
+                          method: 'POST',
+                          headers: { Authorization: `Bearer ${token}` },
+                        }).catch(() => {});
+                      }}
+                      title={t('nudge.sendNudge')}
+                      aria-label={t('nudge.sendNudge')}
+                      className="p-2 rounded-full border border-[#21262D] bg-[#1A1A2E] text-[#C9A84C] hover:border-[#C9A84C]/60 transition-all cursor-pointer"
+                    >
+                      <span className="text-xs font-bold">⚡</span>
                     </button>
 
                     {/* Question Game Button */}
@@ -3411,9 +3487,30 @@ export default function AppScreen() {
                                             </button>
                                           </div>
                                         ) : (
-                                          <span className={`inline-block text-[11px] font-bold ${status === 'accepted' ? 'text-[#3FB950]' : 'text-[#8B949E]'}`}>
-                                            {status === 'accepted' ? t('dates.accepted') : status === 'declined' ? t('dates.declined') : '...'}
-                                          </span>
+                                          <div className="flex flex-col gap-1.5">
+                                            <span className={`inline-block text-[11px] font-bold ${status === 'accepted' ? 'text-[#3FB950]' : 'text-[#8B949E]'}`}>
+                                              {status === 'accepted' ? t('dates.accepted') : status === 'declined' ? t('dates.declined') : '...'}
+                                            </span>
+                                            {status === 'accepted' && (
+                                              <button
+                                                type="button"
+                                                onClick={() => {
+                                                  const text = encodeURIComponent(
+                                                    t('safety.shareDateText', {
+                                                      name: selectedMatch?.otherUserName || 'kinn Member',
+                                                      spot: msg.gameData?.question || '',
+                                                      time: '',
+                                                      link: `https://kinn.ink/p/${selectedMatch?.otherUserId || ''}`,
+                                                    })
+                                                  );
+                                                  window.open(`https://wa.me/?text=${text}`, '_blank', 'noopener,noreferrer');
+                                                }}
+                                                className="px-2.5 py-1 rounded-lg bg-[#2563EB]/20 border border-[#38BDF8]/40 text-[#38BDF8] text-[10px] font-bold text-left cursor-pointer"
+                                              >
+                                                {t('safety.shareDateBestie')}
+                                              </button>
+                                            )}
+                                          </div>
                                         )}
                                       </div>
                                     );
@@ -4162,6 +4259,52 @@ export default function AppScreen() {
                       </button>
                     )}
                   </div>
+                </div>
+              </div>
+
+              {/* Free Tonight Toggle */}
+              <div className="p-4 bg-[#1A1A2E] border border-[#21262D] rounded-2xl flex items-center justify-between">
+                <span className="text-sm font-semibold text-[#F0EDE6]">{t('deck.freeTonight')}</span>
+                <button
+                  type="button"
+                  onClick={handleToggleFreeTonight}
+                  className={`w-11 h-6 rounded-full transition-colors p-0.5 cursor-pointer ${
+                    isFreeTonight ? 'bg-[#3FB950]' : 'bg-[#21262D]'
+                  }`}
+                >
+                  <div
+                    className={`w-5 h-5 rounded-full bg-white transition-transform ${
+                      isFreeTonight ? 'translate-x-5' : 'translate-x-0'
+                    }`}
+                  />
+                </button>
+              </div>
+
+              {/* Weekend Travel Passport (200 RWF) */}
+              <div className="p-4 bg-[#1A1A2E] border border-[#21262D] rounded-2xl flex flex-col gap-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-semibold text-[#F0EDE6]">{t('passport.title')}</span>
+                  {passportCity && (
+                    <span className="text-[11px] font-bold text-[#38BDF8]">
+                      {t('passport.activeIn', { city: passportCity })}
+                    </span>
+                  )}
+                </div>
+                <div className="flex gap-2">
+                  {['Rubavu', 'Musanze', 'Huye'].map((city) => (
+                    <button
+                      key={city}
+                      type="button"
+                      onClick={() => handleActivatePassport(city)}
+                      className={`flex-1 py-1.5 rounded-xl text-xs font-bold border cursor-pointer ${
+                        passportCity === city
+                          ? 'bg-[#C9A84C] text-[#0D1117] border-[#C9A84C]'
+                          : 'bg-[#161B22] text-[#F0EDE6] border-[#21262D]'
+                      }`}
+                    >
+                      {city}
+                    </button>
+                  ))}
                 </div>
               </div>
 

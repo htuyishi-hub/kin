@@ -400,6 +400,31 @@ export default function ProfileScreen() {
   const [phoneContacts, setPhoneContacts] = useState<{ id: string; name: string; phone: string }[]>([]);
   const [selectedContactPhones, setSelectedContactPhones] = useState<Record<string, boolean>>({});
   const [contactSearch, setContactSearch] = useState("");
+  const [isFreeTonight, setIsFreeTonight] = useState(false);
+  const [passportCity, setPassportCity] = useState<string | null>(null);
+
+  const handleToggleFreeTonight = async () => {
+    if (!token) return;
+    const next = !isFreeTonight;
+    setIsFreeTonight(next);
+    fetch(`${apiBaseUrl}/api/me/free-tonight`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ isFreeTonight: next }),
+    }).catch(() => {});
+  };
+
+  const handleActivatePassport = async (city: string) => {
+    if (!token) return;
+    const res = await fetch(`${apiBaseUrl}/api/me/passport`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ city }),
+    });
+    if (res.ok) {
+      setPassportCity(city);
+    }
+  };
 
   const handleOpenContactPicker = async () => {
     try {
@@ -892,6 +917,50 @@ export default function ProfileScreen() {
             >
               <View style={[styles.receiptToggleThumb, hideFromPeople && styles.receiptToggleThumbActive]} />
             </TouchableOpacity>
+          </View>
+
+          {/* Free Tonight Switch */}
+          <View style={styles.actionRow}>
+            <Feather name="moon" size={18} color="#3FB950" />
+            <Text style={styles.actionText}>{t('deck.freeTonight')}</Text>
+            <TouchableOpacity
+              onPress={handleToggleFreeTonight}
+              style={[styles.receiptToggleTrack, isFreeTonight && styles.receiptToggleTrackActive]}
+              activeOpacity={0.8}
+            >
+              <View style={[styles.receiptToggleThumb, isFreeTonight && styles.receiptToggleThumbActive]} />
+            </TouchableOpacity>
+          </View>
+
+          {/* Weekend Travel Passport (200 RWF) */}
+          <View style={{ backgroundColor: Colors.inkRaised, borderRadius: 14, padding: 12, gap: 8, borderWidth: 1, borderColor: "rgba(255,255,255,0.06)" }}>
+            <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+              <Text style={{ color: Colors.bone, fontSize: 13, fontFamily: "Inter_600SemiBold" }}>{t('passport.title')}</Text>
+              {passportCity && (
+                <Text style={{ color: "#38BDF8", fontSize: 11, fontFamily: "Inter_700Bold" }}>
+                  {t('passport.activeIn', { city: passportCity })}
+                </Text>
+              )}
+            </View>
+            <View style={{ flexDirection: "row", gap: 8 }}>
+              {["Rubavu", "Musanze", "Huye"].map((city) => (
+                <TouchableOpacity
+                  key={city}
+                  onPress={() => handleActivatePassport(city)}
+                  style={{
+                    flex: 1,
+                    paddingVertical: 7,
+                    borderRadius: 10,
+                    alignItems: "center",
+                    backgroundColor: passportCity === city ? Colors.gold : Colors.ink,
+                  }}
+                >
+                  <Text style={{ color: passportCity === city ? "#0D1117" : Colors.bone, fontSize: 12, fontFamily: "Inter_700Bold" }}>
+                    {city}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
           </View>
 
           {/* Incognito Mode Switch */}

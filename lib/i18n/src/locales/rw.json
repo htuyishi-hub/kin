@@ -341,6 +341,31 @@
     "itIsAMatch": "Mwahuye! Amafoto Yafunguwe 🎉",
     "continueChat": "Fungura Ikiganiro"
   },
+  "deck": {
+    "itsAMatch": "Mwahuye! 🎉",
+    "sayHi": "Andikira 💬",
+    "keepSwiping": "Komeza 🎴",
+    "sendCoffee": "Ikawa · 100 RWF",
+    "sendCocktail": "Cocktail · 200 RWF",
+    "shareProfile": "Sangiza",
+    "topPicks": "🌟 Top 5",
+    "freeTonight": "🍸 Uyu Mugoroba",
+    "onlineNow": "Ari kuri murandasi",
+    "secondChance": "Amahirwe ya 2 · 100 RWF",
+    "copiedLink": "Link yakopiwe"
+  },
+  "passport": {
+    "title": "Passport ✈️ · 200 RWF",
+    "activeIn": "Ahantu: {{city}}"
+  },
+  "safety": {
+    "shareDateBestie": "🛡️ Menyesha Inshuti",
+    "shareDateText": "Ngiye guhura na {{name}} kuri {{spot}} ({{time}}). Profile yemejwe: {{link}}"
+  },
+  "nudge": {
+    "sendNudge": "⚡ Nudge",
+    "sent": "Byoherejwe"
+  },
   "serious": {
     "tabTitle": "Abiyemeje",
     "queueTitle": "Umurongo w'Abiyemeje",

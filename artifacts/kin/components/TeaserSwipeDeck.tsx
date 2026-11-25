@@ -603,7 +603,23 @@ export function TeaserSwipeDeck({
           disabled={currentIndex <= 0}
           activeOpacity={0.8}
         >
-          <Feather name="rotate-ccw" size={20} color="#F59E0B" />
+          <Feather name="rotate-ccw" size={18} color="#F59E0B" />
+        </TouchableOpacity>
+
+        {/* Send Coffee (100 RWF) */}
+        <TouchableOpacity
+          style={[styles.actionBtn, { width: 42, height: 42, borderColor: "rgba(201,168,76,0.5)", backgroundColor: Colors.inkRaised }]}
+          onPress={() => {
+            if (!token || !currentCandidate) return;
+            fetch(`${apiBaseUrl}/api/deck/drink`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+              body: JSON.stringify({ targetUserId: currentCandidate.id, drinkType: "coffee" }),
+            }).then(() => Haptics.notificationAsync?.(Haptics.NotificationFeedbackType.Success)).catch(() => {});
+          }}
+          activeOpacity={0.8}
+        >
+          <Text style={{ fontSize: 16 }}>☕</Text>
         </TouchableOpacity>
 
         {/* Pass */}
@@ -612,7 +628,7 @@ export function TeaserSwipeDeck({
           onPress={() => handleHardReject(currentCandidate)}
           activeOpacity={0.8}
         >
-          <Feather name="x" size={26} color={Colors.danger} />
+          <Feather name="x" size={24} color={Colors.danger} />
         </TouchableOpacity>
 
         {/* Like */}
@@ -621,7 +637,23 @@ export function TeaserSwipeDeck({
           onPress={() => triggerLikeVibeSelect(currentCandidate)}
           activeOpacity={0.8}
         >
-          <Feather name="heart" size={26} color={Colors.success} />
+          <Feather name="heart" size={24} color={Colors.success} />
+        </TouchableOpacity>
+
+        {/* Send Cocktail (200 RWF) */}
+        <TouchableOpacity
+          style={[styles.actionBtn, { width: 42, height: 42, borderColor: "rgba(255,107,107,0.5)", backgroundColor: Colors.inkRaised }]}
+          onPress={() => {
+            if (!token || !currentCandidate) return;
+            fetch(`${apiBaseUrl}/api/deck/drink`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+              body: JSON.stringify({ targetUserId: currentCandidate.id, drinkType: "cocktail" }),
+            }).then(() => Haptics.notificationAsync?.(Haptics.NotificationFeedbackType.Success)).catch(() => {});
+          }}
+          activeOpacity={0.8}
+        >
+          <Text style={{ fontSize: 16 }}>🍸</Text>
         </TouchableOpacity>
 
         {/* Super Like (Golden Bid) */}

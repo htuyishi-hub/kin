@@ -10,6 +10,8 @@ import {
   vouchesTable,
   passesTable,
   blockedContactsTable,
+  photoCommentsTable,
+  paymentsTable,
 } from "@workspace/db";
 import { requireAuth, type AuthedRequest } from "../middlewares/auth.js";
 import { normalizeRwandaPhone } from "./contacts.js";
@@ -264,6 +266,7 @@ router.get("/match-queue", requireAuth, async (req, res) => {
       firstName,
       age: c.dateOfBirth ? calculateAge(String(c.dateOfBirth)) : null,
       location,
+      areaName: c.district ?? c.campusName ?? c.city ?? "Kigali",
       campusName: c.campusName ?? c.campus ?? null,
       city: c.city ?? null,
       district: c.district ?? null,
@@ -281,12 +284,150 @@ router.get("/match-queue", requireAuth, async (req, res) => {
       tags: (c.tags as string[]) ?? [],
       voiceIntroPath: c.voiceIntroPath ?? null,
       voiceIntroDurationMs: c.voiceIntroDurationMs ?? null,
+      voiceBioUrl: (c as any).voiceBioUrl ?? null,
+      heightCm: (c as any).heightCm ?? null,
+      languages: (c as any).languages ?? ["Kinyarwanda", "English"],
+      zodiacSign: (c as any).zodiacSign ?? null,
+      isFreeTonight: Boolean((c as any).isFreeTonight),
+      freeTonightNote: (c as any).freeTonightNote ?? null,
+      isOnline: Boolean(c.lastActive && c.lastActive > new Date(Date.now() - 15 * 60 * 1000)),
       approvedBy: approvedByMap.get(c.id) ?? null,
       vouchedBy: approvedByMap.get(c.id) ?? null,
     };
   });
 
-  res.json(result);
+  const freeTonightOnly = req.query["freeTonight"] === "true";
+  res.json(freeTonightOnly ? result.filter((r) => r.isFreeTonight) : result);
+});
+
+// GET /deck/top-picks — Daily Curated Top 5 Picks
+router.get("/deck/top-picks", requireAuth, async (req, res) => {
+  const userId = (req as AuthedRequest).userId;
+  const rows = await db
+    .select()
+    .from(profilesTable)
+    .where(and(ne(profilesTable.id, userId), eq(profilesTable.profileActive, true), eq(profilesTable.onboardingComplete, true)))
+    .limit(5);
+
+  const ids = rows.map((r) => r.id);
+  const photos = ids.length
+    ? await db
+        .select({ userId: profilePhotosTable.userId, publicUrl: profilePhotosTable.publicUrl, storagePath: profilePhotosTable.storagePath })
+        .from(profilePhotosTable)
+        .where(inArray(profilePhotosTable.userId, ids))
+        .orderBy(asc(profilePhotosTable.sortOrder))
+    : [];
+  const pMap = new Map<string, string[]>();
+  for (const ph of photos) {
+    if (!pMap.has(ph.userId)) pMap.set(ph.userId, []);
+    const u = ph.publicUrl || ph.storagePath;
+    if (u) pMap.get(ph.userId)!.push(u);
+  }
+
+  res.json(
+    rows.map((c) => ({
+      id: c.id,
+      firstName: c.fullName?.trim().split(" ")[0] ?? "kinn Member",
+      age: c.dateOfBirth ? calculateAge(String(c.dateOfBirth)) : null,
+      location: c.campusName ?? c.city ?? "Kigali",
+      primaryIntent: c.primaryIntent ?? "Serious",
+      isVerified: Boolean(c.isVerified || c.institutionVerified),
+      photos: pMap.get(c.id) ?? [],
+      isFreeTonight: Boolean((c as any).isFreeTonight),
+    }))
+  );
+});
+
+// GET /deck/second-chance — Last 10 passed profiles
+router.get("/deck/second-chance", requireAuth, async (req, res) => {
+  const userId = (req as AuthedRequest).userId;
+  const passed = await db
+    .select({ targetUserId: passesTable.targetUserId })
+    .from(passesTable)
+    .where(eq(passesTable.userId, userId))
+    .limit(10);
+
+  const ids = passed.map((p) => p.targetUserId);
+  if (ids.length === 0) {
+    res.json([]);
+    return;
+  }
+
+  const rows = await db
+    .select({ id: profilesTable.id, fullName: profilesTable.fullName, campusName: profilesTable.campusName, city: profilesTable.city })
+    .from(profilesTable)
+    .where(inArray(profilesTable.id, ids));
+
+  res.json(
+    rows.map((r) => ({
+      id: r.id,
+      firstName: r.fullName?.trim().split(" ")[0] ?? "kinn Member",
+      location: r.campusName ?? r.city ?? "Kigali",
+    }))
+  );
+});
+
+// POST /deck/second-chance/revive — 100 RWF MoMo revive passed profile
+router.post("/deck/second-chance/revive", requireAuth, async (req, res) => {
+  const userId = (req as AuthedRequest).userId;
+  const { targetUserId } = req.body as { targetUserId?: string };
+  if (!targetUserId) {
+    res.status(400).json({ error: "missing_target" });
+    return;
+  }
+
+  await db.insert(paymentsTable).values({
+    userId,
+    productType: "second_chance",
+    amountRwf: 100,
+    status: "completed",
+    fulfilled: true,
+    completedAt: new Date(),
+  });
+
+  await db
+    .delete(passesTable)
+    .where(and(eq(passesTable.userId, userId), eq(passesTable.targetUserId, targetUserId)));
+
+  res.json({ success: true });
+});
+
+// POST /deck/drink — Send Coffee (100 RWF) or Cocktail (200 RWF) on Deck
+router.post("/deck/drink", requireAuth, async (req, res) => {
+  const userId = (req as AuthedRequest).userId;
+  const { targetUserId, drinkType, note } = req.body as {
+    targetUserId?: string;
+    drinkType?: "coffee" | "cocktail";
+    note?: string;
+  };
+  if (!targetUserId) {
+    res.status(400).json({ error: "missing_target" });
+    return;
+  }
+
+  const type = drinkType === "cocktail" ? "cocktail" : "coffee";
+  const amountRwf = type === "cocktail" ? 200 : 100;
+  const defaultNote = type === "cocktail" ? "🍸 Sent you a Cocktail!" : "☕ Sent you a Coffee!";
+
+  await db.insert(paymentsTable).values({
+    userId,
+    productType: `deck_${type}`,
+    amountRwf,
+    status: "completed",
+    fulfilled: true,
+    completedAt: new Date(),
+  });
+
+  await db.insert(photoCommentsTable).values({
+    senderId: userId,
+    targetProfileId: targetUserId,
+    photoUrl: null,
+    commentText: (note?.trim() || defaultNote).slice(0, 140),
+    giftType: type,
+    amountRwf,
+  } as any);
+
+  res.json({ success: true, amountRwf, giftType: type });
 });
 
 export default router;

@@ -12,6 +12,7 @@ import {
   FlatList,
   Modal,
   Platform,
+  Share,
   StyleSheet,
   Text,
   TextInput,
@@ -971,6 +972,30 @@ export default function MatchScreen() {
             <Feather name="map-pin" size={16} color="#38BDF8" />
           </TouchableOpacity>
 
+          {/* Nudge Button */}
+          <TouchableOpacity
+            style={[styles.headerIconBtn, { backgroundColor: colors.secondary, borderColor: colors.border }]}
+            onPress={() => {
+              if (!token || !matchId) return;
+              const baseUrl =
+                process.env.EXPO_PUBLIC_API_URL ??
+                process.env.VITE_API_URL ??
+                (process.env.EXPO_PUBLIC_DOMAIN
+                  ? `https://${process.env.EXPO_PUBLIC_DOMAIN}`
+                  : "https://kin-x81d.onrender.com");
+              fetch(`${baseUrl}/api/matches/${matchId}/nudge`, {
+                method: "POST",
+                headers: { Authorization: `Bearer ${token}` },
+              }).then(() => {
+                Haptics.notificationAsync?.(Haptics.NotificationFeedbackType.Success);
+              }).catch(() => {});
+            }}
+            accessibilityLabel={t("nudge.sendNudge")}
+            accessibilityRole="button"
+          >
+            <Feather name="zap" size={16} color="#C9A84C" />
+          </TouchableOpacity>
+
           {/* Question Game Button */}
           <TouchableOpacity
             style={[styles.headerIconBtn, { backgroundColor: colors.secondary, borderColor: colors.border }]}
@@ -1177,9 +1202,30 @@ export default function MatchScreen() {
                                 </TouchableOpacity>
                               </View>
                             ) : (
-                              <Text style={{ color: status === "accepted" ? "#3FB950" : colors.mutedForeground, fontSize: 11, fontFamily: "Inter_700Bold" }}>
-                                {status === "accepted" ? t("dates.accepted") : status === "declined" ? t("dates.declined") : "..."}
-                              </Text>
+                              <View style={{ gap: 6 }}>
+                                <Text style={{ color: status === "accepted" ? "#3FB950" : colors.mutedForeground, fontSize: 11, fontFamily: "Inter_700Bold" }}>
+                                  {status === "accepted" ? t("dates.accepted") : status === "declined" ? t("dates.declined") : "..."}
+                                </Text>
+                                {status === "accepted" && (
+                                  <TouchableOpacity
+                                    onPress={() => {
+                                      Share.share({
+                                        message: t("safety.shareDateText", {
+                                          name: match?.otherUserName || "kinn Member",
+                                          spot: item.message.gameData?.question || "",
+                                          time: "",
+                                          link: `https://kinn.ink/p/${match?.otherUserId || ""}`,
+                                        }),
+                                      }).catch(() => {});
+                                    }}
+                                    style={{ backgroundColor: "rgba(56,189,248,0.18)", paddingHorizontal: 8, paddingVertical: 5, borderRadius: 8 }}
+                                  >
+                                    <Text style={{ color: "#38BDF8", fontSize: 10, fontFamily: "Inter_700Bold" }}>
+                                      {t("safety.shareDateBestie")}
+                                    </Text>
+                                  </TouchableOpacity>
+                                )}
+                              </View>
                             )}
                           </View>
                         );

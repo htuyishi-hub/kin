@@ -29,6 +29,29 @@ async function ensureDatabaseSchema() {
     await pool.query("ALTER TABLE profiles ADD COLUMN IF NOT EXISTS weekly_rank INTEGER DEFAULT NULL;");
     await pool.query("ALTER TABLE profiles ADD COLUMN IF NOT EXISTS campus_zone TEXT DEFAULT 'Kigali';");
     await pool.query("ALTER TABLE profiles ADD COLUMN IF NOT EXISTS spotlight_until TIMESTAMPTZ DEFAULT NULL;");
+    await pool.query("ALTER TABLE profiles ADD COLUMN IF NOT EXISTS voice_bio_url TEXT DEFAULT NULL;");
+    await pool.query("ALTER TABLE profiles ADD COLUMN IF NOT EXISTS height_cm INTEGER DEFAULT NULL;");
+    await pool.query("ALTER TABLE profiles ADD COLUMN IF NOT EXISTS languages TEXT[] DEFAULT ARRAY['Kinyarwanda', 'English'];");
+    await pool.query("ALTER TABLE profiles ADD COLUMN IF NOT EXISTS zodiac_sign TEXT DEFAULT NULL;");
+    await pool.query("ALTER TABLE profiles ADD COLUMN IF NOT EXISTS is_free_tonight BOOLEAN NOT NULL DEFAULT FALSE;");
+    await pool.query("ALTER TABLE profiles ADD COLUMN IF NOT EXISTS free_tonight_note TEXT DEFAULT NULL;");
+    await pool.query("ALTER TABLE profiles ADD COLUMN IF NOT EXISTS passport_city TEXT DEFAULT NULL;");
+    await pool.query("ALTER TABLE profiles ADD COLUMN IF NOT EXISTS passport_until TIMESTAMPTZ DEFAULT NULL;");
+    await pool.query("ALTER TABLE photo_comments ADD COLUMN IF NOT EXISTS gift_type TEXT DEFAULT 'comment';");
+    await pool.query("ALTER TABLE photo_comments ALTER COLUMN photo_url DROP NOT NULL;");
+    await pool.query(`
+      DO $$
+      BEGIN
+        IF NOT EXISTS (
+          SELECT 1 FROM pg_publication_tables
+          WHERE pubname = 'supabase_realtime' AND schemaname = 'public' AND tablename = 'date_invites'
+        ) THEN
+          ALTER PUBLICATION supabase_realtime ADD TABLE public.date_invites;
+        END IF;
+      EXCEPTION WHEN undefined_object THEN
+        NULL;
+      END $$;
+    `);
     await pool.query(`
       CREATE TABLE IF NOT EXISTS popularity_votes (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

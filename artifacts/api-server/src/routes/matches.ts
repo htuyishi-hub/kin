@@ -270,4 +270,23 @@ router.post("/matches/:matchId/revive", requireAuth, async (req, res) => {
   });
 });
 
+// POST /matches/:matchId/nudge — Send gentle nudge for dormant match
+router.post("/matches/:matchId/nudge", requireAuth, async (req, res) => {
+  const userId = (req as AuthedRequest).userId;
+  const matchId = String(req.params["matchId"] ?? "");
+
+  const [match] = await db
+    .select()
+    .from(matchesTable)
+    .where(eq(matchesTable.id, matchId))
+    .limit(1);
+
+  if (!match || (match.userA !== userId && match.userB !== userId)) {
+    res.status(404).json({ error: "not_found" });
+    return;
+  }
+
+  res.json({ nudged: true, matchId });
+});
+
 export default router;

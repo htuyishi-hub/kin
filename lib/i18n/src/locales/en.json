@@ -341,6 +341,31 @@
     "itIsAMatch": "Matched! Photos Unlocked 🎉",
     "continueChat": "Open Chat"
   },
+  "deck": {
+    "itsAMatch": "It's a Match! 🎉",
+    "sayHi": "Say Hi 💬",
+    "keepSwiping": "Keep Swiping 🎴",
+    "sendCoffee": "Coffee · 100 RWF",
+    "sendCocktail": "Cocktail · 200 RWF",
+    "shareProfile": "Share",
+    "topPicks": "🌟 Top 5",
+    "freeTonight": "🍸 Free Tonight",
+    "onlineNow": "Online",
+    "secondChance": "Second Chance · 100 RWF",
+    "copiedLink": "Link copied"
+  },
+  "passport": {
+    "title": "Passport ✈️ · 200 RWF",
+    "activeIn": "Active: {{city}}"
+  },
+  "safety": {
+    "shareDateBestie": "🛡️ Share Date with Bestie",
+    "shareDateText": "Date with {{name}} at {{spot}} ({{time}}). Verified profile: {{link}}"
+  },
+  "nudge": {
+    "sendNudge": "⚡ Nudge",
+    "sent": "Nudge sent"
+  },
   "serious": {
     "tabTitle": "Serious",
     "queueTitle": "Serious Queue",

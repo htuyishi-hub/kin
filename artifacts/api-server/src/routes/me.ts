@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { eq, and, sql, or } from "drizzle-orm";
-import { db, profilesTable, profilePhotosTable, vouchesTable } from "@workspace/db";
+import { db, profilesTable, profilePhotosTable, vouchesTable, paymentsTable } from "@workspace/db";
 import { requireAuth, type AuthedRequest } from "../middlewares/auth.js";
 import { getStorageAdmin } from "../lib/storage.js";
 import type { Request } from "express";
@@ -73,6 +73,14 @@ function mapProfile(p: typeof profilesTable.$inferSelect) {
     tags: (p.tags as string[]) ?? [],
     voiceIntroPath: p.voiceIntroPath ?? null,
     voiceIntroDurationMs: p.voiceIntroDurationMs ?? null,
+    voiceBioUrl: (p as any).voiceBioUrl ?? null,
+    heightCm: (p as any).heightCm ?? null,
+    languages: (p as any).languages ?? ["Kinyarwanda", "English"],
+    zodiacSign: (p as any).zodiacSign ?? null,
+    isFreeTonight: Boolean((p as any).isFreeTonight),
+    freeTonightNote: (p as any).freeTonightNote ?? null,
+    passportCity: (p as any).passportCity ?? null,
+    passportUntil: (p as any).passportUntil ? new Date((p as any).passportUntil).toISOString() : null,
     communityVotingEnabled: process.env.COMMUNITY_VOTING_ENABLED === "true",
     createdAt: p.createdAt ? new Date(p.createdAt).toISOString() : new Date().toISOString(),
     lastActive: p.lastActive ? new Date(p.lastActive).toISOString() : new Date().toISOString(),
@@ -926,6 +934,74 @@ router.patch("/me/privacy", requireAuth, async (req, res) => {
     isIncognito: Boolean(updated.isIncognito),
     profile: mapProfile(updated),
   });
+});
+
+// PATCH /me/free-tonight — Toggle Free Tonight status
+router.patch("/me/free-tonight", requireAuth, async (req, res) => {
+  const userId = (req as AuthedRequest).userId;
+  const { isFreeTonight, note } = req.body as { isFreeTonight?: boolean; note?: string };
+  const [updated] = await db
+    .update(profilesTable)
+    .set({
+      isFreeTonight: Boolean(isFreeTonight),
+      freeTonightNote: typeof note === "string" ? note.trim().slice(0, 140) : null,
+    } as any)
+    .where(eq(profilesTable.id, userId))
+    .returning();
+  if (!updated) {
+    res.status(404).json({ error: "not_found" });
+    return;
+  }
+  res.json({ success: true, profile: mapProfile(updated) });
+});
+
+// POST /me/passport — 200 RWF Weekend Travel Passport (48h)
+router.post("/me/passport", requireAuth, async (req, res) => {
+  const userId = (req as AuthedRequest).userId;
+  const { city } = req.body as { city?: string };
+  const cleanCity = String(city || "Rubavu").trim();
+  const passportUntil = new Date(Date.now() + 48 * 60 * 60 * 1000);
+
+  await db.insert(paymentsTable).values({
+    userId,
+    productType: "weekend_passport",
+    amountRwf: 200,
+    status: "completed",
+    fulfilled: true,
+    completedAt: new Date(),
+  });
+
+  const [updated] = await db
+    .update(profilesTable)
+    .set({
+      passportCity: cleanCity,
+      passportUntil,
+    } as any)
+    .where(eq(profilesTable.id, userId))
+    .returning();
+
+  res.json({
+    success: true,
+    passportCity: cleanCity,
+    passportUntil: passportUntil.toISOString(),
+    profile: updated ? mapProfile(updated) : null,
+  });
+});
+
+// POST /me/voice-bio — Save 15s voice bio URL
+router.post("/me/voice-bio", requireAuth, async (req, res) => {
+  const userId = (req as AuthedRequest).userId;
+  const { voiceBioUrl } = req.body as { voiceBioUrl?: string };
+  if (!voiceBioUrl) {
+    res.status(400).json({ error: "missing_url" });
+    return;
+  }
+  const [updated] = await db
+    .update(profilesTable)
+    .set({ voiceBioUrl } as any)
+    .where(eq(profilesTable.id, userId))
+    .returning();
+  res.json({ success: true, voiceBioUrl, profile: updated ? mapProfile(updated) : null });
 });
 
 // UR registration verification
