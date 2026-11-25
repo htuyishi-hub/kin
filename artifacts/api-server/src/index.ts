@@ -39,6 +39,20 @@ async function ensureDatabaseSchema() {
         created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
       );
     `);
+    await pool.query("CREATE INDEX IF NOT EXISTS chat_gifts_match_id_idx ON chat_gifts(match_id);");
+    await pool.query("ALTER TABLE chat_gifts ENABLE ROW LEVEL SECURITY;");
+    await pool.query(`
+      DO $$
+      BEGIN
+        IF NOT EXISTS (
+          SELECT 1 FROM pg_policies
+          WHERE schemaname = 'public' AND tablename = 'chat_gifts' AND policyname = 'chat_gifts_participants_read'
+        ) THEN
+          CREATE POLICY chat_gifts_participants_read ON public.chat_gifts
+            FOR SELECT USING (auth.uid() = sender_id OR auth.uid() = recipient_id);
+        END IF;
+      END $$;
+    `);
     logger.info("Database schema verified: profiles, matches, messages, chat_gifts up to date");
   } catch (err: any) {
     logger.warn({ err: err?.message }, "Database schema migration warning");
