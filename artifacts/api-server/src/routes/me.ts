@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { eq, and, sql, or } from "drizzle-orm";
-import { db, profilesTable, vouchesTable } from "@workspace/db";
+import { db, profilesTable, profilePhotosTable, vouchesTable } from "@workspace/db";
 import { requireAuth, type AuthedRequest } from "../middlewares/auth.js";
 import { getStorageAdmin } from "../lib/storage.js";
 import type { Request } from "express";
@@ -168,13 +168,19 @@ router.get("/me", requireAuth, async (req, res) => {
 
     const totalUsers = Number(countResult[0]?.count ?? 0);
     const earlyAccess = totalUsers < VOUCH_THRESHOLD;
-    const baseUrl = process.env["APP_URL"] ?? "https://kin.rw";
+    const baseUrl = (process.env["APP_URL"] ?? "https://kinn.ink").replace(/\/+$/, "");
     const isVerified = Boolean(
       p.isVerified ||
       p.institutionVerified ||
       p.invitedByProfile ||
       (p.vouchCount ?? 0) >= 1
     );
+
+    const [photoCountRow] = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(profilePhotosTable)
+      .where(eq(profilePhotosTable.userId, p.id));
+    const photoCount = photoCountRow?.count ?? 0;
 
     // Fetch confirmed voucher details for Trust Chain badge safely
     let vouchedBy: any = null;
@@ -210,11 +216,12 @@ router.get("/me", requireAuth, async (req, res) => {
       p.profileActive !== false &&
       p.profilePaused !== true;
 
-    const inviteCode = isVerifiedActive ? p.inviteCode ?? null : null;
-    const inviteLink = isVerifiedActive && inviteCode ? `${baseUrl}/invite/${inviteCode}` : null;
+    const inviteCode = p.inviteCode ?? null;
+    const inviteLink = inviteCode ? `${baseUrl}/invite/${inviteCode}` : null;
 
     res.json({
       ...mapProfile(p),
+      photoCount,
       account_status: accountStatus,
       accountStatus: accountStatus,
       invite_code: inviteCode,
@@ -249,7 +256,7 @@ router.patch("/me", requireAuth, async (req, res) => {
   const userName = authed.userName;
   const body = req.body as Record<string, unknown>;
 
-  const allowed = ["fullName", "gender", "dateOfBirth", "campusName", "faculty", "yearOfStudy", "hostelName", "city", "district", "proximityConsent", "language", "primaryIntent", "readReceiptsEnabled", "hideFromPeople"];
+  const allowed = ["fullName", "gender", "dateOfBirth", "campusName", "faculty", "yearOfStudy", "hostelName", "city", "district", "proximityConsent", "language", "primaryIntent", "readReceiptsEnabled", "hideFromPeople", "onboardingComplete"];
   const updates: Record<string, unknown> = {};
   for (const key of allowed) {
     if (key in body) updates[key] = body[key];
@@ -258,6 +265,21 @@ router.patch("/me", requireAuth, async (req, res) => {
   if (Object.keys(updates).length === 0) {
     res.status(400).json({ error: "bad_request", message: "No valid fields to update" });
     return;
+  }
+
+  if (updates.onboardingComplete === true) {
+    const [photoRow] = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(profilePhotosTable)
+      .where(eq(profilePhotosTable.userId, userId));
+    if ((photoRow?.count ?? 0) === 0) {
+      res.status(400).json({
+        error: "photo_required",
+        code: "PHOTO_REQUIRED",
+        message: "At least 1 profile photo is required.",
+      });
+      return;
+    }
   }
 
   if (body.dateOfBirth) {
@@ -366,6 +388,21 @@ router.post("/me/onboarding", requireAuth, async (req, res) => {
     return;
   }
 
+  const targetPhotoUserId = existingProfile?.id ?? userId;
+  const [photoCountRow] = await db
+    .select({ count: sql<number>`count(*)::int` })
+    .from(profilePhotosTable)
+    .where(eq(profilePhotosTable.userId, targetPhotoUserId));
+
+  if ((photoCountRow?.count ?? 0) === 0) {
+    res.status(400).json({
+      error: "photo_required",
+      code: "PHOTO_REQUIRED",
+      message: "At least 1 profile photo is required.",
+    });
+    return;
+  }
+
   // Invisible tier classification
   let hiddenTier = 1;
   if (occupation === "Student") hiddenTier = 1;
@@ -390,11 +427,14 @@ router.post("/me/onboarding", requireAuth, async (req, res) => {
     .set({
       hiddenTier: hiddenTier as any,
       primaryIntent,
+      intentClass: primaryIntent,
       faculty: occupation,
       campusName: campusName ?? null,
       fullName,
       gender,
       dateOfBirth,
+      accountStatus: "active",
+      verifiedAdult: true,
       onboardingComplete: true,
     })
     .where(
@@ -420,9 +460,11 @@ router.post("/me/onboarding", requireAuth, async (req, res) => {
         inviteCode: generateInviteCode(),
         tokensRemaining: 3,
         profileActive: true,
-        accountStatus: "waitlisted",
+        accountStatus: "active",
+        verifiedAdult: true,
         hiddenTier: hiddenTier as any,
         primaryIntent,
+        intentClass: primaryIntent,
         faculty: occupation,
         campusName: campusName ?? null,
         fullName,

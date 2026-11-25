@@ -92,20 +92,6 @@ router.get("/requests/pending", requireAuth, async (req, res) => {
     sql`(${profilesTable.profilePaused} IS FALSE OR ${profilesTable.profilePaused} IS NULL)`,
     sql`(${profilesTable.isVerified} = TRUE OR ${profilesTable.institutionVerified} = TRUE OR ${profilesTable.invitedByProfile} IS NOT NULL OR COALESCE(${profilesTable.vouchCount}, 0) >= 1)`,
 
-    // Intent gating
-    eq(sql`COALESCE(${profilesTable.intentClass}, ${profilesTable.primaryIntent})`, viewerIntent),
-
-    // Hidden Tier & Crossing Rules
-    sql`(
-      ${profilesTable.hiddenTier} = ${viewerTier}
-      OR (
-        (${viewerCrossing} = TRUE OR ${profilesTable.crossingFeePaid} = TRUE)
-        AND ${viewerIntent} IN ('Marriage', 'Serious Marriage')
-        AND ${profilesTable.hiddenTier} IN (1, 2)
-        AND ${viewerTier} IN (1, 2)
-      )
-    )`,
-
     // Neither has reported or blocked the other
     notExists(
       db

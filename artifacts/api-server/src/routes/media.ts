@@ -26,7 +26,13 @@ router.post("/media/photo/upload-url", requireAuth, async (req, res) => {
     .where(eq(profilesTable.id, userId))
     .limit(1);
 
-  if (!userProfile || userProfile.accountStatus !== "active" || userProfile.profileActive === false || userProfile.profilePaused === true) {
+  if (
+    !userProfile ||
+    userProfile.accountStatus === "banned" ||
+    userProfile.accountStatus === "suspended" ||
+    userProfile.profileActive === false ||
+    userProfile.profilePaused === true
+  ) {
     res.status(403).json({ error: "forbidden", code: "USER_NOT_ACTIVE", message: "Account must be active" });
     return;
   }

@@ -53,6 +53,8 @@ export const profilesTable = pgTable("profiles", {
   proximityConsent: boolean("proximity_consent").default(false),
   crossingFeePaid: boolean("crossing_fee_paid").default(false),
   tokensRemaining: smallint("tokens_remaining").default(0),
+  bonusSwipesToday: integer("bonus_swipes_today").default(0),
+  bonusSwipesDate: text("bonus_swipes_date"),
   profileActive: boolean("profile_active").default(true),
   profilePaused: boolean("profile_paused").default(false),
 

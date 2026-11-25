@@ -2,6 +2,7 @@ import { Router } from "express";
 import { eq, and } from "drizzle-orm";
 import { db, passesTable } from "@workspace/db";
 import { requireAuth, type AuthedRequest } from "../middlewares/auth.js";
+import { getSwipeStatus } from "../lib/swipes.js";
 
 const router = Router();
 
@@ -20,6 +21,17 @@ router.post("/passes", requireAuth, async (req, res) => {
 
   if (targetUserId === userId) {
     res.status(400).json({ error: "bad_request", message: "Cannot pass on yourself" });
+    return;
+  }
+
+  const swipeStatus = await getSwipeStatus(userId);
+  if (swipeStatus.remaining <= 0) {
+    res.status(429).json({
+      code: "SWIPE_DAILY_LIMIT",
+      error: "rate_limited",
+      message: "Daily swipe limit reached.",
+      ...swipeStatus,
+    });
     return;
   }
 

@@ -19,7 +19,9 @@ if (Number.isNaN(port) || port <= 0) {
 async function ensureDatabaseSchema() {
   try {
     await pool.query("ALTER TABLE profiles ALTER COLUMN phone_number DROP NOT NULL;");
-    logger.info("Database schema verified: profiles.phone_number is nullable");
+    await pool.query("ALTER TABLE profiles ADD COLUMN IF NOT EXISTS bonus_swipes_today INTEGER DEFAULT 0;");
+    await pool.query("ALTER TABLE profiles ADD COLUMN IF NOT EXISTS bonus_swipes_date TEXT;");
+    logger.info("Database schema verified: profiles columns up to date");
   } catch (err: any) {
     logger.warn({ err: err?.message }, "Database schema migration warning");
   }

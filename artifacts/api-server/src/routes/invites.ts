@@ -51,7 +51,7 @@ router.get("/invites/my-code", requireAuth, async (req, res) => {
     .leftJoin(profilesTable, eq(invitesTable.invitedUserId, profilesTable.id))
     .where(and(eq(invitesTable.inviterId, userId), eq(invitesTable.status, "accepted")));
 
-  const baseUrl = process.env["APP_URL"] ?? "https://kin.rw";
+  const baseUrl = (process.env["APP_URL"] ?? "https://kinn.ink").replace(/\/+$/, "");
   const inviteLink = `${baseUrl}/invite/${inviteCode}`;
 
   res.json({

@@ -44,24 +44,7 @@ router.get("/match-queue", requireAuth, async (req, res) => {
     return;
   }
 
-  const isVerifiedUser =
-    Boolean(myProfile.institutionVerified) ||
-    Boolean(myProfile.isVerified) ||
-    Boolean(myProfile.invitedByProfile) ||
-    (myProfile.vouchCount ?? 0) >= 1;
-
-  if (!isVerifiedUser) {
-    res.status(403).json({
-      error: "not_ready",
-      message: "You must be approved by an existing kinn member or verified with your University of Rwanda registration number to join the match pool.",
-    });
-    return;
-  }
-
-  // 1. Intent Gating: strictly match identical intent_class / primary_intent
-  const myIntent = myProfile.intentClass ?? myProfile.primaryIntent ?? "Serious";
-
-  // 2. Build eligible candidate pool excluding:
+  // Build eligible candidate pool excluding:
   //    - already liked by me
   //    - mutual matches
   //    - soft-passed within 14 days
@@ -75,8 +58,6 @@ router.get("/match-queue", requireAuth, async (req, res) => {
         ne(profilesTable.id, userId),
         eq(profilesTable.profileActive, true),
         eq(profilesTable.onboardingComplete, true),
-        // Intent Gating: STRICTLY same intent class
-        eq(sql`COALESCE(${profilesTable.intentClass}, ${profilesTable.primaryIntent})`, myIntent),
         // Exclude profiles I already liked
         notExists(
           db
@@ -158,11 +139,12 @@ router.get("/match-queue", requireAuth, async (req, res) => {
 
   const incomingMap = new Map(incomingInterests.map((item) => [item.fromUser, item]));
 
-  // 4. Fetch photos strictly limited to 2 photos per user
+  // 4. Fetch photos (up to 6 photos per user for story-style tapping)
   const photos = await db
     .select({
       userId: profilePhotosTable.userId,
       publicUrl: profilePhotosTable.publicUrl,
+      storagePath: profilePhotosTable.storagePath,
       sortOrder: profilePhotosTable.sortOrder,
     })
     .from(profilePhotosTable)
@@ -173,8 +155,9 @@ router.get("/match-queue", requireAuth, async (req, res) => {
   for (const p of photos) {
     if (!photoMap.has(p.userId)) photoMap.set(p.userId, []);
     const list = photoMap.get(p.userId)!;
-    if (list.length < 2 && p.publicUrl) {
-      list.push(p.publicUrl);
+    const url = p.publicUrl || p.storagePath;
+    if (list.length < 6 && url) {
+      list.push(url);
     }
   }
 
@@ -223,27 +206,43 @@ router.get("/match-queue", requireAuth, async (req, res) => {
     .sort((a, b) => b.rank - a.rank)
     .slice(0, limit);
 
-  // 7. Format Teaser Swipe Deck payload:
-  //    STRICT maximum of 2 photos, and ONLY the user's First Name.
+  // 7. Format Swipe Deck payload with rich profile metadata
   const result = ranked.map(({ c, isGoldenBid, incomingReaction }) => {
     const rawName = c.fullName?.trim() ?? "kinn Member";
     const firstName = rawName.split(" ")[0] ?? "Member";
     const candidatePhotos = photoMap.get(c.id) ?? [];
+    const candidateIntent = c.intentClass ?? c.primaryIntent ?? "Serious";
+    const isUrStudent = Boolean(c.institutionVerified);
+    const isVerified = Boolean(
+      c.institutionVerified ||
+      c.isVerified ||
+      c.invitedByProfile ||
+      (c.vouchCount ?? 0) >= 1
+    );
+    const location = c.campusName || c.campus || c.city || c.district || "Kigali";
 
     return {
       id: c.id,
       firstName,
-      photos: candidatePhotos, // STRICT maximum of 2 photos
+      age: c.dateOfBirth ? calculateAge(String(c.dateOfBirth)) : null,
+      location,
+      campusName: c.campusName ?? c.campus ?? null,
+      city: c.city ?? null,
+      district: c.district ?? null,
+      occupation: c.faculty ?? null,
+      isUrStudent,
+      isVerified,
+      photos: candidatePhotos,
       primaryPhotoPath: candidatePhotos[0] ?? null,
       is_golden_bid: isGoldenBid,
       incoming_reaction: incomingReaction,
-      intent_class: myIntent,
+      intent_class: candidateIntent,
+      primaryIntent: candidateIntent,
       trustScore: c.trustScore ?? 1,
       bio: c.bio ?? null,
       tags: (c.tags as string[]) ?? [],
       voiceIntroPath: c.voiceIntroPath ?? null,
       voiceIntroDurationMs: c.voiceIntroDurationMs ?? null,
-      // Terminology updated to 'approvedBy' (with backward compatible 'vouchedBy')
       approvedBy: approvedByMap.get(c.id) ?? null,
       vouchedBy: approvedByMap.get(c.id) ?? null,
     };

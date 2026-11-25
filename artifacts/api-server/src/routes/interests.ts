@@ -2,6 +2,7 @@ import { Router } from "express";
 import { eq, and, or, sql } from "drizzle-orm";
 import { db, interestsTable, matchesTable, profilesTable } from "@workspace/db";
 import { requireAuth, type AuthedRequest } from "../middlewares/auth.js";
+import { getSwipeStatus } from "../lib/swipes.js";
 
 const router = Router();
 
@@ -40,23 +41,13 @@ router.post("/interests", requireAuth, async (req, res) => {
     return;
   }
 
-  // Enforce INTEREST_DAILY_LIMIT (default 10)
-  const INTEREST_DAILY_LIMIT = parseInt(process.env.INTEREST_DAILY_LIMIT || "10", 10);
-  const [dailyCount] = await db
-    .select({ count: sql<number>`count(*)::int` })
-    .from(interestsTable)
-    .where(
-      and(
-        eq(interestsTable.fromUser, userId),
-        sql`${interestsTable.createdAt} >= CURRENT_DATE`
-      )
-    );
-
-  if ((dailyCount?.count ?? 0) >= INTEREST_DAILY_LIMIT) {
+  const swipeStatus = await getSwipeStatus(userId);
+  if (swipeStatus.remaining <= 0) {
     res.status(429).json({
-      code: "INTEREST_DAILY_LIMIT",
+      code: "SWIPE_DAILY_LIMIT",
       error: "rate_limited",
-      message: "Daily interest limit reached.",
+      message: "Daily swipe limit reached.",
+      ...swipeStatus,
     });
     return;
   }
