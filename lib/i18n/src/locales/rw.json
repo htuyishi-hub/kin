@@ -273,6 +273,39 @@
     "emptyTitle": "Nta ugukunda uraboneka",
     "unblurredBadge": "24h"
   },
+  "search": {
+    "placeholder": "Shakisha izina...",
+    "searchedYouCount": "{{count}} bashakishije izina ryawe",
+    "revealCta": "Reba · 300 RWF",
+    "anonymousShield": "Bihishwe · 100 RWF"
+  },
+  "compliment": {
+    "title": "Igitekerezo ku Ifoto · 200 RWF",
+    "placeholder": "Andika ijambo...",
+    "send": "Ohereza · 200 RWF",
+    "sent": "Byoherejwe"
+  },
+  "trust": {
+    "getVerified": "Emeza Umwirondoro",
+    "verified": "✓ Yemejwe",
+    "smileCamera": "Seka imbere ya kamera",
+    "verifyNow": "Emeza",
+    "incognito": "Incognito Mode"
+  },
+  "dates": {
+    "title": "Ahantu ho Guhurira",
+    "timePlaceholder": "Ku wa Gatandatu 4:00 PM",
+    "sendInvite": "Tumira",
+    "accept": "Emera ☕",
+    "decline": "Oya",
+    "accepted": "Byemewe ☕",
+    "declined": "Byanzwe"
+  },
+  "pwa": {
+    "install": "Shyira kinn kuri telefone",
+    "iosStep1": "Kanda Share",
+    "iosStep2": "Add to Home Screen"
+  },
   "serious": {
     "tabTitle": "Abiyemeje",
     "queueTitle": "Umurongo w'Abiyemeje",

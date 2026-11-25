@@ -222,7 +222,7 @@ export default function AppScreen() {
     createdAt: string;
     status?: 'sending' | 'sent' | 'failed';
     localPlaintext?: string;
-    mediaType?: 'text' | 'voice' | 'gift' | 'game_prompt';
+    mediaType?: 'text' | 'voice' | 'gift' | 'game_prompt' | 'date_invite';
     mediaUrl?: string | null;
     reactions?: Record<string, string[]>;
     gameData?: { question: string; answers: Record<string, string> } | null;
@@ -265,6 +265,24 @@ export default function AppScreen() {
   const chatMediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chatAudioChunksRef = useRef<Blob[]>([]);
   const chatVoiceAudioRef = useRef<HTMLAudioElement | null>(null);
+
+  // Milestones 2-6 state: search reveal, photo compliments, selfie verify, incognito, date spots, PWA install
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [searchCount, setSearchCount] = useState(0);
+  const [searchesUnmasked, setSearchesUnmasked] = useState(false);
+  const [revealedSearchers, setRevealedSearchers] = useState<any[]>([]);
+  const [complimentModalOpen, setComplimentModalOpen] = useState(false);
+  const [complimentText, setComplimentText] = useState('');
+  const [complimentSentToast, setComplimentSentToast] = useState(false);
+  const [isSelfieVerified, setIsSelfieVerified] = useState(false);
+  const [selfieModalOpen, setSelfieModalOpen] = useState(false);
+  const [isIncognito, setIsIncognito] = useState(false);
+  const [dateModalOpen, setDateModalOpen] = useState(false);
+  const [dateSpots, setDateSpots] = useState<Array<{ id: string; name: string; area: string; emoji: string }>>([]);
+  const [dateTimeText, setDateTimeText] = useState('Saturday 4:00 PM');
+  const [deferredPwaPrompt, setDeferredPwaPrompt] = useState<any>(null);
+  const [showIosPwaModal, setShowIosPwaModal] = useState(false);
 
   // Discover Part B state: People list
   type WebPersonItem = {
@@ -1405,6 +1423,187 @@ export default function AppScreen() {
       }
     } finally {
       setMatchingAdmirerId(null);
+    }
+  }
+
+  useEffect(() => {
+    const handler = (e: any) => {
+      e.preventDefault();
+      setDeferredPwaPrompt(e);
+    };
+    window.addEventListener('beforeinstallprompt', handler);
+    return () => window.removeEventListener('beforeinstallprompt', handler);
+  }, []);
+
+  useEffect(() => {
+    if (!token) return;
+    apiFetch('/api/notifications/searches', {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (d) {
+          setSearchCount(d.count ?? 0);
+          setSearchesUnmasked(Boolean(d.isUnmasked));
+          if (Array.isArray(d.searchers)) setRevealedSearchers(d.searchers);
+        }
+      })
+      .catch(() => {});
+
+    apiFetch('/api/dates/spots', {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (Array.isArray(d)) setDateSpots(d);
+      })
+      .catch(() => {});
+
+    apiFetch('/api/me', {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (d) {
+          setIsSelfieVerified(Boolean(d.isVerified || d.verificationStatus === 'verified'));
+          setIsIncognito(Boolean(d.isIncognito));
+        }
+      })
+      .catch(() => {});
+  }, [token]);
+
+  async function handleSearchName(q: string) {
+    setSearchQuery(q);
+    if (!token || q.trim().length < 2) {
+      setSearchResults([]);
+      return;
+    }
+    try {
+      const res = await apiFetch(`/api/people/search?q=${encodeURIComponent(q.trim())}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const d = await res.json();
+        setSearchResults(Array.isArray(d.results) ? d.results : []);
+      }
+    } catch {}
+  }
+
+  async function handleRevealSearches() {
+    if (!token) return;
+    try {
+      const res = await apiFetch('/api/notifications/searches/reveal', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const d = await res.json();
+        setSearchesUnmasked(true);
+        if (Array.isArray(d.searchers)) setRevealedSearchers(d.searchers);
+      }
+    } catch {}
+  }
+
+  async function handleSendPhotoCompliment() {
+    if (!token || !complimentText.trim()) return;
+    const photos = currentProfile.photos?.length ? currentProfile.photos : [currentProfile.photoUrl];
+    const activePhoto = photos[cardPhotoIndex] || currentProfile.photoUrl;
+    try {
+      const res = await apiFetch('/api/photos/compliment', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          targetProfileId: currentProfile.id,
+          photoUrl: activePhoto,
+          commentText: complimentText.trim(),
+        }),
+      });
+      if (res.ok) {
+        setComplimentText('');
+        setComplimentModalOpen(false);
+        setComplimentSentToast(true);
+        setTimeout(() => setComplimentSentToast(false), 2000);
+      }
+    } catch {}
+  }
+
+  async function handleVerifySelfie() {
+    if (!token) return;
+    try {
+      const res = await apiFetch('/api/me/verify-selfie', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        setIsSelfieVerified(true);
+        setSelfieModalOpen(false);
+      }
+    } catch {}
+  }
+
+  async function handleToggleIncognito() {
+    const next = !isIncognito;
+    setIsIncognito(next);
+    if (!token) return;
+    try {
+      await apiFetch('/api/me/privacy', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ isIncognito: next }),
+      });
+    } catch {}
+  }
+
+  async function handleSendDateInvite(spot: { name: string; area: string }) {
+    if (!selectedMatch?.id || !token) return;
+    setDateModalOpen(false);
+    try {
+      const res = await apiFetch(`/api/matches/${selectedMatch.id}/date-invite`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          spotName: spot.name,
+          spotArea: spot.area,
+          proposedTime: dateTimeText.trim() || t('dates.timePlaceholder'),
+        }),
+      });
+      if (res.ok) {
+        const d = await res.json();
+        if (d.message) {
+          setChatMessages((prev) => (prev.some((m) => m.id === d.message.id) ? prev : [...prev, { ...d.message, status: 'sent' }]));
+        }
+      }
+    } catch {}
+  }
+
+  async function handleRespondDateInvite(messageId: string, inviteId: string, action: 'accept' | 'decline') {
+    if (!selectedMatch?.id || !token) return;
+    try {
+      const res = await apiFetch(`/api/matches/${selectedMatch.id}/date-invite/respond`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ inviteId, action }),
+      });
+      if (res.ok) {
+        const status = action === 'accept' ? 'accepted' : 'declined';
+        setChatMessages((prev) =>
+          prev.map((m) =>
+            m.id === messageId && m.gameData
+              ? { ...m, gameData: { ...m.gameData, answers: { ...m.gameData.answers, status } } }
+              : m
+          )
+        );
+      }
+    } catch {}
+  }
+
+  async function handleInstallPwa() {
+    if (deferredPwaPrompt) {
+      deferredPwaPrompt.prompt();
+      await deferredPwaPrompt.userChoice.catch(() => {});
+      setDeferredPwaPrompt(null);
+    } else {
+      setShowIosPwaModal(true);
     }
   }
 
@@ -2614,15 +2813,26 @@ export default function AppScreen() {
                               </div>
                             </div>
 
-                            {/* Info Button */}
-                            <button
-                              type="button"
-                              onClick={() => setShowProfileDetail(true)}
-                              aria-label={t('discover.fullProfile')}
-                              className="pointer-events-auto w-9 h-9 rounded-full bg-white/15 backdrop-blur-md border border-white/20 text-[#F0EDE6] flex items-center justify-center hover:bg-white/25 transition-colors cursor-pointer shrink-0"
-                            >
-                              <Info className="w-4 h-4" />
-                            </button>
+                            {/* Action Icons: Photo Compliment (200 RWF) + Info */}
+                            <div className="flex items-center gap-2 shrink-0">
+                              <button
+                                type="button"
+                                onClick={() => setComplimentModalOpen(true)}
+                                aria-label={t('compliment.title')}
+                                title={t('compliment.title')}
+                                className="pointer-events-auto w-9 h-9 rounded-full bg-[#C9A84C]/90 text-[#0D1117] flex items-center justify-center hover:bg-[#C9A84C] transition-colors cursor-pointer"
+                              >
+                                <MessageCircle className="w-4 h-4" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setShowProfileDetail(true)}
+                                aria-label={t('discover.fullProfile')}
+                                className="pointer-events-auto w-9 h-9 rounded-full bg-white/15 backdrop-blur-md border border-white/20 text-[#F0EDE6] flex items-center justify-center hover:bg-white/25 transition-colors cursor-pointer"
+                              >
+                                <Info className="w-4 h-4" />
+                              </button>
+                            </div>
                           </div>
 
                           {/* Passion Pill Tags */}
@@ -2884,6 +3094,17 @@ export default function AppScreen() {
                   </div>
 
                   <div className="flex items-center gap-2">
+                    {/* Date Spot Button */}
+                    <button
+                      type="button"
+                      onClick={() => setDateModalOpen(true)}
+                      title={t('dates.title')}
+                      aria-label={t('dates.title')}
+                      className="p-2 rounded-full border border-[#21262D] bg-[#1A1A2E] text-[#38BDF8] hover:border-[#38BDF8]/60 transition-all cursor-pointer"
+                    >
+                      <MapPin className="w-4 h-4" />
+                    </button>
+
                     {/* Question Game Button */}
                     <button
                       type="button"
@@ -3043,6 +3264,42 @@ export default function AppScreen() {
                                     <Volume2 className="w-4 h-4 opacity-80" />
                                     <span>{t('playground.recordVoice')}</span>
                                   </button>
+                                ) : msg.mediaType === 'date_invite' && msg.gameData ? (
+                                  (() => {
+                                    const status = msg.gameData.answers?.status || 'pending';
+                                    const inviteId = msg.gameData.answers?.inviteId || msg.mediaUrl || '';
+                                    return (
+                                      <div className="px-4 py-3 rounded-2xl bg-[#161B22] border border-[#38BDF8]/50 text-[#F0EDE6] space-y-2 min-w-[220px]">
+                                        <div className="flex items-center gap-1.5 text-[11px] font-bold text-[#38BDF8] uppercase tracking-wider">
+                                          <MapPin className="w-3.5 h-3.5" />
+                                          <span>{t('dates.title')}</span>
+                                        </div>
+                                        <p className="text-sm font-semibold">{msg.gameData.question}</p>
+                                        {status === 'pending' && !isMe ? (
+                                          <div className="flex items-center gap-2 pt-1">
+                                            <button
+                                              type="button"
+                                              onClick={() => handleRespondDateInvite(msg.id, inviteId, 'accept')}
+                                              className="flex-1 py-1.5 rounded-lg bg-[#3FB950] text-[#0D1117] text-xs font-bold cursor-pointer"
+                                            >
+                                              {t('dates.accept')}
+                                            </button>
+                                            <button
+                                              type="button"
+                                              onClick={() => handleRespondDateInvite(msg.id, inviteId, 'decline')}
+                                              className="px-3 py-1.5 rounded-lg bg-[#21262D] text-[#A8A49E] text-xs font-bold cursor-pointer"
+                                            >
+                                              {t('dates.decline')}
+                                            </button>
+                                          </div>
+                                        ) : (
+                                          <span className={`inline-block text-[11px] font-bold ${status === 'accepted' ? 'text-[#3FB950]' : 'text-[#8B949E]'}`}>
+                                            {status === 'accepted' ? t('dates.accepted') : status === 'declined' ? t('dates.declined') : '...'}
+                                          </span>
+                                        )}
+                                      </div>
+                                    );
+                                  })()
                                 ) : msg.mediaType === 'game_prompt' && msg.gameData ? (
                                   (() => {
                                     const answers = msg.gameData.answers || {};
@@ -3581,6 +3838,50 @@ export default function AppScreen() {
               )}
             </div>
 
+            {/* Name Search & Who Searched Your Name (300 RWF) */}
+            <div className="flex flex-col gap-2">
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => handleSearchName(e.target.value)}
+                placeholder={t('search.placeholder')}
+                className="w-full bg-[#1A1A2E] border border-[#21262D] focus:border-[#2563EB] rounded-xl px-3.5 py-2 text-xs text-[#F0EDE6] placeholder-[#4A4742] outline-none"
+              />
+              {searchResults.length > 0 && (
+                <div className="flex gap-2 overflow-x-auto pb-1">
+                  {searchResults.map((r) => (
+                    <div key={r.id} className="shrink-0 px-3 py-1.5 rounded-xl bg-[#1A1A2E] border border-[#21262D] text-xs text-[#F0EDE6] flex items-center gap-1.5">
+                      <span className="font-semibold">{r.firstName}</span>
+                      <span className="text-[10px] text-[#8B949E]">{r.campus}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {searchCount > 0 && (
+                <div className="p-3 rounded-2xl bg-[#161B22] border border-[#C9A84C]/40 flex items-center justify-between gap-2">
+                  <div className="flex flex-col">
+                    <span className="text-xs font-bold text-[#F0EDE6]">
+                      🔎 {t('search.searchedYouCount', { count: searchCount })}
+                    </span>
+                    {searchesUnmasked && revealedSearchers.length > 0 && (
+                      <span className="text-[11px] text-[#38BDF8] mt-0.5">
+                        {revealedSearchers.map((s) => s.firstName).join(', ')}
+                      </span>
+                    )}
+                  </div>
+                  {!searchesUnmasked && (
+                    <button
+                      type="button"
+                      onClick={handleRevealSearches}
+                      className="px-3 py-1.5 rounded-full bg-[#C9A84C] text-[#0D1117] text-[11px] font-bold cursor-pointer shrink-0"
+                    >
+                      {t('search.revealCta')}
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+
             {admirers.length === 0 ? (
               <div className="my-auto flex flex-col items-center justify-center py-14 gap-3 text-center">
                 <Heart className="w-10 h-10 text-[#4A4742]" />
@@ -3707,16 +4008,58 @@ export default function AppScreen() {
                   <h3 className="font-bold text-sm text-[#F0EDE6] truncate max-w-[200px]">
                     {user?.email || 'kin.user@gmail.com'}
                   </h3>
-                  <div className="flex items-center gap-1.5 mt-1">
+                  <div className="flex items-center gap-1.5 mt-1 flex-wrap">
                     <span className="bg-[#3FB950]/20 text-[#3FB950] text-[10px] font-bold px-2 py-0.5 rounded">
                       {t('profile.trustScore', { score: 50 })}
                     </span>
                     <span className="bg-[#2563EB]/20 text-[#2563EB] text-[10px] font-bold px-2 py-0.5 rounded">
                       {t('profile.urBadge')}
                     </span>
+                    {isSelfieVerified ? (
+                      <span className="bg-[#38BDF8]/20 text-[#38BDF8] text-[10px] font-bold px-2 py-0.5 rounded">
+                        {t('trust.verified')}
+                      </span>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => setSelfieModalOpen(true)}
+                        className="bg-[#C9A84C] text-[#0D1117] text-[10px] font-bold px-2 py-0.5 rounded cursor-pointer"
+                      >
+                        {t('trust.getVerified')}
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>
+
+              {/* Incognito Mode & PWA Install */}
+              <div className="p-4 bg-[#1A1A2E] border border-[#21262D] rounded-2xl flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <EyeOff className="w-4 h-4 text-[#C9A84C]" />
+                  <span className="text-sm font-semibold text-[#F0EDE6]">{t('trust.incognito')}</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleToggleIncognito}
+                  className={`w-11 h-6 rounded-full transition-colors p-0.5 cursor-pointer ${
+                    isIncognito ? 'bg-[#2563EB]' : 'bg-[#21262D]'
+                  }`}
+                >
+                  <div
+                    className={`w-5 h-5 rounded-full bg-white transition-transform ${
+                      isIncognito ? 'translate-x-5' : 'translate-x-0'
+                    }`}
+                  />
+                </button>
+              </div>
+
+              <button
+                type="button"
+                onClick={handleInstallPwa}
+                className="w-full py-2.5 px-4 rounded-2xl bg-[#161B22] border border-[#2563EB]/40 text-xs font-bold text-[#38BDF8] flex items-center justify-center gap-2 hover:border-[#38BDF8] cursor-pointer"
+              >
+                <span>📲 {t('pwa.install')}</span>
+              </button>
 
               {/* Tags Section */}
               <div className="p-4 bg-[#1A1A2E] border border-[#21262D] rounded-2xl flex flex-col gap-3">
@@ -4141,6 +4484,118 @@ export default function AppScreen() {
                 {isSubmittingPostReport ? <Loader2 className="w-3 h-3 animate-spin" /> : t('matches.report')}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Compliment Sent Toast */}
+      {complimentSentToast && (
+        <div className="fixed top-6 left-1/2 -translate-x-1/2 z-50 px-4 py-2 rounded-full bg-[#3FB950] text-[#0D1117] text-xs font-bold shadow-xl">
+          {t('compliment.sent')}
+        </div>
+      )}
+
+      {/* Photo Compliment Modal (200 RWF) */}
+      {complimentModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="w-full max-w-sm bg-[#161B22] border border-[#21262D] rounded-3xl p-5 flex flex-col gap-3 shadow-2xl">
+            <div className="flex items-center justify-between">
+              <span className="font-serif text-base font-bold text-[#F0EDE6]">{t('compliment.title')}</span>
+              <button type="button" onClick={() => setComplimentModalOpen(false)} className="text-[#8B949E] cursor-pointer">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <input
+              type="text"
+              maxLength={100}
+              value={complimentText}
+              onChange={(e) => setComplimentText(e.target.value)}
+              placeholder={t('compliment.placeholder')}
+              className="w-full bg-[#0D1117] border border-[#21262D] rounded-xl px-3.5 py-2.5 text-sm text-[#F0EDE6] outline-none"
+            />
+            <button
+              type="button"
+              onClick={handleSendPhotoCompliment}
+              disabled={!complimentText.trim()}
+              className="w-full py-2.5 rounded-full bg-[#C9A84C] text-[#0D1117] font-bold text-xs cursor-pointer disabled:opacity-40"
+            >
+              {t('compliment.send')}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Curated Kigali Date Spot Picker Modal */}
+      {dateModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-end sm:items-center justify-center p-4">
+          <div className="w-full max-w-md bg-[#161B22] border border-[#21262D] rounded-3xl p-5 flex flex-col gap-3 max-h-[80vh] overflow-y-auto shadow-2xl">
+            <div className="flex items-center justify-between">
+              <span className="font-serif text-base font-bold text-[#F0EDE6]">📍 {t('dates.title')}</span>
+              <button type="button" onClick={() => setDateModalOpen(false)} className="text-[#8B949E] cursor-pointer">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <input
+              type="text"
+              value={dateTimeText}
+              onChange={(e) => setDateTimeText(e.target.value)}
+              placeholder={t('dates.timePlaceholder')}
+              className="w-full bg-[#0D1117] border border-[#21262D] rounded-xl px-3.5 py-2 text-xs text-[#F0EDE6] outline-none"
+            />
+            <div className="flex flex-col gap-2">
+              {dateSpots.map((spot) => (
+                <button
+                  key={spot.id}
+                  type="button"
+                  onClick={() => handleSendDateInvite(spot)}
+                  className="w-full p-3 rounded-2xl bg-[#1A1A2E] border border-[#21262D] hover:border-[#38BDF8] flex items-center justify-between text-left cursor-pointer"
+                >
+                  <div>
+                    <div className="text-sm font-bold text-[#F0EDE6]">{spot.emoji} {spot.name}</div>
+                    <div className="text-[11px] text-[#8B949E]">{spot.area}</div>
+                  </div>
+                  <span className="text-xs font-bold text-[#38BDF8]">{t('dates.sendInvite')}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Selfie Verification Modal */}
+      {selfieModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="w-full max-w-sm bg-[#161B22] border border-[#21262D] rounded-3xl p-6 flex flex-col items-center text-center gap-4 shadow-2xl">
+            <div className="w-16 h-16 rounded-full bg-[#38BDF8]/15 border border-[#38BDF8] flex items-center justify-center text-[#38BDF8]">
+              <Camera className="w-8 h-8" />
+            </div>
+            <h3 className="font-serif text-lg font-bold text-[#F0EDE6]">{t('trust.smileCamera')}</h3>
+            <button
+              type="button"
+              onClick={handleVerifySelfie}
+              className="w-full py-3 rounded-full bg-[#38BDF8] text-[#0D1117] font-bold text-sm cursor-pointer"
+            >
+              {t('trust.verifyNow')}
+            </button>
+            <button type="button" onClick={() => setSelfieModalOpen(false)} className="text-xs text-[#8B949E] cursor-pointer">
+              {t('chat.cancel')}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* iOS PWA Install Modal */}
+      {showIosPwaModal && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="w-full max-w-xs bg-[#161B22] border border-[#21262D] rounded-3xl p-5 flex flex-col items-center text-center gap-3 shadow-2xl">
+            <h3 className="font-serif text-base font-bold text-[#F0EDE6]">📲 {t('pwa.install')}</h3>
+            <div className="text-xs text-[#CBD5E1] space-y-1.5">
+              <p>1. {t('pwa.iosStep1')}</p>
+              <p>2. {t('pwa.iosStep2')}</p>
+            </div>
+            <button type="button" onClick={() => setShowIosPwaModal(false)} className="text-xs text-[#38BDF8] font-bold cursor-pointer">
+              OK
+            </button>
           </div>
         </div>
       )}

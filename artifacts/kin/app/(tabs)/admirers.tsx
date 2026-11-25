@@ -40,6 +40,11 @@ export default function AdmirersScreen() {
   const [unblurring, setUnblurring] = useState(false);
   const [matchingId, setMatchingId] = useState<string | null>(null);
 
+  const [searchCount, setSearchCount] = useState(0);
+  const [searchesUnmasked, setSearchesUnmasked] = useState(false);
+  const [searchers, setSearchers] = useState<{ id: string; firstName: string; campus: string }[]>([]);
+  const [revealingSearches, setRevealingSearches] = useState(false);
+
   const apiBaseUrl =
     process.env.EXPO_PUBLIC_API_URL ??
     process.env.VITE_API_URL ??
@@ -53,14 +58,25 @@ export default function AdmirersScreen() {
       return;
     }
     try {
-      const res = await fetch(`${apiBaseUrl}/api/likes/received`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (res.ok) {
-        const data = await res.json();
+      const [likesRes, searchRes] = await Promise.all([
+        fetch(`${apiBaseUrl}/api/likes/received`, {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
+        fetch(`${apiBaseUrl}/api/notifications/searches`, {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
+      ]);
+      if (likesRes.ok) {
+        const data = await likesRes.json();
         setAdmirers(Array.isArray(data.admirers) ? data.admirers : []);
         setCount(data.count ?? 0);
         setIsUnblurred(Boolean(data.isUnblurred));
+      }
+      if (searchRes.ok) {
+        const sData = await searchRes.json();
+        setSearchCount(sData.count ?? 0);
+        setSearchesUnmasked(Boolean(sData.isUnmasked));
+        setSearchers(Array.isArray(sData.searchers) ? sData.searchers : []);
       }
     } finally {
       setLoading(false);
@@ -70,6 +86,26 @@ export default function AdmirersScreen() {
   useEffect(() => {
     fetchAdmirers();
   }, [fetchAdmirers]);
+
+  async function handleRevealSearches() {
+    if (!token) return;
+    setRevealingSearches(true);
+    try {
+      const res = await fetch(`${apiBaseUrl}/api/notifications/searches/reveal`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        Haptics.notificationAsync?.(Haptics.NotificationFeedbackType.Success);
+        setSearchesUnmasked(true);
+        setSearchers(Array.isArray(data.searchers) ? data.searchers : []);
+        if (typeof data.count === "number") setSearchCount(data.count);
+      }
+    } finally {
+      setRevealingSearches(false);
+    }
+  }
 
   async function handleUnblur() {
     if (!token) return;
@@ -139,6 +175,42 @@ export default function AdmirersScreen() {
           </View>
         )}
       </View>
+
+      {searchCount > 0 && (
+        <View style={styles.searchBanner}>
+          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 8, flex: 1 }}>
+              <Feather name="search" size={16} color={Colors.gold} />
+              <Text style={styles.searchBannerTitle}>{t("search.searchedYouCount", { count: searchCount })}</Text>
+            </View>
+            {!searchesUnmasked && (
+              <TouchableOpacity
+                style={styles.revealBtn}
+                onPress={handleRevealSearches}
+                disabled={revealingSearches}
+                activeOpacity={0.85}
+              >
+                {revealingSearches ? (
+                  <ActivityIndicator size="small" color="#0D1117" />
+                ) : (
+                  <Text style={styles.revealBtnText}>{t("search.revealCta")}</Text>
+                )}
+              </TouchableOpacity>
+            )}
+          </View>
+          {searchesUnmasked && searchers.length > 0 && (
+            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: 8 }}>
+              {searchers.map((s) => (
+                <View key={s.id} style={styles.searcherChip}>
+                  <Text style={styles.searcherChipText}>
+                    {s.firstName} · {s.campus}
+                  </Text>
+                </View>
+              ))}
+            </View>
+          )}
+        </View>
+      )}
 
       {loading ? (
         <View style={styles.center}>
@@ -330,4 +402,28 @@ const styles = StyleSheet.create({
     borderRadius: 999,
   },
   unblurBtnText: { color: "#0D1117", fontSize: 12, fontFamily: "Inter_700Bold" },
+  searchBanner: {
+    marginHorizontal: 16,
+    marginBottom: 8,
+    padding: 12,
+    borderRadius: 14,
+    backgroundColor: "#161B22",
+    borderWidth: 1,
+    borderColor: "rgba(201,168,76,0.4)",
+  },
+  searchBannerTitle: { color: Colors.bone, fontSize: 13, fontFamily: "Inter_600SemiBold", flexShrink: 1 },
+  revealBtn: {
+    backgroundColor: Colors.gold,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 999,
+  },
+  revealBtnText: { color: "#0D1117", fontSize: 11, fontFamily: "Inter_700Bold" },
+  searcherChip: {
+    backgroundColor: Colors.inkRaised,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 999,
+  },
+  searcherChipText: { color: Colors.bone, fontSize: 11, fontFamily: "Inter_500Medium" },
 });

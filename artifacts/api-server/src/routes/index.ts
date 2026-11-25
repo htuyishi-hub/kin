@@ -19,6 +19,8 @@ import peopleRouter from "./people.js";
 import requestsRouter from "./requests.js";
 import swipesRouter from "./swipes.js";
 import likesRouter from "./likes.js";
+import searchRouter from "./search.js";
+import datesRouter from "./dates.js";
 import { requireAuth } from "../middlewares/auth.js";
 import { verifyURRegistration } from "./urVerification.js";
 
@@ -44,6 +46,8 @@ router.use(peopleRouter);
 router.use(requestsRouter);
 router.use(swipesRouter);
 router.use(likesRouter);
+router.use(searchRouter);
+router.use(datesRouter);
 
 // Phase 2: UR registration verification
 router.post("/me/ur/verify-registration", requireAuth, verifyURRegistration);

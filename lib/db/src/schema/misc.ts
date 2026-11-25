@@ -1,5 +1,6 @@
-import { pgTable, text, smallint, uuid, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, text, smallint, uuid, timestamp, boolean, integer, index } from "drizzle-orm/pg-core";
 import { profilesTable } from "./profiles";
+import { matchesTable } from "./matching";
 
 // OTP sessions for phone verification
 export const otpSessionsTable = pgTable("otp_sessions", {
@@ -35,6 +36,46 @@ export const reportsTable = pgTable("reports", {
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
 });
 
+// Name searches tracker (Who Searched My Name - 300 RWF)
+export const nameSearchesTable = pgTable("name_searches", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  searcherId: uuid("searcher_id").notNull().references(() => profilesTable.id, { onDelete: "cascade" }),
+  searchedQuery: text("searched_query").notNull(),
+  targetProfileId: uuid("target_profile_id").notNull().references(() => profilesTable.id, { onDelete: "cascade" }),
+  isAnonymous: boolean("is_anonymous").default(false).notNull(),
+  isUnmasked: boolean("is_unmasked").default(false).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+}, (table) => [
+  index("idx_name_searches_target").on(table.targetProfileId),
+]);
+
+// Photo compliments (200 RWF)
+export const photoCommentsTable = pgTable("photo_comments", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  senderId: uuid("sender_id").notNull().references(() => profilesTable.id, { onDelete: "cascade" }),
+  targetProfileId: uuid("target_profile_id").notNull().references(() => profilesTable.id, { onDelete: "cascade" }),
+  photoUrl: text("photo_url").notNull(),
+  commentText: text("comment_text").notNull(),
+  amountRwf: integer("amount_rwf").default(200).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+// Curated Kigali date spot invitations
+export const dateInvitesTable = pgTable("date_invites", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  matchId: uuid("match_id").notNull().references(() => matchesTable.id, { onDelete: "cascade" }),
+  senderId: uuid("sender_id").notNull().references(() => profilesTable.id, { onDelete: "cascade" }),
+  recipientId: uuid("recipient_id").notNull().references(() => profilesTable.id, { onDelete: "cascade" }),
+  spotName: text("spot_name").notNull(),
+  spotArea: text("spot_area").notNull(),
+  proposedTime: text("proposed_time").notNull(),
+  status: text("status").default("pending").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
 export type OtpSession = typeof otpSessionsTable.$inferSelect;
 export type TrustEvent = typeof trustEventsTable.$inferSelect;
 export type Report = typeof reportsTable.$inferSelect;
+export type NameSearch = typeof nameSearchesTable.$inferSelect;
+export type PhotoComment = typeof photoCommentsTable.$inferSelect;
+export type DateInvite = typeof dateInvitesTable.$inferSelect;

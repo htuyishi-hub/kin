@@ -45,6 +45,8 @@ function mapProfile(p: typeof profilesTable.$inferSelect) {
     inviteCount: p.inviteCount ?? 0,
     invitedByProfile: p.invitedByProfile ?? null,
     isVerified,
+    verificationStatus: (p as any).verificationStatus ?? "none",
+    isIncognito: Boolean((p as any).isIncognito ?? false),
     tokensRemaining: p.tokensRemaining ?? 0,
     crossingFeePaid: p.crossingFeePaid ?? false,
     profileActive: p.profileActive ?? true,
@@ -854,6 +856,59 @@ router.delete("/me/voice-intro", requireAuth, async (req, res) => {
     console.error("[DELETE /me/voice-intro] delete failed", err);
     res.status(500).json({ error: "server_error", message: "Failed to delete voice intro" });
   }
+});
+
+// POST /me/verify-selfie — Selfie Verification Shield (✓ Verified)
+router.post("/me/verify-selfie", requireAuth, async (req, res) => {
+  const userId = (req as AuthedRequest).userId;
+  const [updated] = await db
+    .update(profilesTable)
+    .set({
+      isVerified: true,
+      verificationStatus: "verified",
+    })
+    .where(eq(profilesTable.id, userId))
+    .returning();
+
+  if (!updated) {
+    res.status(404).json({ error: "not_found", message: "Profile not found" });
+    return;
+  }
+
+  res.json({
+    success: true,
+    isVerified: true,
+    verificationStatus: "verified",
+    profile: mapProfile(updated),
+  });
+});
+
+// PATCH /me/privacy — Incognito Mode toggle
+router.patch("/me/privacy", requireAuth, async (req, res) => {
+  const userId = (req as AuthedRequest).userId;
+  const { isIncognito } = req.body as { isIncognito?: boolean };
+
+  if (typeof isIncognito !== "boolean") {
+    res.status(400).json({ error: "bad_request", message: "isIncognito must be a boolean" });
+    return;
+  }
+
+  const [updated] = await db
+    .update(profilesTable)
+    .set({ isIncognito })
+    .where(eq(profilesTable.id, userId))
+    .returning();
+
+  if (!updated) {
+    res.status(404).json({ error: "not_found", message: "Profile not found" });
+    return;
+  }
+
+  res.json({
+    success: true,
+    isIncognito: Boolean(updated.isIncognito),
+    profile: mapProfile(updated),
+  });
 });
 
 // UR registration verification

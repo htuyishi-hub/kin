@@ -56,6 +56,8 @@ export const profilesTable = pgTable("profiles", {
   bonusSwipesToday: integer("bonus_swipes_today").default(0),
   bonusSwipesDate: text("bonus_swipes_date"),
   unblurredLikesUntil: timestamp("unblurred_likes_until", { withTimezone: true }),
+  verificationStatus: text("verification_status").default("none").notNull(),
+  isIncognito: boolean("is_incognito").default(false).notNull(),
   profileActive: boolean("profile_active").default(true),
   profilePaused: boolean("profile_paused").default(false),
 

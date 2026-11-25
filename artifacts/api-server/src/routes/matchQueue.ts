@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { eq, ne, and, sql, inArray, notExists, or, asc } from "drizzle-orm";
+import { eq, ne, and, sql, inArray, notExists, exists, or, asc } from "drizzle-orm";
 import {
   db,
   profilesTable,
@@ -58,6 +58,15 @@ router.get("/match-queue", requireAuth, async (req, res) => {
         ne(profilesTable.id, userId),
         eq(profilesTable.profileActive, true),
         eq(profilesTable.onboardingComplete, true),
+        or(
+          eq(profilesTable.isIncognito, false),
+          exists(
+            db
+              .select()
+              .from(interestsTable)
+              .where(and(eq(interestsTable.fromUser, profilesTable.id), eq(interestsTable.toUser, userId)))
+          )
+        ),
         // Exclude profiles I already liked
         notExists(
           db

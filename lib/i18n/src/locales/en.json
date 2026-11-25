@@ -273,6 +273,39 @@
     "emptyTitle": "No likes yet",
     "unblurredBadge": "24h"
   },
+  "search": {
+    "placeholder": "Search name...",
+    "searchedYouCount": "{{count}} searched your name",
+    "revealCta": "Reveal · 300 RWF",
+    "anonymousShield": "Anonymous · 100 RWF"
+  },
+  "compliment": {
+    "title": "Photo Compliment · 200 RWF",
+    "placeholder": "Write a note...",
+    "send": "Send · 200 RWF",
+    "sent": "Compliment sent"
+  },
+  "trust": {
+    "getVerified": "Get Verified",
+    "verified": "✓ Verified",
+    "smileCamera": "Smile at camera",
+    "verifyNow": "Verify",
+    "incognito": "Incognito Mode"
+  },
+  "dates": {
+    "title": "Date Spot",
+    "timePlaceholder": "Saturday 4:00 PM",
+    "sendInvite": "Invite",
+    "accept": "Accept ☕",
+    "decline": "Decline",
+    "accepted": "Accepted ☕",
+    "declined": "Declined"
+  },
+  "pwa": {
+    "install": "Install kinn",
+    "iosStep1": "Tap Share",
+    "iosStep2": "Add to Home Screen"
+  },
   "serious": {
     "tabTitle": "Serious",
     "queueTitle": "Serious Queue",

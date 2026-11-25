@@ -23,6 +23,44 @@ async function ensureDatabaseSchema() {
     await pool.query("ALTER TABLE profiles ADD COLUMN IF NOT EXISTS bonus_swipes_today INTEGER DEFAULT 0;");
     await pool.query("ALTER TABLE profiles ADD COLUMN IF NOT EXISTS bonus_swipes_date TEXT;");
     await pool.query("ALTER TABLE profiles ADD COLUMN IF NOT EXISTS unblurred_likes_until TIMESTAMPTZ DEFAULT NULL;");
+    await pool.query("ALTER TABLE profiles ADD COLUMN IF NOT EXISTS verification_status TEXT NOT NULL DEFAULT 'none';");
+    await pool.query("ALTER TABLE profiles ADD COLUMN IF NOT EXISTS is_incognito BOOLEAN NOT NULL DEFAULT FALSE;");
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS name_searches (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        searcher_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+        searched_query TEXT NOT NULL,
+        target_profile_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+        is_anonymous BOOLEAN NOT NULL DEFAULT FALSE,
+        is_unmasked BOOLEAN NOT NULL DEFAULT FALSE,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+    `);
+    await pool.query("CREATE INDEX IF NOT EXISTS idx_name_searches_target ON name_searches(target_profile_id);");
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS photo_comments (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        sender_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+        target_profile_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+        photo_url TEXT NOT NULL,
+        comment_text TEXT NOT NULL,
+        amount_rwf INTEGER NOT NULL DEFAULT 200,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+    `);
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS date_invites (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        match_id UUID NOT NULL REFERENCES matches(id) ON DELETE CASCADE,
+        sender_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+        recipient_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+        spot_name TEXT NOT NULL,
+        spot_area TEXT NOT NULL,
+        proposed_time TEXT NOT NULL,
+        status TEXT NOT NULL DEFAULT 'pending',
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+    `);
     await pool.query("ALTER TABLE matches ADD COLUMN IF NOT EXISTS streak_count INTEGER NOT NULL DEFAULT 0;");
     await pool.query("ALTER TABLE matches ADD COLUMN IF NOT EXISTS last_streak_date TEXT;");
     await pool.query("ALTER TABLE matches ADD COLUMN IF NOT EXISTS is_revived BOOLEAN NOT NULL DEFAULT FALSE;");

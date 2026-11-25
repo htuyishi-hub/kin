@@ -2,12 +2,14 @@ import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import React, { useState, useEffect } from "react";
 import {
+  ActivityIndicator,
   Dimensions,
   Image,
   Modal,
   Platform,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
@@ -24,6 +26,7 @@ import { useTranslation } from "@workspace/i18n";
 import { useAudioPlayer, useAudioPlayerStatus } from "expo-audio";
 
 import { Colors } from "@/constants/colors";
+import { useAuth } from "@/contexts/AuthContext";
 import { resolveAudioUrl, getVoiceSignedUrl } from "@/services/voiceIntroService";
 import { getPhotoSignedUrl } from "@/services/photoUploadService";
 
@@ -190,12 +193,54 @@ export function TeaserSwipeDeck({
   onRefresh,
 }: TeaserSwipeDeckProps) {
   const { t } = useTranslation();
+  const { token } = useAuth();
   const [currentIndex, setCurrentIndex] = useState(0);
   const [photoIndex, setPhotoIndex] = useState(0);
   const [likeModalVisible, setLikeModalVisible] = useState(false);
   const [infoModalVisible, setInfoModalVisible] = useState(false);
+  const [complimentModalVisible, setComplimentModalVisible] = useState(false);
+  const [complimentText, setComplimentText] = useState("");
+  const [sendingCompliment, setSendingCompliment] = useState(false);
+  const [complimentSent, setComplimentSent] = useState(false);
   const [pendingCandidate, setPendingCandidate] = useState<TeaserCandidate | null>(null);
   const [useGoldenBid, setUseGoldenBid] = useState(false);
+
+  const apiBaseUrl =
+    process.env.EXPO_PUBLIC_API_URL ??
+    process.env.VITE_API_URL ??
+    (process.env.EXPO_PUBLIC_DOMAIN
+      ? `https://${process.env.EXPO_PUBLIC_DOMAIN}`
+      : "https://kin-x81d.onrender.com");
+
+  const handleSendCompliment = async () => {
+    if (!token || !currentCandidate || !complimentText.trim()) return;
+    setSendingCompliment(true);
+    try {
+      const res = await fetch(`${apiBaseUrl}/api/photos/compliment`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          targetId: currentCandidate.id,
+          photoIndex,
+          comment: complimentText.trim(),
+        }),
+      });
+      if (res.ok) {
+        Haptics.notificationAsync?.(Haptics.NotificationFeedbackType.Success);
+        setComplimentSent(true);
+        setComplimentText("");
+        setTimeout(() => {
+          setComplimentModalVisible(false);
+          setComplimentSent(false);
+        }, 900);
+      }
+    } finally {
+      setSendingCompliment(false);
+    }
+  };
 
   const translationX = useSharedValue(0);
   const translationY = useSharedValue(0);
@@ -502,13 +547,25 @@ export function TeaserSwipeDeck({
                   )}
                 </View>
               </View>
-              <TouchableOpacity
-                onPress={() => setInfoModalVisible(true)}
-                style={{ width: 34, height: 34, borderRadius: 17, backgroundColor: "rgba(255,255,255,0.15)", alignItems: "center", justifyContent: "center" }}
-                activeOpacity={0.8}
-              >
-                <Feather name="info" size={17} color={Colors.bone} />
-              </TouchableOpacity>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                <TouchableOpacity
+                  onPress={() => {
+                    setComplimentSent(false);
+                    setComplimentModalVisible(true);
+                  }}
+                  style={{ width: 34, height: 34, borderRadius: 17, backgroundColor: "rgba(201,168,76,0.22)", borderWidth: 1, borderColor: "rgba(201,168,76,0.5)", alignItems: "center", justifyContent: "center" }}
+                  activeOpacity={0.8}
+                >
+                  <Feather name="message-circle" size={16} color={Colors.gold} />
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => setInfoModalVisible(true)}
+                  style={{ width: 34, height: 34, borderRadius: 17, backgroundColor: "rgba(255,255,255,0.15)", alignItems: "center", justifyContent: "center" }}
+                  activeOpacity={0.8}
+                >
+                  <Feather name="info" size={17} color={Colors.bone} />
+                </TouchableOpacity>
+              </View>
             </View>
 
             {currentCandidate.tags && currentCandidate.tags.length > 0 && (
@@ -579,6 +636,70 @@ export function TeaserSwipeDeck({
           <Feather name="star" size={22} color="#38BDF8" />
         </TouchableOpacity>
       </View>
+
+      {/* PHOTO COMPLIMENT MODAL (200 RWF) */}
+      <Modal
+        visible={complimentModalVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setComplimentModalVisible(false)}
+      >
+        <View style={styles.modalBackdrop}>
+          <View style={[styles.modalSheet, { gap: 12 }]}>
+            <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+              <Text style={styles.modalTitle}>{t("compliment.title")}</Text>
+              <TouchableOpacity onPress={() => setComplimentModalVisible(false)}>
+                <Feather name="x" size={22} color={Colors.boneDim} />
+              </TouchableOpacity>
+            </View>
+            <TextInput
+              value={complimentText}
+              onChangeText={setComplimentText}
+              placeholder={t("compliment.placeholder")}
+              placeholderTextColor={Colors.boneGhost}
+              maxLength={140}
+              style={{
+                backgroundColor: Colors.inkRaised,
+                color: Colors.bone,
+                borderRadius: 12,
+                paddingHorizontal: 14,
+                paddingVertical: 12,
+                fontSize: 14,
+                borderWidth: 1,
+                borderColor: "rgba(255,255,255,0.1)",
+              }}
+            />
+            {complimentSent ? (
+              <View style={{ paddingVertical: 12, alignItems: "center" }}>
+                <Text style={{ color: "#3FB950", fontFamily: "Inter_700Bold", fontSize: 14 }}>
+                  {t("compliment.sent")}
+                </Text>
+              </View>
+            ) : (
+              <TouchableOpacity
+                onPress={handleSendCompliment}
+                disabled={sendingCompliment || !complimentText.trim()}
+                style={{
+                  backgroundColor: Colors.gold,
+                  paddingVertical: 13,
+                  borderRadius: 999,
+                  alignItems: "center",
+                  opacity: sendingCompliment || !complimentText.trim() ? 0.5 : 1,
+                }}
+                activeOpacity={0.85}
+              >
+                {sendingCompliment ? (
+                  <ActivityIndicator size="small" color="#0D1117" />
+                ) : (
+                  <Text style={{ color: "#0D1117", fontFamily: "Inter_700Bold", fontSize: 14 }}>
+                    {t("compliment.send")}
+                  </Text>
+                )}
+              </TouchableOpacity>
+            )}
+          </View>
+        </View>
+      </Modal>
 
       {/* FULL PROFILE DETAILS MODAL */}
       <Modal

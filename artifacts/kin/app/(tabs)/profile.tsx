@@ -20,6 +20,7 @@ import {
 import { uploadVoiceIntroFile, resolveAudioUrl, getVoiceSignedUrl } from "@/services/voiceIntroService";
 import {
   ActivityIndicator,
+  Modal,
   Platform,
   ScrollView,
   Share,
@@ -335,13 +336,71 @@ export default function ProfileScreen() {
   const { mutate: updateMe } = useUpdateMe();
   const [readReceiptsEnabled, setReadReceiptsEnabled] = useState(false);
   const [hideFromPeople, setHideFromPeople] = useState(false);
+  const [isIncognito, setIsIncognito] = useState(false);
+  const [verificationStatus, setVerificationStatus] = useState<string>("unverified");
+  const [verifyModalOpen, setVerifyModalOpen] = useState(false);
+  const [verifyingSelfie, setVerifyingSelfie] = useState(false);
+
+  const apiBaseUrl =
+    process.env.EXPO_PUBLIC_API_URL ??
+    process.env.VITE_API_URL ??
+    (process.env.EXPO_PUBLIC_DOMAIN
+      ? `https://${process.env.EXPO_PUBLIC_DOMAIN}`
+      : "https://kin-x81d.onrender.com");
 
   useEffect(() => {
     if (profile) {
       setReadReceiptsEnabled(Boolean((profile as any).readReceiptsEnabled));
       setHideFromPeople(Boolean((profile as any).hideFromPeople));
+      setIsIncognito(Boolean((profile as any).isIncognito));
+      setVerificationStatus((profile as any).verificationStatus ?? ((profile as any).isVerified ? "verified" : "unverified"));
     }
   }, [profile]);
+
+  const handleToggleIncognito = async () => {
+    if (!token) return;
+    const nextVal = !isIncognito;
+    setIsIncognito(nextVal);
+    try {
+      const res = await fetch(`${apiBaseUrl}/api/me/privacy`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ isIncognito: nextVal }),
+      });
+      if (res.ok) {
+        refetch();
+      } else {
+        setIsIncognito(!nextVal);
+      }
+    } catch {
+      setIsIncognito(!nextVal);
+    }
+  };
+
+  const handleVerifySelfie = async () => {
+    if (!token) return;
+    setVerifyingSelfie(true);
+    try {
+      const res = await fetch(`${apiBaseUrl}/api/me/verify-selfie`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ selfieUrl: primaryPhotoUrl ?? "selfie_verified" }),
+      });
+      if (res.ok) {
+        setVerificationStatus("verified");
+        setVerifyModalOpen(false);
+        refetch();
+      }
+    } finally {
+      setVerifyingSelfie(false);
+    }
+  };
 
   const handleToggleReadReceipts = async () => {
     const nextVal = !readReceiptsEnabled;
@@ -729,6 +788,78 @@ export default function ProfileScreen() {
               <View style={[styles.receiptToggleThumb, hideFromPeople && styles.receiptToggleThumbActive]} />
             </TouchableOpacity>
           </View>
+
+          {/* Incognito Mode Switch */}
+          <View style={styles.actionRow}>
+            <Feather name="shield" size={18} color={Colors.gold} />
+            <Text style={styles.actionText}>{t('trust.incognito')}</Text>
+            <TouchableOpacity
+              onPress={handleToggleIncognito}
+              style={[styles.receiptToggleTrack, isIncognito && styles.receiptToggleTrackActive]}
+              activeOpacity={0.8}
+            >
+              <View style={[styles.receiptToggleThumb, isIncognito && styles.receiptToggleThumbActive]} />
+            </TouchableOpacity>
+          </View>
+
+          {/* Selfie Verification */}
+          <TouchableOpacity
+            style={styles.actionRow}
+            onPress={() => {
+              if (verificationStatus !== "verified") {
+                setVerifyModalOpen(true);
+              }
+            }}
+            disabled={verificationStatus === "verified"}
+            activeOpacity={0.8}
+          >
+            <Feather name="check-square" size={18} color={verificationStatus === "verified" ? "#38BDF8" : Colors.bone} />
+            <Text style={[styles.actionText, verificationStatus === "verified" && { color: "#38BDF8" }]}>
+              {verificationStatus === "verified" ? t('trust.verified') : t('trust.getVerified')}
+            </Text>
+          </TouchableOpacity>
+
+          <Modal
+            visible={verifyModalOpen}
+            transparent
+            animationType="fade"
+            onRequestClose={() => setVerifyModalOpen(false)}
+          >
+            <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.7)", justifyContent: "center", alignItems: "center", padding: 24 }}>
+              <View style={{ width: "100%", backgroundColor: "#161B22", borderRadius: 20, padding: 20, gap: 16, borderWidth: 1, borderColor: "rgba(255,255,255,0.1)" }}>
+                <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+                  <Text style={{ color: Colors.bone, fontSize: 17, fontFamily: "Inter_700Bold" }}>
+                    {t('trust.getVerified')}
+                  </Text>
+                  <TouchableOpacity onPress={() => setVerifyModalOpen(false)}>
+                    <Feather name="x" size={20} color={Colors.boneDim} />
+                  </TouchableOpacity>
+                </View>
+                <View style={{ alignItems: "center", paddingVertical: 16, gap: 10 }}>
+                  <View style={{ width: 72, height: 72, borderRadius: 36, backgroundColor: "rgba(56,189,248,0.15)", justifyContent: "center", alignItems: "center" }}>
+                    <Feather name="camera" size={32} color="#38BDF8" />
+                  </View>
+                  <Text style={{ color: Colors.boneDim, fontSize: 14, fontFamily: "Inter_500Medium" }}>
+                    {t('trust.smileCamera')}
+                  </Text>
+                </View>
+                <TouchableOpacity
+                  onPress={handleVerifySelfie}
+                  disabled={verifyingSelfie}
+                  style={{ backgroundColor: "#38BDF8", paddingVertical: 13, borderRadius: 999, alignItems: "center" }}
+                  activeOpacity={0.85}
+                >
+                  {verifyingSelfie ? (
+                    <ActivityIndicator size="small" color="#0D1117" />
+                  ) : (
+                    <Text style={{ color: "#0D1117", fontSize: 14, fontFamily: "Inter_700Bold" }}>
+                      {t('trust.verifyNow')}
+                    </Text>
+                  )}
+                </TouchableOpacity>
+              </View>
+            </View>
+          </Modal>
 
           <TouchableOpacity
             style={styles.actionRow}

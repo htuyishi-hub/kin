@@ -39,7 +39,7 @@ type MessageItem = {
   promptKey?: string | null;
   promptText?: string | null;
   isSystem: boolean;
-  mediaType?: "text" | "voice" | "gift" | "game_prompt";
+  mediaType?: "text" | "voice" | "gift" | "game_prompt" | "date_invite";
   mediaUrl?: string | null;
   reactions?: Record<string, string[]>;
   gameData?: { question: string; answers: Record<string, string> } | null;
@@ -379,6 +379,9 @@ export default function MatchScreen() {
   const [activeGiftOverlay, setActiveGiftOverlay] = useState<string | null>(null);
   const [gameAnswersDraft, setGameAnswersDraft] = useState<Record<string, string>>({});
   const [unlockedReadTimes, setUnlockedReadTimes] = useState<Record<string, string | null>>({});
+  const [dateModalOpen, setDateModalOpen] = useState(false);
+  const [dateSpots, setDateSpots] = useState<Array<{ id: string; name: string; area: string; emoji: string }>>([]);
+  const [dateTimeText, setDateTimeText] = useState("Saturday 4:00 PM");
 
   const flatRef = useRef<FlatList>(null);
   const inputRef = useRef<TextInput>(null);
@@ -552,6 +555,47 @@ export default function MatchScreen() {
       if (!perm.granted) return;
       await chatRecorder.prepareToRecordAsync();
       chatRecorder.record();
+    } catch {}
+  }
+
+  useEffect(() => {
+    if (!token) return;
+    fetch(`${mobileApiBaseUrl}/api/dates/spots`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (Array.isArray(d)) setDateSpots(d);
+      })
+      .catch(() => {});
+  }, [token]);
+
+  async function handleSendDateInvite(spot: { name: string; area: string }) {
+    if (!token) return;
+    setDateModalOpen(false);
+    try {
+      const res = await fetch(`${mobileApiBaseUrl}/api/matches/${matchId}/date-invite`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          spotName: spot.name,
+          spotArea: spot.area,
+          proposedTime: dateTimeText.trim() || t("dates.timePlaceholder"),
+        }),
+      });
+      if (res.ok) refetchMessages();
+    } catch {}
+  }
+
+  async function handleRespondDateInvite(inviteId: string, action: "accept" | "decline") {
+    if (!token) return;
+    try {
+      const res = await fetch(`${mobileApiBaseUrl}/api/matches/${matchId}/date-invite/respond`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ inviteId, action }),
+      });
+      if (res.ok) refetchMessages();
     } catch {}
   }
 
@@ -917,6 +961,16 @@ export default function MatchScreen() {
         </View>
 
         <View style={styles.headerActionsRow}>
+          {/* Date Spot Button */}
+          <TouchableOpacity
+            style={[styles.headerIconBtn, { backgroundColor: colors.secondary, borderColor: colors.border }]}
+            onPress={() => setDateModalOpen(true)}
+            accessibilityLabel={t("dates.title")}
+            accessibilityRole="button"
+          >
+            <Feather name="map-pin" size={16} color="#38BDF8" />
+          </TouchableOpacity>
+
           {/* Question Game Button */}
           <TouchableOpacity
             style={[styles.headerIconBtn, { backgroundColor: colors.secondary, borderColor: colors.border }]}
@@ -1095,6 +1149,41 @@ export default function MatchScreen() {
                       </View>
                     ) : item.message.mediaType === "voice" && item.message.mediaUrl ? (
                       <MatchVoicePlayer path={item.message.mediaUrl} colors={colors} />
+                    ) : item.message.mediaType === "date_invite" && item.message.gameData ? (
+                      (() => {
+                        const status = item.message.gameData.answers?.status || "pending";
+                        const inviteId = item.message.gameData.answers?.inviteId || item.message.mediaUrl || "";
+                        return (
+                          <View style={{ gap: 6, minWidth: 200 }}>
+                            <Text style={{ color: "#38BDF8", fontSize: 11, fontFamily: "Inter_700Bold" }}>
+                              📍 {t("dates.title")}
+                            </Text>
+                            <Text style={[styles.bubbleText, { color: isMe ? colors.primaryForeground : colors.foreground }]}>
+                              {item.message.gameData.question}
+                            </Text>
+                            {status === "pending" && !isMe ? (
+                              <View style={{ flexDirection: "row", gap: 6, paddingTop: 4 }}>
+                                <TouchableOpacity
+                                  onPress={() => handleRespondDateInvite(inviteId, "accept")}
+                                  style={{ flex: 1, backgroundColor: "#3FB950", paddingVertical: 6, borderRadius: 8, alignItems: "center" }}
+                                >
+                                  <Text style={{ color: "#0D1117", fontSize: 11, fontFamily: "Inter_700Bold" }}>{t("dates.accept")}</Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity
+                                  onPress={() => handleRespondDateInvite(inviteId, "decline")}
+                                  style={{ backgroundColor: colors.secondary, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8 }}
+                                >
+                                  <Text style={{ color: colors.mutedForeground, fontSize: 11, fontFamily: "Inter_700Bold" }}>{t("dates.decline")}</Text>
+                                </TouchableOpacity>
+                              </View>
+                            ) : (
+                              <Text style={{ color: status === "accepted" ? "#3FB950" : colors.mutedForeground, fontSize: 11, fontFamily: "Inter_700Bold" }}>
+                                {status === "accepted" ? t("dates.accepted") : status === "declined" ? t("dates.declined") : "..."}
+                              </Text>
+                            )}
+                          </View>
+                        );
+                      })()
                     ) : item.message.mediaType === "game_prompt" && item.message.gameData ? (
                       (() => {
                         const answers = item.message.gameData.answers || {};
@@ -1514,6 +1603,65 @@ export default function MatchScreen() {
             </TouchableOpacity>
           </View>
         </TouchableOpacity>
+      </Modal>
+
+      {/* Date Spot Picker Modal */}
+      <Modal
+        visible={dateModalOpen}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setDateModalOpen(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.reportCard, { backgroundColor: colors.card, borderColor: colors.border, gap: 10 }]}>
+            <View style={styles.reportHeader}>
+              <Text style={[styles.reportTitle, { color: colors.foreground }]}>📍 {t("dates.title")}</Text>
+              <TouchableOpacity onPress={() => setDateModalOpen(false)}>
+                <Feather name="x" size={18} color={colors.mutedForeground} />
+              </TouchableOpacity>
+            </View>
+            <TextInput
+              value={dateTimeText}
+              onChangeText={setDateTimeText}
+              placeholder={t("dates.timePlaceholder")}
+              placeholderTextColor={colors.mutedForeground}
+              style={{
+                backgroundColor: colors.background,
+                color: colors.foreground,
+                borderColor: colors.border,
+                borderWidth: 1,
+                borderRadius: 10,
+                paddingHorizontal: 12,
+                paddingVertical: 8,
+                fontSize: 13,
+              }}
+            />
+            {dateSpots.map((spot) => (
+              <TouchableOpacity
+                key={spot.id}
+                onPress={() => handleSendDateInvite(spot)}
+                style={{
+                  backgroundColor: colors.secondary,
+                  padding: 12,
+                  borderRadius: 12,
+                  flexDirection: "row",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                }}
+              >
+                <View>
+                  <Text style={{ color: colors.foreground, fontSize: 14, fontFamily: "Inter_700Bold" }}>
+                    {spot.emoji} {spot.name}
+                  </Text>
+                  <Text style={{ color: colors.mutedForeground, fontSize: 11 }}>{spot.area}</Text>
+                </View>
+                <Text style={{ color: "#38BDF8", fontSize: 12, fontFamily: "Inter_700Bold" }}>
+                  {t("dates.sendInvite")}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
       </Modal>
 
       {/* Report Reason Modal */}
