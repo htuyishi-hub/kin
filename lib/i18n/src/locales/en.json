@@ -366,6 +366,16 @@
     "sendNudge": "⚡ Nudge",
     "sent": "Nudge sent"
   },
+  "location": {
+    "shareLive": "📍 Share Live Location",
+    "sharingActive": "📍 Live Location Active",
+    "stopSharing": "Stop",
+    "eta": "{{meters}}m away · ~{{mins}} min",
+    "checkIn": "🛡️ Date Check-In",
+    "allGood": "All Good 👍",
+    "sos": "SOS 🚨",
+    "sosMessage": "SOS! Date with {{name}}. Live GPS: https://maps.google.com/?q={{lat}},{{lon}}"
+  },
   "serious": {
     "tabTitle": "Serious",
     "queueTitle": "Serious Queue",

@@ -1,4 +1,4 @@
-import { pgTable, text, smallint, uuid, timestamp, boolean, integer, index } from "drizzle-orm/pg-core";
+import { pgTable, text, smallint, uuid, timestamp, boolean, integer, index, doublePrecision } from "drizzle-orm/pg-core";
 import { profilesTable } from "./profiles";
 import { matchesTable } from "./matching";
 
@@ -113,6 +113,18 @@ export const rushSessionsTable = pgTable("rush_sessions", {
   index("idx_rush_user_b").on(table.userB),
 ]);
 
+// Live Date Location Sharing & Safety Monitoring
+export const dateLocationSessionsTable = pgTable("date_location_sessions", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  matchId: uuid("match_id").notNull().references(() => matchesTable.id, { onDelete: "cascade" }),
+  userId: uuid("user_id").notNull().references(() => profilesTable.id, { onDelete: "cascade" }),
+  latitude: doublePrecision("latitude").notNull(),
+  longitude: doublePrecision("longitude").notNull(),
+  isActive: boolean("is_active").default(true).notNull(),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
 export type OtpSession = typeof otpSessionsTable.$inferSelect;
 export type TrustEvent = typeof trustEventsTable.$inferSelect;
 export type Report = typeof reportsTable.$inferSelect;
@@ -122,3 +134,4 @@ export type DateInvite = typeof dateInvitesTable.$inferSelect;
 export type BlockedContact = typeof blockedContactsTable.$inferSelect;
 export type PopularityVote = typeof popularityVotesTable.$inferSelect;
 export type RushSession = typeof rushSessionsTable.$inferSelect;
+export type DateLocationSession = typeof dateLocationSessionsTable.$inferSelect;

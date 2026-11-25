@@ -7,6 +7,7 @@ import type { Request } from "express";
 
 import { generateInviteCode } from "../lib/inviteCode.js";
 import { verifyURRegistration } from "./urVerification.js";
+import { resolveRwandaNeighborhood } from "../lib/geo.js";
 
 const VOUCH_THRESHOLD = 1000;
 
@@ -1002,6 +1003,35 @@ router.post("/me/voice-bio", requireAuth, async (req, res) => {
     .where(eq(profilesTable.id, userId))
     .returning();
   res.json({ success: true, voiceBioUrl, profile: updated ? mapProfile(updated) : null });
+});
+
+// POST /me/location — Persist real GPS coordinates & neighborhood
+router.post("/me/location", requireAuth, async (req, res) => {
+  const userId = (req as AuthedRequest).userId;
+  const { latitude, longitude } = req.body as { latitude?: number; longitude?: number };
+  if (typeof latitude !== "number" || typeof longitude !== "number" || Number.isNaN(latitude) || Number.isNaN(longitude)) {
+    res.status(400).json({ error: "invalid_coordinates" });
+    return;
+  }
+  const neighborhoodName = resolveRwandaNeighborhood(latitude, longitude);
+  const [updated] = await db
+    .update(profilesTable)
+    .set({
+      latitude,
+      longitude,
+      neighborhoodName,
+      locationUpdatedAt: new Date(),
+    } as any)
+    .where(eq(profilesTable.id, userId))
+    .returning();
+
+  res.json({
+    success: true,
+    latitude,
+    longitude,
+    neighborhoodName,
+    profile: updated ? mapProfile(updated) : null,
+  });
 });
 
 // UR registration verification

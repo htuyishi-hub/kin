@@ -366,6 +366,16 @@
     "sendNudge": "⚡ Nudge",
     "sent": "Byoherejwe"
   },
+  "location": {
+    "shareLive": "📍 Sangiza Aho Uri",
+    "sharingActive": "📍 Aho Uri Haragaragara",
+    "stopSharing": "Hagarika",
+    "eta": "Metero {{meters}} · iminota ~{{mins}}",
+    "checkIn": "🛡️ Umutekano",
+    "allGood": "Ni Sawe 👍",
+    "sos": "SOS 🚨",
+    "sosMessage": "SOS! Ndi kumwe na {{name}}. GPS: https://maps.google.com/?q={{lat}},{{lon}}"
+  },
   "serious": {
     "tabTitle": "Abiyemeje",
     "queueTitle": "Umurongo w'Abiyemeje",

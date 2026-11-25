@@ -1,8 +1,9 @@
 import { Router } from "express";
-import { eq, and, or } from "drizzle-orm";
-import { db, dateInvitesTable, matchesTable, messagesTable, profilesTable } from "@workspace/db";
+import { eq, and, or, gt, desc } from "drizzle-orm";
+import { db, dateInvitesTable, matchesTable, messagesTable, profilesTable, dateLocationSessionsTable } from "@workspace/db";
 import { requireAuth, type AuthedRequest } from "../middlewares/auth.js";
 import { broadcastToMatch } from "../lib/ws-manager.js";
+import { haversineKm } from "../lib/geo.js";
 
 const router = Router();
 
@@ -181,6 +182,93 @@ router.get("/dates/:inviteId/share-card", requireAuth, async (req, res) => {
     verifiedBadge: Boolean(partner?.isVerified || partner?.verificationStatus === "verified"),
     link: `https://kinn.ink/p/${partnerId}`,
   });
+});
+
+// POST /matches/:matchId/location/share — Share live GPS for 1-2 hours during date
+router.post("/matches/:matchId/location/share", requireAuth, async (req, res) => {
+  const userId = (req as AuthedRequest).userId;
+  const matchId = String(req.params["matchId"] ?? "");
+  const { latitude, longitude } = req.body as { latitude?: number; longitude?: number };
+
+  if (typeof latitude !== "number" || typeof longitude !== "number" || Number.isNaN(latitude) || Number.isNaN(longitude)) {
+    res.status(400).json({ error: "invalid_coordinates" });
+    return;
+  }
+
+  await db
+    .update(dateLocationSessionsTable)
+    .set({ isActive: false })
+    .where(and(eq(dateLocationSessionsTable.matchId, matchId), eq(dateLocationSessionsTable.userId, userId)));
+
+  const expiresAt = new Date(Date.now() + 2 * 60 * 60 * 1000);
+  const [created] = await db
+    .insert(dateLocationSessionsTable)
+    .values({
+      matchId,
+      userId,
+      latitude,
+      longitude,
+      isActive: true,
+      expiresAt,
+    })
+    .returning();
+
+  broadcastToMatch(matchId, {
+    type: "location_updated",
+    matchId,
+    userId,
+    latitude,
+    longitude,
+  } as any);
+
+  res.json({ success: true, session: created });
+});
+
+// GET /matches/:matchId/location — Get active live date locations & real Haversine ETA
+router.get("/matches/:matchId/location", requireAuth, async (req, res) => {
+  const userId = (req as AuthedRequest).userId;
+  const matchId = String(req.params["matchId"] ?? "");
+  const now = new Date();
+
+  const rows = await db
+    .select()
+    .from(dateLocationSessionsTable)
+    .where(
+      and(
+        eq(dateLocationSessionsTable.matchId, matchId),
+        eq(dateLocationSessionsTable.isActive, true),
+        gt(dateLocationSessionsTable.expiresAt, now)
+      )
+    )
+    .orderBy(desc(dateLocationSessionsTable.createdAt));
+
+  const myLoc = rows.find((r) => r.userId === userId) ?? null;
+  const partnerLoc = rows.find((r) => r.userId !== userId) ?? null;
+
+  let distanceMeters: number | null = null;
+  let etaMinutes: number | null = null;
+  if (myLoc && partnerLoc) {
+    distanceMeters = Math.round(haversineKm(myLoc.latitude, myLoc.longitude, partnerLoc.latitude, partnerLoc.longitude) * 1000);
+    etaMinutes = Math.max(1, Math.round(distanceMeters / 80));
+  }
+
+  res.json({
+    myLocation: myLoc ? { latitude: myLoc.latitude, longitude: myLoc.longitude, createdAt: myLoc.createdAt } : null,
+    partnerLocation: partnerLoc ? { latitude: partnerLoc.latitude, longitude: partnerLoc.longitude, createdAt: partnerLoc.createdAt } : null,
+    distanceMeters,
+    etaMinutes,
+  });
+});
+
+// POST /matches/:matchId/location/stop — Stop sharing live location
+router.post("/matches/:matchId/location/stop", requireAuth, async (req, res) => {
+  const userId = (req as AuthedRequest).userId;
+  const matchId = String(req.params["matchId"] ?? "");
+  await db
+    .update(dateLocationSessionsTable)
+    .set({ isActive: false })
+    .where(and(eq(dateLocationSessionsTable.matchId, matchId), eq(dateLocationSessionsTable.userId, userId)));
+  res.json({ success: true });
 });
 
 export default router;

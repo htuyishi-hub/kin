@@ -5,6 +5,7 @@ import {
   useMarkPhaseComplete,
 } from "@workspace/api-client-react";
 import * as Haptics from "expo-haptics";
+import * as Location from "expo-location";
 import { router, useLocalSearchParams } from "expo-router";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -381,6 +382,93 @@ export default function MatchScreen() {
   const [gameAnswersDraft, setGameAnswersDraft] = useState<Record<string, string>>({});
   const [unlockedReadTimes, setUnlockedReadTimes] = useState<Record<string, string | null>>({});
   const [dateModalOpen, setDateModalOpen] = useState(false);
+  const [liveLocationActive, setLiveLocationActive] = useState(false);
+  const [liveEta, setLiveEta] = useState<{ distanceMeters: number; etaMinutes: number } | null>(null);
+
+  useEffect(() => {
+    if (!token || !matchId) return;
+    const baseUrl =
+      process.env.EXPO_PUBLIC_API_URL ??
+      process.env.VITE_API_URL ??
+      (process.env.EXPO_PUBLIC_DOMAIN
+        ? `https://${process.env.EXPO_PUBLIC_DOMAIN}`
+        : "https://kin-x81d.onrender.com");
+    const fetchLoc = () => {
+      fetch(`${baseUrl}/api/matches/${matchId}/location`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+        .then((r) => (r.ok ? r.json() : null))
+        .then((d) => {
+          if (!d) return;
+          setLiveLocationActive(Boolean(d.myLocation));
+          if (typeof d.distanceMeters === "number" && typeof d.etaMinutes === "number") {
+            setLiveEta({ distanceMeters: d.distanceMeters, etaMinutes: d.etaMinutes });
+          } else {
+            setLiveEta(null);
+          }
+        })
+        .catch(() => {});
+    };
+    fetchLoc();
+    const id = setInterval(fetchLoc, 5000);
+    return () => clearInterval(id);
+  }, [token, matchId]);
+
+  const handleShareLiveLocation = async () => {
+    if (!token || !matchId) return;
+    const baseUrl =
+      process.env.EXPO_PUBLIC_API_URL ??
+      process.env.VITE_API_URL ??
+      (process.env.EXPO_PUBLIC_DOMAIN
+        ? `https://${process.env.EXPO_PUBLIC_DOMAIN}`
+        : "https://kin-x81d.onrender.com");
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== "granted") return;
+      const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
+      const res = await fetch(`${baseUrl}/api/matches/${matchId}/location/share`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ latitude: pos.coords.latitude, longitude: pos.coords.longitude }),
+      });
+      if (res.ok) {
+        Haptics.notificationAsync?.(Haptics.NotificationFeedbackType.Success);
+        setLiveLocationActive(true);
+      }
+    } catch {}
+  };
+
+  const handleStopLiveLocation = async () => {
+    if (!token || !matchId) return;
+    setLiveLocationActive(false);
+    const baseUrl =
+      process.env.EXPO_PUBLIC_API_URL ??
+      process.env.VITE_API_URL ??
+      (process.env.EXPO_PUBLIC_DOMAIN
+        ? `https://${process.env.EXPO_PUBLIC_DOMAIN}`
+        : "https://kin-x81d.onrender.com");
+    fetch(`${baseUrl}/api/matches/${matchId}/location/stop`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+    }).catch(() => {});
+  };
+
+  const handleTriggerSos = async () => {
+    const partnerName = match?.otherUserName || "kinn Member";
+    let lat: number | string = -1.9536;
+    let lon: number | string = 30.0905;
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status === "granted") {
+        const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
+        lat = pos.coords.latitude;
+        lon = pos.coords.longitude;
+      }
+    } catch {}
+    Share.share({
+      message: t("location.sosMessage", { name: partnerName, lat, lon }),
+    }).catch(() => {});
+  };
   const [dateSpots, setDateSpots] = useState<Array<{ id: string; name: string; area: string; emoji: string }>>([]);
   const [dateTimeText, setDateTimeText] = useState("Saturday 4:00 PM");
 
@@ -1053,6 +1141,77 @@ export default function MatchScreen() {
           </Text>
         </View>
       )}
+
+      {/* Live Date Location & Safety Bar */}
+      <View
+        style={{
+          paddingHorizontal: 12,
+          paddingVertical: 6,
+          backgroundColor: colors.secondary,
+          borderBottomWidth: 1,
+          borderBottomColor: colors.border,
+          flexDirection: "row",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: 8,
+        }}
+      >
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 8, flex: 1 }}>
+          {liveLocationActive ? (
+            <TouchableOpacity
+              onPress={handleStopLiveLocation}
+              style={{
+                backgroundColor: "rgba(63,185,80,0.16)",
+                borderWidth: 1,
+                borderColor: "rgba(63,185,80,0.45)",
+                paddingHorizontal: 10,
+                paddingVertical: 4,
+                borderRadius: 999,
+              }}
+            >
+              <Text style={{ color: "#3FB950", fontSize: 11, fontFamily: "Inter_700Bold" }}>
+                {t("location.sharingActive")} · {t("location.stopSharing")}
+              </Text>
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity
+              onPress={handleShareLiveLocation}
+              style={{
+                backgroundColor: "rgba(56,189,248,0.16)",
+                borderWidth: 1,
+                borderColor: "rgba(56,189,248,0.45)",
+                paddingHorizontal: 10,
+                paddingVertical: 4,
+                borderRadius: 999,
+              }}
+            >
+              <Text style={{ color: "#38BDF8", fontSize: 11, fontFamily: "Inter_700Bold" }}>
+                {t("location.shareLive")}
+              </Text>
+            </TouchableOpacity>
+          )}
+          {liveEta && (
+            <Text style={{ color: "#C9A84C", fontSize: 11, fontFamily: "Inter_600SemiBold", flexShrink: 1 }} numberOfLines={1}>
+              {t("location.eta", { meters: liveEta.distanceMeters, mins: liveEta.etaMinutes })}
+            </Text>
+          )}
+        </View>
+        <TouchableOpacity
+          onPress={handleTriggerSos}
+          style={{
+            backgroundColor: "rgba(255,107,107,0.2)",
+            borderWidth: 1,
+            borderColor: "rgba(255,107,107,0.5)",
+            paddingHorizontal: 10,
+            paddingVertical: 4,
+            borderRadius: 999,
+          }}
+        >
+          <Text style={{ color: "#FF6B6B", fontSize: 11, fontFamily: "Inter_700Bold" }}>
+            {t("location.sos")}
+          </Text>
+        </TouchableOpacity>
+      </View>
 
       <KeyboardAvoidingView
         style={{ flex: 1 }}

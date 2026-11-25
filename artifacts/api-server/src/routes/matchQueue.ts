@@ -15,6 +15,7 @@ import {
 } from "@workspace/db";
 import { requireAuth, type AuthedRequest } from "../middlewares/auth.js";
 import { normalizeRwandaPhone } from "./contacts.js";
+import { haversineKm } from "../lib/geo.js";
 
 const router = Router();
 
@@ -259,14 +260,23 @@ router.get("/match-queue", requireAuth, async (req, res) => {
       c.invitedByProfile ||
       (c.vouchCount ?? 0) >= 1
     );
-    const location = c.campusName || c.campus || c.city || c.district || "Kigali";
+    const location = (c as any).neighborhoodName || c.campusName || c.campus || c.city || c.district || "Kigali";
+    const myLat = (myProfile as any).latitude;
+    const myLon = (myProfile as any).longitude;
+    const cLat = (c as any).latitude;
+    const cLon = (c as any).longitude;
+    const distanceKm =
+      typeof myLat === "number" && typeof myLon === "number" && typeof cLat === "number" && typeof cLon === "number"
+        ? Math.round(haversineKm(myLat, myLon, cLat, cLon) * 10) / 10
+        : null;
 
     return {
       id: c.id,
       firstName,
       age: c.dateOfBirth ? calculateAge(String(c.dateOfBirth)) : null,
       location,
-      areaName: c.district ?? c.campusName ?? c.city ?? "Kigali",
+      areaName: (c as any).neighborhoodName ?? c.district ?? c.campusName ?? c.city ?? "Kigali",
+      distanceKm,
       campusName: c.campusName ?? c.campus ?? null,
       city: c.city ?? null,
       district: c.district ?? null,

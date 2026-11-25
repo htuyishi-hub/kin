@@ -37,6 +37,35 @@ async function ensureDatabaseSchema() {
     await pool.query("ALTER TABLE profiles ADD COLUMN IF NOT EXISTS free_tonight_note TEXT DEFAULT NULL;");
     await pool.query("ALTER TABLE profiles ADD COLUMN IF NOT EXISTS passport_city TEXT DEFAULT NULL;");
     await pool.query("ALTER TABLE profiles ADD COLUMN IF NOT EXISTS passport_until TIMESTAMPTZ DEFAULT NULL;");
+    await pool.query("ALTER TABLE profiles ADD COLUMN IF NOT EXISTS latitude DOUBLE PRECISION DEFAULT NULL;");
+    await pool.query("ALTER TABLE profiles ADD COLUMN IF NOT EXISTS longitude DOUBLE PRECISION DEFAULT NULL;");
+    await pool.query("ALTER TABLE profiles ADD COLUMN IF NOT EXISTS neighborhood_name TEXT DEFAULT NULL;");
+    await pool.query("ALTER TABLE profiles ADD COLUMN IF NOT EXISTS location_updated_at TIMESTAMPTZ DEFAULT NULL;");
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS date_location_sessions (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        match_id UUID NOT NULL REFERENCES matches(id) ON DELETE CASCADE,
+        user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+        latitude DOUBLE PRECISION NOT NULL,
+        longitude DOUBLE PRECISION NOT NULL,
+        is_active BOOLEAN NOT NULL DEFAULT TRUE,
+        expires_at TIMESTAMPTZ NOT NULL DEFAULT (NOW() + INTERVAL '2 hours'),
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+    `);
+    await pool.query(`
+      DO $$
+      BEGIN
+        IF NOT EXISTS (
+          SELECT 1 FROM pg_publication_tables
+          WHERE pubname = 'supabase_realtime' AND schemaname = 'public' AND tablename = 'date_location_sessions'
+        ) THEN
+          ALTER PUBLICATION supabase_realtime ADD TABLE public.date_location_sessions;
+        END IF;
+      EXCEPTION WHEN undefined_object THEN
+        NULL;
+      END $$;
+    `);
     await pool.query("ALTER TABLE photo_comments ADD COLUMN IF NOT EXISTS gift_type TEXT DEFAULT 'comment';");
     await pool.query("ALTER TABLE photo_comments ALTER COLUMN photo_url DROP NOT NULL;");
     await pool.query(`

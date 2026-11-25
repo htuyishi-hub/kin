@@ -1639,6 +1639,93 @@ export default function AppScreen() {
     }
   }
 
+  useEffect(() => {
+    if (!token || typeof navigator === 'undefined' || !navigator.geolocation) return;
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        apiFetch('/api/me/location', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ latitude: pos.coords.latitude, longitude: pos.coords.longitude }),
+        }).catch(() => {});
+      },
+      () => {},
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
+  }, [token]);
+
+  const [liveLocationActive, setLiveLocationActive] = useState(false);
+  const [liveEta, setLiveEta] = useState<{ distanceMeters: number; etaMinutes: number } | null>(null);
+
+  useEffect(() => {
+    if (!token || !selectedMatch?.id) {
+      setLiveEta(null);
+      setLiveLocationActive(false);
+      return;
+    }
+    const fetchLoc = () => {
+      apiFetch(`/api/matches/${selectedMatch.id}/location`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+        .then((r) => (r.ok ? r.json() : null))
+        .then((d) => {
+          if (!d) return;
+          setLiveLocationActive(Boolean(d.myLocation));
+          if (typeof d.distanceMeters === 'number' && typeof d.etaMinutes === 'number') {
+            setLiveEta({ distanceMeters: d.distanceMeters, etaMinutes: d.etaMinutes });
+          } else {
+            setLiveEta(null);
+          }
+        })
+        .catch(() => {});
+    };
+    fetchLoc();
+    const id = setInterval(fetchLoc, 5000);
+    return () => clearInterval(id);
+  }, [token, selectedMatch?.id]);
+
+  function handleShareLiveLocation() {
+    if (!token || !selectedMatch?.id || !navigator.geolocation) return;
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        const res = await apiFetch(`/api/matches/${selectedMatch.id}/location/share`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ latitude: pos.coords.latitude, longitude: pos.coords.longitude }),
+        });
+        if (res.ok) setLiveLocationActive(true);
+      },
+      () => {},
+      { enableHighAccuracy: true }
+    );
+  }
+
+  async function handleStopLiveLocation() {
+    if (!token || !selectedMatch?.id) return;
+    setLiveLocationActive(false);
+    await apiFetch(`/api/matches/${selectedMatch.id}/location/stop`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+    }).catch(() => {});
+  }
+
+  function handleTriggerSos() {
+    const partnerName = selectedMatch?.otherUserName || 'kinn Member';
+    const dispatch = (lat: number | string, lon: number | string) => {
+      const text = encodeURIComponent(t('location.sosMessage', { name: partnerName, lat, lon }));
+      window.open(`https://wa.me/?text=${text}`, '_blank', 'noopener,noreferrer');
+    };
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => dispatch(pos.coords.latitude, pos.coords.longitude),
+        () => dispatch(-1.9536, 30.0905),
+        { enableHighAccuracy: true, timeout: 4000 }
+      );
+    } else {
+      dispatch(-1.9536, 30.0905);
+    }
+  }
+
   async function submitBulkPhones(rawNumbers: string[]) {
     if (!token || rawNumbers.length === 0) return;
     setBlockingPhone(true);
@@ -3363,6 +3450,41 @@ export default function AppScreen() {
                     <span>{t('matches.reconnecting')}</span>
                   </div>
                 )}
+
+                {/* Live Date Location & Safety Bar */}
+                <div className="px-4 py-1.5 bg-[#161B22]/90 border-b border-[#21262D] flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 min-w-0">
+                    {liveLocationActive ? (
+                      <button
+                        type="button"
+                        onClick={handleStopLiveLocation}
+                        className="px-2.5 py-1 rounded-full bg-[#3FB950]/15 border border-[#3FB950]/40 text-[#3FB950] text-[10px] font-bold cursor-pointer"
+                      >
+                        {t('location.sharingActive')} · {t('location.stopSharing')}
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={handleShareLiveLocation}
+                        className="px-2.5 py-1 rounded-full bg-[#2563EB]/15 border border-[#38BDF8]/40 text-[#38BDF8] text-[10px] font-bold cursor-pointer"
+                      >
+                        {t('location.shareLive')}
+                      </button>
+                    )}
+                    {liveEta && (
+                      <span className="text-[10px] font-semibold text-[#C9A84C] truncate">
+                        {t('location.eta', { meters: liveEta.distanceMeters, mins: liveEta.etaMinutes })}
+                      </span>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleTriggerSos}
+                    className="px-2.5 py-1 rounded-full bg-[#FF6B6B]/20 border border-[#FF6B6B]/50 text-[#FF6B6B] text-[10px] font-bold shrink-0 cursor-pointer"
+                  >
+                    {t('location.sos')}
+                  </button>
+                </div>
 
                 {/* Messages List Area */}
                 <div className="flex-1 relative flex flex-col min-h-0">

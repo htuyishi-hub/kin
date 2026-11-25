@@ -7,6 +7,7 @@ import {
   useDeclineTalkRequest,
 } from "@workspace/api-client-react";
 import * as Haptics from "expo-haptics";
+import * as Location from "expo-location";
 import { router } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
@@ -133,6 +134,19 @@ export default function DiscoverScreen() {
         if (d && typeof d.remaining === "number") setSwipesRemaining(d.remaining);
       })
       .catch(() => {});
+
+    (async () => {
+      try {
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        if (status !== "granted") return;
+        const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
+        await fetch(`${apiBaseUrl}/api/me/location`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ latitude: pos.coords.latitude, longitude: pos.coords.longitude }),
+        });
+      } catch {}
+    })();
   }, [token]);
 
   const candidates: TeaserCandidate[] = (queue as any[]).map((item) => ({

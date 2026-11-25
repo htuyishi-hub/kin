@@ -1,4 +1,4 @@
-import { pgTable, text, boolean, smallint, date, uuid, timestamp, integer } from "drizzle-orm/pg-core";
+import { pgTable, text, boolean, smallint, date, uuid, timestamp, integer, doublePrecision } from "drizzle-orm/pg-core";
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { sql } from "drizzle-orm";
@@ -70,6 +70,10 @@ export const profilesTable = pgTable("profiles", {
   freeTonightNote: text("free_tonight_note"),
   passportCity: text("passport_city"),
   passportUntil: timestamp("passport_until", { withTimezone: true }),
+  latitude: doublePrecision("latitude"),
+  longitude: doublePrecision("longitude"),
+  neighborhoodName: text("neighborhood_name"),
+  locationUpdatedAt: timestamp("location_updated_at", { withTimezone: true }),
   profileActive: boolean("profile_active").default(true),
   profilePaused: boolean("profile_paused").default(false),
 
