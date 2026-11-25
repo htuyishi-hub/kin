@@ -1,5 +1,4 @@
 import { Feather } from "@expo/vector-icons";
-import * as Contacts from "expo-contacts";
 import {
   useGetMe, useAddPhoto,
   usePauseProfile,
@@ -428,6 +427,7 @@ export default function ProfileScreen() {
 
   const handleOpenContactPicker = async () => {
     try {
+      const Contacts = await import("expo-contacts");
       const { status } = await Contacts.requestPermissionsAsync();
       if (status !== "granted") return;
       const { data } = await Contacts.getContactsAsync({

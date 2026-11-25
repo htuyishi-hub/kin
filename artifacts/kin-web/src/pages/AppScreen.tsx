@@ -4599,7 +4599,7 @@ export default function AppScreen() {
                     {t('contacts.block')}
                   </button>
                 </div>
-                {'contacts' in navigator && 'ContactsManager' in window && (
+                {typeof navigator !== 'undefined' && 'contacts' in navigator && typeof window !== 'undefined' && 'ContactsManager' in window && (
                   <button
                     type="button"
                     onClick={handlePickContactsWeb}
