@@ -28,7 +28,7 @@ export function MobileShell({ children }: MobileShellProps) {
       <header className="hidden sm:flex items-center justify-between w-full max-w-[420px] mb-3 px-2 text-xs text-[#A8A49E]">
         <div className="flex items-center gap-2">
           <span className="flex h-2 w-2 rounded-full bg-[#3FB950] animate-pulse" />
-          <span className="font-semibold text-[#F0EDE6] tracking-wide">Kin Live Mobile View</span>
+          <span className="font-semibold text-[#F0EDE6] tracking-wide">kinn Live Mobile View</span>
         </div>
         <div className="flex items-center gap-3">
           <Link
