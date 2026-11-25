@@ -39,6 +39,10 @@ type MessageItem = {
   promptKey?: string | null;
   promptText?: string | null;
   isSystem: boolean;
+  mediaType?: "text" | "voice" | "gift" | "game_prompt";
+  mediaUrl?: string | null;
+  reactions?: Record<string, string[]>;
+  gameData?: { question: string; answers: Record<string, string> } | null;
   readAt?: string | null;
   replyToId?: string | null;
   replyTo?: { id?: string; senderId?: string; content?: string } | null;
@@ -371,11 +375,134 @@ export default function MatchScreen() {
   const [isSubmittingReport, setIsSubmittingReport] = useState(false);
   const [reportSuccess, setReportSuccess] = useState(false);
   const [isOtherTyping, setIsOtherTyping] = useState(false);
+  const [giftTrayOpen, setGiftTrayOpen] = useState(false);
+  const [activeGiftOverlay, setActiveGiftOverlay] = useState<string | null>(null);
+  const [gameAnswersDraft, setGameAnswersDraft] = useState<Record<string, string>>({});
+  const [unlockedReadTimes, setUnlockedReadTimes] = useState<Record<string, string | null>>({});
 
   const flatRef = useRef<FlatList>(null);
   const inputRef = useRef<TextInput>(null);
   const typingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastTypingSentRef = useRef<number>(0);
+
+  const mobileApiBaseUrl =
+    process.env.EXPO_PUBLIC_API_URL ??
+    process.env.VITE_API_URL ??
+    (process.env.EXPO_PUBLIC_DOMAIN
+      ? `https://${process.env.EXPO_PUBLIC_DOMAIN}`
+      : "https://kin-x81d.onrender.com");
+
+  async function handleToggleReaction(messageId: string, emoji: string) {
+    if (!token || messageId.startsWith("local-")) return;
+    try {
+      const res = await fetch(`${mobileApiBaseUrl}/api/matches/${matchId}/messages/react`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ messageId, emoji }),
+      });
+      if (res.ok) {
+        Haptics.selectionAsync?.();
+        refetchMessages();
+      }
+    } catch {}
+  }
+
+  async function handleSendGamePrompt() {
+    if (!token) return;
+    const questions = [
+      t("playground.icebreaker1"),
+      t("playground.icebreaker2"),
+      t("playground.icebreaker3"),
+    ];
+    const question = questions[Math.floor(Math.random() * questions.length)];
+    try {
+      const res = await fetch(`${mobileApiBaseUrl}/api/matches/${matchId}/messages`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          content: question,
+          mediaType: "game_prompt",
+          gameData: { question, answers: {} },
+        }),
+      });
+      if (res.ok) {
+        refetchMessages();
+      }
+    } catch {}
+  }
+
+  async function handleSubmitGameAnswer(messageId: string) {
+    const answer = (gameAnswersDraft[messageId] || "").trim();
+    if (!answer || !token) return;
+    try {
+      const res = await fetch(`${mobileApiBaseUrl}/api/matches/${matchId}/game/answer`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ messageId, answer }),
+      });
+      if (res.ok) {
+        setGameAnswersDraft((prev) => ({ ...prev, [messageId]: "" }));
+        refetchMessages();
+      }
+    } catch {}
+  }
+
+  async function handleSendGift(giftType: "rose" | "champagne" | "crown") {
+    if (!token) return;
+    setGiftTrayOpen(false);
+    try {
+      const res = await fetch(`${mobileApiBaseUrl}/api/matches/${matchId}/gifts/send`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ giftType }),
+      });
+      if (res.ok) {
+        Haptics.notificationAsync?.(Haptics.NotificationFeedbackType.Success);
+        setActiveGiftOverlay(giftType);
+        setTimeout(() => setActiveGiftOverlay(null), 2500);
+        refetchMessages();
+      }
+    } catch {}
+  }
+
+  async function handleReviveMatch() {
+    if (!token) return;
+    try {
+      const res = await fetch(`${mobileApiBaseUrl}/api/matches/${matchId}/revive`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        Haptics.notificationAsync?.(Haptics.NotificationFeedbackType.Success);
+      }
+    } catch {}
+  }
+
+  async function handlePeekReadReceipt() {
+    if (!token) return;
+    try {
+      const res = await fetch(`${mobileApiBaseUrl}/api/matches/${matchId}/read-peek`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.readTimes) setUnlockedReadTimes(data.readTimes);
+      }
+    } catch {}
+  }
 
   const handleIncomingMessage = useCallback(() => {
     if (!isNearBottom) {
@@ -695,6 +822,14 @@ export default function MatchScreen() {
             <Text style={[styles.headerName, { color: colors.foreground }]}>
               {match.otherUserName}
             </Text>
+            <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: "#22C55E" }} />
+            {((match as any).streakCount ?? 0) > 0 && (
+              <View style={{ backgroundColor: "rgba(245,158,11,0.18)", paddingHorizontal: 6, paddingVertical: 2, borderRadius: 999 }}>
+                <Text style={{ color: "#F59E0B", fontSize: 10, fontFamily: "Inter_700Bold" }}>
+                  {t("playground.streakDays", { count: (match as any).streakCount })}
+                </Text>
+              </View>
+            )}
             {!!(match as any).otherUser?.voiceIntroPath && (
               <MatchVoicePlayer
                 path={(match as any).otherUser.voiceIntroPath}
@@ -722,6 +857,16 @@ export default function MatchScreen() {
         </View>
 
         <View style={styles.headerActionsRow}>
+          {/* Question Game Button */}
+          <TouchableOpacity
+            style={[styles.headerIconBtn, { backgroundColor: colors.secondary, borderColor: colors.border }]}
+            onPress={handleSendGamePrompt}
+            accessibilityLabel={t("playground.questionGame")}
+            accessibilityRole="button"
+          >
+            <Text style={{ fontSize: 14 }}>🎲</Text>
+          </TouchableOpacity>
+
           {/* Report Button in Header */}
           <TouchableOpacity
             style={[styles.headerIconBtn, { backgroundColor: colors.secondary, borderColor: colors.border }]}
@@ -879,17 +1024,96 @@ export default function MatchScreen() {
                       </View>
                     )}
 
-                    <Text
-                      style={[
-                        styles.bubbleText,
-                        { color: isMe ? colors.primaryForeground : colors.foreground },
-                        isDeleted && styles.bubbleTextDeleted,
-                      ]}
-                    >
-                      {textContent}
-                    </Text>
+                    {item.message.mediaType === "gift" ? (
+                      <View style={{ alignItems: "center", paddingVertical: 6, paddingHorizontal: 8 }}>
+                        <Text style={{ fontSize: 32 }}>
+                          {item.message.mediaUrl === "crown" ? "👑" : item.message.mediaUrl === "champagne" ? "🥂" : "🌹"}
+                        </Text>
+                        <Text style={[styles.bubbleText, { color: isMe ? colors.primaryForeground : colors.foreground, fontWeight: "700", marginTop: 4 }]}>
+                          {textContent}
+                        </Text>
+                      </View>
+                    ) : item.message.mediaType === "game_prompt" && item.message.gameData ? (
+                      (() => {
+                        const answers = item.message.gameData.answers || {};
+                        const myAns = userId ? answers[userId] : undefined;
+                        const otherAns = match?.otherUserId
+                          ? answers[match.otherUserId]
+                          : Object.entries(answers).find(([k]) => k !== userId)?.[1];
+                        const bothAnswered = Boolean(myAns && otherAns);
+                        return (
+                          <View style={{ gap: 6, minWidth: 200 }}>
+                            <Text style={{ color: "#C9A84C", fontSize: 11, fontFamily: "Inter_700Bold" }}>
+                              🎲 {t("playground.questionGame")}
+                            </Text>
+                            <Text style={[styles.bubbleText, { color: isMe ? colors.primaryForeground : colors.foreground, opacity: bothAnswered ? 1 : 0.25 }]}>
+                              {bothAnswered ? item.message.gameData.question : "••••••••••••••"}
+                            </Text>
+                            {bothAnswered ? (
+                              <View style={{ gap: 4, borderTopWidth: 1, borderTopColor: "rgba(255,255,255,0.1)", paddingTop: 6 }}>
+                                <Text style={{ color: "#38BDF8", fontSize: 12 }}>You: {myAns}</Text>
+                                <Text style={{ color: "#C9A84C", fontSize: 12 }}>{match?.otherUserName?.split(" ")[0] || "Match"}: {otherAns}</Text>
+                              </View>
+                            ) : myAns ? (
+                              <Text style={{ color: colors.mutedForeground, fontSize: 11 }}>{t("playground.waitingPartnerAnswer")}</Text>
+                            ) : (
+                              <View style={{ flexDirection: "row", gap: 6, alignItems: "center" }}>
+                                <TextInput
+                                  value={gameAnswersDraft[item.message.id] || ""}
+                                  onChangeText={(txt) => setGameAnswersDraft((prev) => ({ ...prev, [item.message.id]: txt }))}
+                                  placeholder={t("playground.yourAnswer")}
+                                  placeholderTextColor={colors.mutedForeground}
+                                  style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.25)", borderRadius: 8, paddingHorizontal: 8, paddingVertical: 6, color: colors.foreground, fontSize: 12 }}
+                                />
+                                <TouchableOpacity
+                                  onPress={() => handleSubmitGameAnswer(item.message.id)}
+                                  style={{ backgroundColor: "#C9A84C", paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8 }}
+                                >
+                                  <Text style={{ color: "#0D1117", fontSize: 11, fontFamily: "Inter_700Bold" }}>{t("playground.submitAnswer")}</Text>
+                                </TouchableOpacity>
+                              </View>
+                            )}
+                          </View>
+                        );
+                      })()
+                    ) : (
+                      <Text
+                        style={[
+                          styles.bubbleText,
+                          { color: isMe ? colors.primaryForeground : colors.foreground },
+                          isDeleted && styles.bubbleTextDeleted,
+                        ]}
+                      >
+                        {textContent}
+                      </Text>
+                    )}
                   </TouchableOpacity>
                   </View>
+
+                  {item.message.reactions && Object.keys(item.message.reactions).length > 0 && (
+                    <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 4, marginTop: 4, alignSelf: isMe ? "flex-end" : "flex-start", marginLeft: isMe ? 0 : 40 }}>
+                      {Object.entries(item.message.reactions as Record<string, string[]>).map(([emoji, users]) => (
+                        <TouchableOpacity
+                          key={emoji}
+                          onPress={() => handleToggleReaction(item.message.id, emoji)}
+                          style={{
+                            flexDirection: "row",
+                            alignItems: "center",
+                            gap: 3,
+                            paddingHorizontal: 7,
+                            paddingVertical: 2,
+                            borderRadius: 999,
+                            backgroundColor: userId && users.includes(userId) ? "rgba(37,99,235,0.25)" : colors.card,
+                            borderWidth: 1,
+                            borderColor: userId && users.includes(userId) ? colors.primary : colors.border,
+                          }}
+                        >
+                          <Text style={{ fontSize: 12 }}>{emoji}</Text>
+                          {users.length > 1 && <Text style={{ fontSize: 10, color: colors.foreground }}>{users.length}</Text>}
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  )}
 
                   {item.isLastInGroup && (
                     <View style={[styles.metaRow, isMe ? styles.metaRowMe : [styles.metaRowThem, { marginLeft: 40 }]]}>
@@ -902,11 +1126,11 @@ export default function MatchScreen() {
                         </Text>
                       )}
                       {isMe && (
-                        <View style={styles.statusIconWrap}>
+                        <TouchableOpacity onPress={handlePeekReadReceipt} style={styles.statusIconWrap} activeOpacity={0.7}>
                           <MessageTicks
                             status={item.message.status}
                             deliveredAt={item.message.deliveredAt}
-                            readAt={item.message.readAt}
+                            readAt={item.message.readAt || unlockedReadTimes[item.message.id]}
                             onRetry={() =>
                               handleSendMessage(
                                 item.message.localPlaintext || item.message.content,
@@ -914,7 +1138,7 @@ export default function MatchScreen() {
                               )
                             }
                           />
-                        </View>
+                        </TouchableOpacity>
                       )}
                     </View>
                   )}
@@ -988,6 +1212,38 @@ export default function MatchScreen() {
           </View>
         )}
 
+        {/* Icebreaker Roulette when no messages */}
+        {messages.length === 0 && (
+          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6, paddingHorizontal: 12, paddingBottom: 8 }}>
+            {[t("playground.icebreaker1"), t("playground.icebreaker2"), t("playground.icebreaker3")].map((prompt) => (
+              <TouchableOpacity
+                key={prompt}
+                onPress={() => handleSendMessage(prompt)}
+                style={{ backgroundColor: colors.card, borderColor: colors.primary, borderWidth: 1, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 999 }}
+              >
+                <Text style={{ color: colors.foreground, fontSize: 12 }}>{prompt}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
+
+        {/* Gift Tray */}
+        {giftTrayOpen && (
+          <View style={{ flexDirection: "row", gap: 8, paddingHorizontal: 12, paddingVertical: 8, backgroundColor: colors.card, borderTopWidth: 1, borderTopColor: colors.border }}>
+            {(["rose", "champagne", "crown"] as const).map((g) => (
+              <TouchableOpacity
+                key={g}
+                onPress={() => handleSendGift(g)}
+                style={{ flex: 1, backgroundColor: colors.secondary, paddingVertical: 10, borderRadius: 12, alignItems: "center" }}
+              >
+                <Text style={{ color: colors.foreground, fontSize: 11, fontFamily: "Inter_700Bold" }}>
+                  {g === "rose" ? t("playground.giftRose") : g === "champagne" ? t("playground.giftChampagne") : t("playground.giftCrown")}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
+
         <View
           style={[
             styles.inputBar,
@@ -998,7 +1254,21 @@ export default function MatchScreen() {
             },
           ]}
         >
-          {isMyTurnFirst ? (
+          {match?.expiresAt && new Date(match.expiresAt).getTime() < Date.now() && !(match as any)?.isRevived ? (
+            <View style={{ flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+              <Text style={{ color: "#EF4444", fontSize: 12, fontFamily: "Inter_600SemiBold" }}>
+                {t("playground.matchExpired")}
+              </Text>
+              <TouchableOpacity
+                onPress={handleReviveMatch}
+                style={{ backgroundColor: "#C9A84C", paddingHorizontal: 14, paddingVertical: 10, borderRadius: 999 }}
+              >
+                <Text style={{ color: "#0D1117", fontSize: 12, fontFamily: "Inter_700Bold" }}>
+                  {t("playground.reviveMatch")}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          ) : isMyTurnFirst ? (
             <View style={styles.waitRow}>
               <Feather name="clock" size={16} color={colors.mutedForeground} />
               <Text style={[styles.waitText, { color: colors.mutedForeground }]}>
@@ -1007,6 +1277,12 @@ export default function MatchScreen() {
             </View>
           ) : (
             <>
+              <TouchableOpacity
+                onPress={() => setGiftTrayOpen((prev) => !prev)}
+                style={{ width: 38, height: 38, borderRadius: 19, backgroundColor: colors.background, borderWidth: 1, borderColor: colors.border, alignItems: "center", justifyContent: "center" }}
+              >
+                <Feather name="gift" size={17} color="#C9A84C" />
+              </TouchableOpacity>
               <TextInput
                 ref={inputRef}
                 style={[
@@ -1065,6 +1341,21 @@ export default function MatchScreen() {
           onPress={() => setActionTargetMessage(null)}
         >
           <View style={[styles.actionSheetContainer, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            {/* Quick Emoji Reaction Bar */}
+            <View style={{ flexDirection: "row", justifyContent: "space-around", paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: colors.border }}>
+              {["❤️", "😂", "🔥", "😮", "👏"].map((emoji) => (
+                <TouchableOpacity
+                  key={emoji}
+                  onPress={() => {
+                    const target = actionTargetMessage;
+                    setActionTargetMessage(null);
+                    if (target) handleToggleReaction(target.id, emoji);
+                  }}
+                >
+                  <Text style={{ fontSize: 24 }}>{emoji}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
             {/* Reply */}
             <TouchableOpacity
               style={[styles.actionSheetBtn, { borderBottomColor: colors.border }]}

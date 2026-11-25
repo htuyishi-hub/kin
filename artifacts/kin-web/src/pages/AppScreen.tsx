@@ -40,6 +40,8 @@ import {
   MapPin,
   Briefcase,
   Share2,
+  Gift,
+  Dices,
 } from 'lucide-react';
 import { useTranslation, changeLanguage, getCurrentLanguage, type SupportedLanguage } from '@workspace/i18n';
 import { useAuth } from '@/contexts/AuthContext';
@@ -214,6 +216,10 @@ export default function AppScreen() {
     createdAt: string;
     status?: 'sending' | 'sent' | 'failed';
     localPlaintext?: string;
+    mediaType?: 'text' | 'voice' | 'gift' | 'game_prompt';
+    mediaUrl?: string | null;
+    reactions?: Record<string, string[]>;
+    gameData?: { question: string; answers: Record<string, string> } | null;
     replyToId?: string | null;
     replyTo?: { id: string; senderId: string; content: string } | null;
     editedAt?: string | null;
@@ -242,6 +248,12 @@ export default function AppScreen() {
   const [isOtherTyping, setIsOtherTyping] = useState(false);
   const [readReceiptsEnabled, setReadReceiptsEnabled] = useState(false);
   const [hideFromPeople, setHideFromPeople] = useState(false);
+
+  // Chat Playground state: gifts, question game, read peek
+  const [giftTrayOpen, setGiftTrayOpen] = useState(false);
+  const [activeGiftOverlay, setActiveGiftOverlay] = useState<string | null>(null);
+  const [gameAnswersDraft, setGameAnswersDraft] = useState<Record<string, string>>({});
+  const [unlockedReadTimes, setUnlockedReadTimes] = useState<Record<string, string | null>>({});
 
   // Discover Part B state: People list
   type WebPersonItem = {
@@ -820,6 +832,17 @@ export default function AppScreen() {
               setChatMessages((prev) =>
                 prev.map((m) => (m.id === updated.id ? { ...m, ...updated, content: decrypted } : m))
               );
+            } else if (data.type === 'message_reaction' && data.matchId === selectedMatch.id) {
+              setChatMessages((prev) =>
+                prev.map((m) => (m.id === data.messageId ? { ...m, reactions: data.reactions } : m))
+              );
+            } else if (data.type === 'game_updated' && data.matchId === selectedMatch.id) {
+              setChatMessages((prev) =>
+                prev.map((m) => (m.id === data.messageId ? { ...m, gameData: data.gameData } : m))
+              );
+            } else if (data.type === 'chat_gift' && data.matchId === selectedMatch.id) {
+              setActiveGiftOverlay(data.giftType || 'rose');
+              setTimeout(() => setActiveGiftOverlay(null), 2500);
             } else if (data.type === 'message_deleted' && data.matchId === selectedMatch.id) {
               setChatMessages((prev) =>
                 prev.map((m) =>
@@ -1090,6 +1113,129 @@ export default function AppScreen() {
     } finally {
       setIsSendingMessage(false);
     }
+  }
+
+  async function handleToggleReaction(messageId: string, emoji: string) {
+    if (!selectedMatch?.id || !token || messageId.startsWith('local-')) return;
+    try {
+      const res = await apiFetch(`/api/matches/${selectedMatch.id}/messages/react`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ messageId, emoji }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setChatMessages((prev) =>
+          prev.map((m) => (m.id === messageId ? { ...m, reactions: data.reactions } : m))
+        );
+      }
+    } catch {}
+  }
+
+  async function handleSendGamePrompt() {
+    if (!selectedMatch?.id || !token) return;
+    const questions = [
+      t('playground.icebreaker1'),
+      t('playground.icebreaker2'),
+      t('playground.icebreaker3'),
+    ];
+    const question = questions[Math.floor(Math.random() * questions.length)];
+    try {
+      const res = await apiFetch(`/api/matches/${selectedMatch.id}/messages`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          content: question,
+          mediaType: 'game_prompt',
+          gameData: { question, answers: {} },
+        }),
+      });
+      if (res.ok) {
+        const saved = await res.json();
+        setChatMessages((prev) => (prev.some((m) => m.id === saved.id) ? prev : [...prev, { ...saved, status: 'sent' }]));
+      }
+    } catch {}
+  }
+
+  async function handleSubmitGameAnswer(messageId: string) {
+    const answer = (gameAnswersDraft[messageId] || '').trim();
+    if (!answer || !selectedMatch?.id || !token) return;
+    try {
+      const res = await apiFetch(`/api/matches/${selectedMatch.id}/game/answer`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ messageId, answer }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setGameAnswersDraft((prev) => ({ ...prev, [messageId]: '' }));
+        setChatMessages((prev) =>
+          prev.map((m) => (m.id === messageId ? { ...m, gameData: data.gameData } : m))
+        );
+      }
+    } catch {}
+  }
+
+  async function handleSendGift(giftType: 'rose' | 'champagne' | 'crown') {
+    if (!selectedMatch?.id || !token) return;
+    setGiftTrayOpen(false);
+    try {
+      const res = await apiFetch(`/api/matches/${selectedMatch.id}/gifts/send`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ giftType }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setActiveGiftOverlay(giftType);
+        setTimeout(() => setActiveGiftOverlay(null), 2500);
+        if (data.message) {
+          setChatMessages((prev) => (prev.some((m) => m.id === data.message.id) ? prev : [...prev, { ...data.message, status: 'sent' }]));
+        }
+      }
+    } catch {}
+  }
+
+  async function handleReviveMatch() {
+    if (!selectedMatch?.id || !token) return;
+    try {
+      const res = await apiFetch(`/api/matches/${selectedMatch.id}/revive`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setSelectedMatch((prev: any) => ({ ...prev, expiresAt: data.expiresAt, isRevived: true, status: 'active' }));
+      }
+    } catch {}
+  }
+
+  async function handlePeekReadReceipt() {
+    if (!selectedMatch?.id || !token) return;
+    try {
+      const res = await apiFetch(`/api/matches/${selectedMatch.id}/read-peek`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.readTimes) {
+          setUnlockedReadTimes(data.readTimes);
+        }
+      }
+    } catch {}
   }
 
   async function handleCompletePhase() {
@@ -2531,9 +2677,17 @@ export default function AppScreen() {
                       )}
                     </div>
                     <div>
-                      <h3 className="font-bold text-sm text-[#F0EDE6] leading-tight">
-                        {selectedMatch.otherUserName || selectedMatch.name}
-                      </h3>
+                      <div className="flex items-center gap-1.5">
+                        <h3 className="font-bold text-sm text-[#F0EDE6] leading-tight">
+                          {selectedMatch.otherUserName || selectedMatch.name}
+                        </h3>
+                        <span className="w-2 h-2 rounded-full bg-[#3FB950] shadow-[0_0_6px_#3FB950]" title={t('playground.activeNow')} />
+                        {(selectedMatch.streakCount ?? 0) > 0 && (
+                          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-[#F59E0B]/15 text-[#F59E0B] border border-[#F59E0B]/30">
+                            {t('playground.streakDays', { count: selectedMatch.streakCount })}
+                          </span>
+                        )}
+                      </div>
                       <div className="flex items-center gap-2 mt-0.5">
                         {isOtherTyping ? (
                           <span className="text-[10px] font-medium text-emerald-400 animate-pulse flex items-center gap-1">
@@ -2550,6 +2704,16 @@ export default function AppScreen() {
                   </div>
 
                   <div className="flex items-center gap-2">
+                    {/* Question Game Button */}
+                    <button
+                      type="button"
+                      onClick={handleSendGamePrompt}
+                      title={t('playground.questionGame')}
+                      aria-label={t('playground.questionGame')}
+                      className="p-2 rounded-full border border-[#21262D] bg-[#1A1A2E] text-[#C9A84C] hover:border-[#C9A84C]/60 transition-all cursor-pointer"
+                    >
+                      <Dices className="w-4 h-4" />
+                    </button>
                     {/* Voice Intro Player in Chat Header */}
                     {(selectedMatch.voiceIntroPath || selectedMatch.otherUser?.voiceIntroPath) && (
                       <button
@@ -2670,33 +2834,120 @@ export default function AppScreen() {
                                 <span>{t('chat.deletedMessage')}</span>
                               </div>
                             ) : (
-                              <div className="relative group/bubble max-w-[78%]">
-                                <div
-                                  className={`px-4 py-2.5 rounded-2xl text-sm leading-relaxed break-words whitespace-pre-wrap ${
-                                    isMe
-                                      ? 'bg-[#2563EB] text-[#F0EDE6] rounded-br-xs'
-                                      : 'bg-[#1A1A2E] border border-[#21262D] text-[#F0EDE6] rounded-bl-xs'
-                                  }`}
-                                >
-                                  {msg.replyTo && (
-                                    <div className="text-[11px] bg-black/25 border-l-2 border-[#93C5FD] pl-2 py-1 mb-2 rounded-r text-[#CBD5E1] truncate">
-                                      <span className="font-semibold block text-[10px] text-[#BFDBFE]">
-                                        {msg.replyTo.senderId === user?.id || msg.replyTo.senderId === 'me'
-                                          ? t('chat.replyingTo')
-                                          : t('chat.reply')}
-                                      </span>
-                                      <span className="truncate block opacity-90">{msg.replyTo.content || t('chat.deletedMessage')}</span>
+                              <div
+                                className="relative group/bubble max-w-[78%]"
+                                onDoubleClick={() => handleToggleReaction(msg.id, '❤️')}
+                              >
+                                {msg.mediaType === 'gift' ? (
+                                  <div className="px-5 py-3 rounded-2xl bg-gradient-to-br from-[#C9A84C]/25 to-[#2563EB]/25 border border-[#C9A84C]/50 text-center shadow-lg">
+                                    <div className="text-3xl mb-1">
+                                      {msg.mediaUrl === 'crown' ? '👑' : msg.mediaUrl === 'champagne' ? '🥂' : '🌹'}
                                     </div>
-                                  )}
-                                  {msg.content}
-                                </div>
+                                    <div className="text-xs font-bold text-[#F0EDE6]">{msg.content}</div>
+                                  </div>
+                                ) : msg.mediaType === 'game_prompt' && msg.gameData ? (
+                                  (() => {
+                                    const answers = msg.gameData.answers || {};
+                                    const myAns = user?.id ? answers[user.id] : undefined;
+                                    const otherId = selectedMatch?.otherUserId;
+                                    const otherAns = otherId ? answers[otherId] : Object.entries(answers).find(([k]) => k !== user?.id)?.[1];
+                                    const bothAnswered = Boolean(myAns && otherAns);
+                                    return (
+                                      <div className="px-4 py-3 rounded-2xl bg-[#161B22] border border-[#C9A84C]/50 text-[#F0EDE6] space-y-2 min-w-[220px]">
+                                        <div className="flex items-center gap-1.5 text-[11px] font-bold text-[#C9A84C] uppercase tracking-wider">
+                                          <Dices className="w-3.5 h-3.5" />
+                                          <span>{t('playground.questionGame')}</span>
+                                        </div>
+                                        <p className={`text-sm font-semibold ${!bothAnswered ? 'blur-[3px] select-none' : ''}`}>
+                                          {msg.gameData.question}
+                                        </p>
+                                        {bothAnswered ? (
+                                          <div className="space-y-1.5 pt-1 border-t border-[#21262D] text-xs">
+                                            <p><span className="text-[#38BDF8] font-bold">You:</span> {myAns}</p>
+                                            <p><span className="text-[#C9A84C] font-bold">{selectedMatch?.otherUserName?.split(' ')[0] || 'Match'}:</span> {otherAns}</p>
+                                          </div>
+                                        ) : myAns ? (
+                                          <p className="text-[11px] text-[#8B949E]">{t('playground.waitingPartnerAnswer')}</p>
+                                        ) : (
+                                          <div className="flex items-center gap-1.5 pt-1">
+                                            <input
+                                              type="text"
+                                              value={gameAnswersDraft[msg.id] || ''}
+                                              onChange={(e) => setGameAnswersDraft((prev) => ({ ...prev, [msg.id]: e.target.value }))}
+                                              placeholder={t('playground.yourAnswer')}
+                                              className="flex-1 bg-[#0D1117] border border-[#21262D] rounded-lg px-2.5 py-1.5 text-xs text-[#F0EDE6] outline-none"
+                                            />
+                                            <button
+                                              type="button"
+                                              onClick={() => handleSubmitGameAnswer(msg.id)}
+                                              className="px-2.5 py-1.5 rounded-lg bg-[#C9A84C] text-[#0D1117] text-xs font-bold cursor-pointer"
+                                            >
+                                              {t('playground.submitAnswer')}
+                                            </button>
+                                          </div>
+                                        )}
+                                      </div>
+                                    );
+                                  })()
+                                ) : (
+                                  <div
+                                    className={`px-4 py-2.5 rounded-2xl text-sm leading-relaxed break-words whitespace-pre-wrap ${
+                                      isMe
+                                        ? 'bg-[#2563EB] text-[#F0EDE6] rounded-br-xs'
+                                        : 'bg-[#1A1A2E] border border-[#21262D] text-[#F0EDE6] rounded-bl-xs'
+                                    }`}
+                                  >
+                                    {msg.replyTo && (
+                                      <div className="text-[11px] bg-black/25 border-l-2 border-[#93C5FD] pl-2 py-1 mb-2 rounded-r text-[#CBD5E1] truncate">
+                                        <span className="font-semibold block text-[10px] text-[#BFDBFE]">
+                                          {msg.replyTo.senderId === user?.id || msg.replyTo.senderId === 'me'
+                                            ? t('chat.replyingTo')
+                                            : t('chat.reply')}
+                                        </span>
+                                        <span className="truncate block opacity-90">{msg.replyTo.content || t('chat.deletedMessage')}</span>
+                                      </div>
+                                    )}
+                                    {msg.content}
+                                  </div>
+                                )}
 
-                                {/* Hover action buttons */}
+                                {/* Reaction Pills */}
+                                {msg.reactions && Object.keys(msg.reactions).length > 0 && (
+                                  <div className={`flex flex-wrap gap-1 mt-1 ${isMe ? 'justify-end' : 'justify-start'}`}>
+                                    {Object.entries(msg.reactions).map(([emoji, users]) => (
+                                      <button
+                                        key={emoji}
+                                        type="button"
+                                        onClick={() => handleToggleReaction(msg.id, emoji)}
+                                        className={`px-1.5 py-0.5 rounded-full text-[11px] border flex items-center gap-1 cursor-pointer ${
+                                          user?.id && users.includes(user.id)
+                                            ? 'bg-[#2563EB]/25 border-[#2563EB] text-white'
+                                            : 'bg-[#161B22] border-[#21262D] text-[#CBD5E1]'
+                                        }`}
+                                      >
+                                        <span>{emoji}</span>
+                                        {users.length > 1 && <span className="text-[10px]">{users.length}</span>}
+                                      </button>
+                                    ))}
+                                  </div>
+                                )}
+
+                                {/* Hover action buttons + reaction picker */}
                                 <div
                                   className={`absolute top-1/2 -translate-y-1/2 ${
-                                    isMe ? '-left-16' : '-right-16'
-                                  } hidden group-hover/bubble:flex items-center gap-1 bg-[#161B22] border border-[#21262D] rounded-full px-1.5 py-0.5 shadow-md z-10`}
+                                    isMe ? '-left-36' : '-right-36'
+                                  } hidden group-hover/bubble:flex items-center gap-0.5 bg-[#161B22] border border-[#21262D] rounded-full px-1.5 py-0.5 shadow-md z-10`}
                                 >
+                                  {['❤️', '😂', '🔥', '😮', '👏'].map((emoji) => (
+                                    <button
+                                      key={emoji}
+                                      type="button"
+                                      onClick={() => handleToggleReaction(msg.id, emoji)}
+                                      className="p-0.5 text-xs hover:scale-125 transition-transform cursor-pointer"
+                                    >
+                                      {emoji}
+                                    </button>
+                                  ))}
                                   <button
                                     type="button"
                                     onClick={() => handleStartReply(msg)}
@@ -2737,7 +2988,7 @@ export default function AppScreen() {
                                   <span className="italic text-[9px] text-[#6E7681]">({t('chat.edited')})</span>
                                 )}
                                 {isMe && (
-                                  <span className="flex items-center">
+                                  <span className="flex items-center gap-1">
                                     {msg.status === 'sending' ? (
                                       <Clock className="w-2.5 h-2.5 text-[#8B949E]" />
                                     ) : msg.status === 'failed' ? (
@@ -2749,10 +3000,24 @@ export default function AppScreen() {
                                       >
                                         <AlertCircle className="w-3 h-3 text-red-400" />
                                       </button>
-                                    ) : msg.readAt ? (
-                                      <span title={t('chat.read')}><CheckCheck className="w-3.5 h-3.5 text-[#22C55E]" /></span>
+                                    ) : msg.readAt || unlockedReadTimes[msg.id] ? (
+                                      <span title={t('chat.read')} className="flex items-center gap-1">
+                                        <CheckCheck className="w-3.5 h-3.5 text-[#22C55E]" />
+                                        {unlockedReadTimes[msg.id] && (
+                                          <span className="text-[9px] text-[#22C55E]">
+                                            {t('playground.seenAt', { time: formatMessageTime(unlockedReadTimes[msg.id]!) })}
+                                          </span>
+                                        )}
+                                      </span>
                                     ) : msg.deliveredAt ? (
-                                      <span title={t('chat.delivered')}><CheckCheck className="w-3.5 h-3.5 text-[#8B949E]" /></span>
+                                      <button
+                                        type="button"
+                                        onClick={handlePeekReadReceipt}
+                                        title={t('playground.peekReadTime')}
+                                        className="cursor-pointer hover:opacity-80"
+                                      >
+                                        <CheckCheck className="w-3.5 h-3.5 text-[#8B949E]" />
+                                      </button>
                                     ) : (
                                       <span title={t('chat.sent')}><Check className="w-3 h-3 text-[#8B949E]" /></span>
                                     )}
@@ -2822,45 +3087,120 @@ export default function AppScreen() {
                   </div>
                 )}
 
-                {/* Message Input Bar */}
-                <div className="flex items-end gap-2 pt-2 border-t border-[#21262D]">
-                  <textarea
-                    ref={textareaRef}
-                    rows={1}
-                    placeholder={t('matches.typeMessage')}
-                    value={inputMessage}
-                    maxLength={1000}
-                    onChange={(e) => {
-                      setInputMessage(e.target.value);
-                      e.target.style.height = 'auto';
-                      e.target.style.height = `${Math.min(e.target.scrollHeight, 120)}px`;
+                {/* Icebreaker Roulette (when no messages yet) */}
+                {chatMessages.length === 0 && (
+                  <div className="flex gap-2 overflow-x-auto pb-2 px-1">
+                    {[t('playground.icebreaker1'), t('playground.icebreaker2'), t('playground.icebreaker3')].map((prompt) => (
+                      <button
+                        key={prompt}
+                        type="button"
+                        onClick={() => handleSendMessage(prompt)}
+                        className="shrink-0 px-3 py-1.5 rounded-full bg-[#1A1A2E] border border-[#2563EB]/40 text-xs font-medium text-[#F0EDE6] hover:border-[#2563EB] transition-colors cursor-pointer"
+                      >
+                        {prompt}
+                      </button>
+                    ))}
+                  </div>
+                )}
 
-                      const now = Date.now();
-                      if (selectedMatch?.id && now - lastTypingSentRef.current > 3000 && wsRef.current?.readyState === WebSocket.OPEN) {
-                        lastTypingSentRef.current = now;
-                        wsRef.current.send(JSON.stringify({ type: 'typing', matchId: selectedMatch.id }));
-                      }
-                    }}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' && !e.shiftKey) {
-                        e.preventDefault();
-                        if (inputMessage.trim() && !isSendingMessage) {
-                          handleSendMessage();
+                {/* Gift Tray */}
+                {giftTrayOpen && (
+                  <div className="flex items-center justify-around gap-2 p-2 mb-2 rounded-2xl bg-[#161B22] border border-[#C9A84C]/40">
+                    <button
+                      type="button"
+                      onClick={() => handleSendGift('rose')}
+                      className="flex-1 py-2 px-2 rounded-xl bg-[#1A1A2E] hover:bg-[#2563EB]/20 text-xs font-bold text-[#F0EDE6] cursor-pointer"
+                    >
+                      {t('playground.giftRose')}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleSendGift('champagne')}
+                      className="flex-1 py-2 px-2 rounded-xl bg-[#1A1A2E] hover:bg-[#2563EB]/20 text-xs font-bold text-[#F0EDE6] cursor-pointer"
+                    >
+                      {t('playground.giftChampagne')}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleSendGift('crown')}
+                      className="flex-1 py-2 px-2 rounded-xl bg-[#1A1A2E] hover:bg-[#2563EB]/20 text-xs font-bold text-[#F0EDE6] cursor-pointer"
+                    >
+                      {t('playground.giftCrown')}
+                    </button>
+                  </div>
+                )}
+
+                {/* Gift Celebration Overlay */}
+                {activeGiftOverlay && (
+                  <div className="fixed inset-0 z-50 pointer-events-none flex items-center justify-center">
+                    <div className="text-7xl animate-bounce drop-shadow-2xl">
+                      {activeGiftOverlay === 'crown' ? '👑' : activeGiftOverlay === 'champagne' ? '🥂' : '🌹'}
+                    </div>
+                  </div>
+                )}
+
+                {/* Expired Match Revive Banner OR Message Input Bar */}
+                {selectedMatch?.expiresAt && new Date(selectedMatch.expiresAt).getTime() < Date.now() && !selectedMatch?.isRevived ? (
+                  <div className="flex items-center justify-between gap-3 pt-3 border-t border-[#21262D]">
+                    <span className="text-xs font-semibold text-[#FF6B6B]">
+                      {t('playground.matchExpired')}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={handleReviveMatch}
+                      className="px-4 py-2 rounded-full bg-[#C9A84C] text-[#0D1117] text-xs font-bold hover:opacity-90 cursor-pointer"
+                    >
+                      {t('playground.reviveMatch')}
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex items-end gap-2 pt-2 border-t border-[#21262D]">
+                    <button
+                      type="button"
+                      onClick={() => setGiftTrayOpen((prev) => !prev)}
+                      className="w-10 h-10 rounded-full bg-[#1A1A2E] border border-[#21262D] text-[#C9A84C] flex items-center justify-center hover:border-[#C9A84C] transition-colors cursor-pointer shrink-0 mb-0.5"
+                      title={t('playground.giftRose')}
+                    >
+                      <Gift className="w-4 h-4" />
+                    </button>
+                    <textarea
+                      ref={textareaRef}
+                      rows={1}
+                      placeholder={t('matches.typeMessage')}
+                      value={inputMessage}
+                      maxLength={1000}
+                      onChange={(e) => {
+                        setInputMessage(e.target.value);
+                        e.target.style.height = 'auto';
+                        e.target.style.height = `${Math.min(e.target.scrollHeight, 120)}px`;
+
+                        const now = Date.now();
+                        if (selectedMatch?.id && now - lastTypingSentRef.current > 3000 && wsRef.current?.readyState === WebSocket.OPEN) {
+                          lastTypingSentRef.current = now;
+                          wsRef.current.send(JSON.stringify({ type: 'typing', matchId: selectedMatch.id }));
                         }
-                      }
-                    }}
-                    className="flex-1 bg-[#1A1A2E] border border-[#21262D] focus:border-[#2563EB] rounded-2xl px-4 py-2 text-sm text-[#F0EDE6] placeholder-[#4A4742] outline-none resize-none max-h-[120px] leading-relaxed"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => handleSendMessage()}
-                    disabled={isSendingMessage || !inputMessage.trim()}
-                    className="w-10 h-10 rounded-full bg-[#2563EB] text-[#F0EDE6] flex items-center justify-center hover:bg-[#1A4DB8] transition-colors disabled:opacity-40 cursor-pointer shrink-0 mb-0.5"
-                    aria-label={t('matches.send')}
-                  >
-                    <Send className="w-4 h-4" />
-                  </button>
-                </div>
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && !e.shiftKey) {
+                          e.preventDefault();
+                          if (inputMessage.trim() && !isSendingMessage) {
+                            handleSendMessage();
+                          }
+                        }
+                      }}
+                      className="flex-1 bg-[#1A1A2E] border border-[#21262D] focus:border-[#2563EB] rounded-2xl px-4 py-2 text-sm text-[#F0EDE6] placeholder-[#4A4742] outline-none resize-none max-h-[120px] leading-relaxed"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => handleSendMessage()}
+                      disabled={isSendingMessage || !inputMessage.trim()}
+                      className="w-10 h-10 rounded-full bg-[#2563EB] text-[#F0EDE6] flex items-center justify-center hover:bg-[#1A4DB8] transition-colors disabled:opacity-40 cursor-pointer shrink-0 mb-0.5"
+                      aria-label={t('matches.send')}
+                    >
+                      <Send className="w-4 h-4" />
+                    </button>
+                  </div>
+                )}
 
                 {/* Report User Modal */}
                 {reportingMatch && (
