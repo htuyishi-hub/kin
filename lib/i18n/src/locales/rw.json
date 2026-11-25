@@ -258,7 +258,7 @@
     "giftChampagne": "🥂 Champagne · 200 RWF",
     "giftCrown": "👑 Ikamba · 500 RWF",
     "matchExpired": "Igihe cyarangiye",
-    "reviveMatch": "Ongera 72h · 300 RWF",
+    "reviveMatch": "Ongera 72h · 200 RWF",
     "peekReadTime": "Reba igihe yasomewe · 100 RWF",
     "seenAt": "Yasomwe {{time}}",
     "recordVoice": "Ijwi",
@@ -267,7 +267,7 @@
   "admirers": {
     "tabTitle": "Abagukunze",
     "secretAdmirer": "Ugukunda",
-    "unblurCta": "Fungura 24h · 500 RWF",
+    "unblurCta": "Fungura 24h · 300 RWF",
     "momoPay": "MoMo 623507",
     "matchInstantly": "Huza",
     "emptyTitle": "Nta ugukunda uraboneka",

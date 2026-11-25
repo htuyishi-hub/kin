@@ -258,7 +258,7 @@
     "giftChampagne": "🥂 Champagne · 200 RWF",
     "giftCrown": "👑 Crown · 500 RWF",
     "matchExpired": "Match expired",
-    "reviveMatch": "Revive 72h · 300 RWF",
+    "reviveMatch": "Revive 72h · 200 RWF",
     "peekReadTime": "Peek read time · 100 RWF",
     "seenAt": "Seen {{time}}",
     "recordVoice": "Voice note",
@@ -267,7 +267,7 @@
   "admirers": {
     "tabTitle": "Likes",
     "secretAdmirer": "Secret Admirer",
-    "unblurCta": "Unblur 24h · 500 RWF",
+    "unblurCta": "Unblur 24h · 300 RWF",
     "momoPay": "MoMo 623507",
     "matchInstantly": "Match",
     "emptyTitle": "No likes yet",

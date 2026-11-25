@@ -169,7 +169,7 @@ router.post("/likes/unblur", requireAuth, async (req, res) => {
   await db.insert(paymentsTable).values({
     userId,
     productType: "unblur_likes",
-    amountRwf: 500,
+    amountRwf: 300,
     status: "completed",
     fulfilled: true,
     completedAt: new Date(),
@@ -184,7 +184,7 @@ router.post("/likes/unblur", requireAuth, async (req, res) => {
   res.json({
     success: true,
     unblurredUntil: unblurredUntil.toISOString(),
-    amountRwf: 500,
+    amountRwf: 300,
     momoCode: "623507",
   });
 });

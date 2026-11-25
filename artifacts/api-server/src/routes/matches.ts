@@ -244,7 +244,7 @@ router.post("/matches/:matchId/revive", requireAuth, async (req, res) => {
   await db.insert(paymentsTable).values({
     userId,
     productType: "match_revive",
-    amountRwf: 300,
+    amountRwf: 200,
     status: "completed",
     fulfilled: true,
     completedAt: new Date(),
@@ -266,7 +266,7 @@ router.post("/matches/:matchId/revive", requireAuth, async (req, res) => {
     matchId: updated!.id,
     expiresAt: newExpiresAt.toISOString(),
     isRevived: true,
-    amountRwf: 300,
+    amountRwf: 200,
   });
 });
 
