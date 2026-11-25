@@ -374,7 +374,11 @@
     "checkIn": "🛡️ Date Check-In",
     "allGood": "All Good 👍",
     "sos": "SOS 🚨",
-    "sosMessage": "SOS! Date with {{name}}. Live GPS: https://maps.google.com/?q={{lat}},{{lon}}"
+    "sosMessage": "SOS! Date with {{name}}. Live GPS: https://maps.google.com/?q={{lat}},{{lon}}",
+    "confirmCta": "Confirm ✓",
+    "updateLocation": "Update Location",
+    "keepCurrent": "Keep Current",
+    "unsupported": "Rwanda GPS required"
   },
   "serious": {
     "tabTitle": "Serious",

@@ -124,6 +124,31 @@ export default function DiscoverScreen() {
   const [outOfSwipesVisible, setOutOfSwipesVisible] = useState(false);
   const [claimingBonus, setClaimingBonus] = useState(false);
 
+  const [pendingLocation, setPendingLocation] = useState<{
+    detectedNeighborhood: string;
+    latitude: number;
+    longitude: number;
+    isTravelShift?: boolean;
+  } | null>(null);
+  const [locationUnsupported, setLocationUnsupported] = useState(false);
+
+  const handleConfirmLocation = async () => {
+    if (!token || !pendingLocation) return;
+    const res = await fetch(`${apiBaseUrl}/api/me/location`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({
+        latitude: pendingLocation.latitude,
+        longitude: pendingLocation.longitude,
+        confirm: true,
+      }),
+    });
+    if (res.ok) {
+      Haptics.notificationAsync?.(Haptics.NotificationFeedbackType.Success);
+      setPendingLocation(null);
+    }
+  };
+
   useEffect(() => {
     if (!token) return;
     fetch(`${apiBaseUrl}/api/swipes/status`, {
@@ -140,11 +165,26 @@ export default function DiscoverScreen() {
         const { status } = await Location.requestForegroundPermissionsAsync();
         if (status !== "granted") return;
         const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
-        await fetch(`${apiBaseUrl}/api/me/location`, {
+        const res = await fetch(`${apiBaseUrl}/api/me/location`, {
           method: "POST",
           headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
           body: JSON.stringify({ latitude: pos.coords.latitude, longitude: pos.coords.longitude }),
         });
+        if (res.status === 403) {
+          setLocationUnsupported(true);
+          return;
+        }
+        if (res.ok) {
+          const d = await res.json();
+          if (d.requiresConfirmation && d.detectedNeighborhood) {
+            setPendingLocation({
+              detectedNeighborhood: d.detectedNeighborhood,
+              latitude: d.latitude,
+              longitude: d.longitude,
+              isTravelShift: Boolean(d.isTravelShift),
+            });
+          }
+        }
       } catch {}
     })();
   }, [token]);
@@ -437,6 +477,64 @@ export default function DiscoverScreen() {
         </View>
       ) : (
         <View style={{ flex: 1 }}>
+          {locationUnsupported && (
+            <View
+              style={{
+                marginHorizontal: 16,
+                marginBottom: 8,
+                paddingHorizontal: 12,
+                paddingVertical: 8,
+                borderRadius: 12,
+                backgroundColor: "rgba(255,107,107,0.16)",
+                borderWidth: 1,
+                borderColor: "rgba(255,107,107,0.5)",
+              }}
+            >
+              <Text style={{ color: "#FF6B6B", fontSize: 12, fontFamily: "Inter_700Bold" }}>
+                🚫 {t("location.unsupported")}
+              </Text>
+            </View>
+          )}
+          {pendingLocation && !locationUnsupported && (
+            <View
+              style={{
+                marginHorizontal: 16,
+                marginBottom: 8,
+                paddingHorizontal: 12,
+                paddingVertical: 8,
+                borderRadius: 12,
+                backgroundColor: Colors.ink,
+                borderWidth: 1,
+                borderColor: "rgba(56,189,248,0.4)",
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: 8,
+              }}
+            >
+              <Text style={{ color: Colors.bone, fontSize: 12, fontFamily: "Inter_600SemiBold", flex: 1 }} numberOfLines={1}>
+                📍 {pendingLocation.detectedNeighborhood}
+              </Text>
+              <TouchableOpacity
+                onPress={handleConfirmLocation}
+                style={{ backgroundColor: "#38BDF8", paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8 }}
+              >
+                <Text style={{ color: "#0D1117", fontSize: 11, fontFamily: "Inter_700Bold" }}>
+                  {pendingLocation.isTravelShift ? t("location.updateLocation") : t("location.confirmCta")}
+                </Text>
+              </TouchableOpacity>
+              {pendingLocation.isTravelShift && (
+                <TouchableOpacity
+                  onPress={() => setPendingLocation(null)}
+                  style={{ backgroundColor: Colors.inkRaised, paddingHorizontal: 8, paddingVertical: 5, borderRadius: 8 }}
+                >
+                  <Text style={{ color: Colors.boneDim, fontSize: 11, fontFamily: "Inter_700Bold" }}>
+                    {t("location.keepCurrent")}
+                  </Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          )}
           <TouchableOpacity
             onPress={() => router.push("/rush" as any)}
             activeOpacity={0.85}

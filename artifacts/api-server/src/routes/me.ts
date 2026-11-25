@@ -7,7 +7,8 @@ import type { Request } from "express";
 
 import { generateInviteCode } from "../lib/inviteCode.js";
 import { verifyURRegistration } from "./urVerification.js";
-import { resolveRwandaNeighborhood } from "../lib/geo.js";
+import { haversineKm } from "../lib/geo.js";
+import { isWithinRwanda, detectRwandaHub } from "../lib/location.js";
 
 const VOUCH_THRESHOLD = 1000;
 
@@ -1005,21 +1006,64 @@ router.post("/me/voice-bio", requireAuth, async (req, res) => {
   res.json({ success: true, voiceBioUrl, profile: updated ? mapProfile(updated) : null });
 });
 
-// POST /me/location — Persist real GPS coordinates & neighborhood
+// POST /me/location — Real Rwanda Geofence + Neighborhood Confirmation + Travel Detection
 router.post("/me/location", requireAuth, async (req, res) => {
   const userId = (req as AuthedRequest).userId;
-  const { latitude, longitude } = req.body as { latitude?: number; longitude?: number };
+  const { latitude, longitude, confirm } = req.body as {
+    latitude?: number;
+    longitude?: number;
+    confirm?: boolean;
+  };
   if (typeof latitude !== "number" || typeof longitude !== "number" || Number.isNaN(latitude) || Number.isNaN(longitude)) {
     res.status(400).json({ error: "invalid_coordinates" });
     return;
   }
-  const neighborhoodName = resolveRwandaNeighborhood(latitude, longitude);
+
+  if (!isWithinRwanda(latitude, longitude)) {
+    res.status(403).json({
+      error: "LOCATION_UNSUPPORTED",
+      message: "Kinn is exclusively available for verified daters physically inside Rwanda.",
+    });
+    return;
+  }
+
+  const detectedNeighborhood = detectRwandaHub(latitude, longitude);
+  const [existing] = await db
+    .select({
+      latitude: profilesTable.latitude,
+      longitude: profilesTable.longitude,
+      neighborhoodName: profilesTable.neighborhoodName,
+    })
+    .from(profilesTable)
+    .where(eq(profilesTable.id, userId))
+    .limit(1);
+
+  const prevLat = existing?.latitude;
+  const prevLon = existing?.longitude;
+  const travelShiftKm =
+    typeof prevLat === "number" && typeof prevLon === "number"
+      ? Math.round(haversineKm(prevLat, prevLon, latitude, longitude) * 10) / 10
+      : null;
+
+  if (!confirm && (!existing?.neighborhoodName || (travelShiftKm !== null && travelShiftKm > 15))) {
+    res.json({
+      success: true,
+      requiresConfirmation: true,
+      isTravelShift: Boolean(travelShiftKm !== null && travelShiftKm > 15),
+      travelShiftKm,
+      detectedNeighborhood,
+      latitude,
+      longitude,
+    });
+    return;
+  }
+
   const [updated] = await db
     .update(profilesTable)
     .set({
       latitude,
       longitude,
-      neighborhoodName,
+      neighborhoodName: detectedNeighborhood,
       locationUpdatedAt: new Date(),
     } as any)
     .where(eq(profilesTable.id, userId))
@@ -1027,9 +1071,10 @@ router.post("/me/location", requireAuth, async (req, res) => {
 
   res.json({
     success: true,
+    confirmed: true,
     latitude,
     longitude,
-    neighborhoodName,
+    neighborhoodName: detectedNeighborhood,
     profile: updated ? mapProfile(updated) : null,
   });
 });

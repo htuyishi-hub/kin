@@ -1639,15 +1639,56 @@ export default function AppScreen() {
     }
   }
 
+  const [pendingLocation, setPendingLocation] = useState<{
+    detectedNeighborhood: string;
+    latitude: number;
+    longitude: number;
+    isTravelShift?: boolean;
+  } | null>(null);
+  const [locationUnsupported, setLocationUnsupported] = useState(false);
+
+  async function handleConfirmLocation() {
+    if (!token || !pendingLocation) return;
+    const res = await apiFetch('/api/me/location', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({
+        latitude: pendingLocation.latitude,
+        longitude: pendingLocation.longitude,
+        confirm: true,
+      }),
+    });
+    if (res.ok) {
+      setPendingLocation(null);
+    }
+  }
+
   useEffect(() => {
     if (!token || typeof navigator === 'undefined' || !navigator.geolocation) return;
     navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        apiFetch('/api/me/location', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-          body: JSON.stringify({ latitude: pos.coords.latitude, longitude: pos.coords.longitude }),
-        }).catch(() => {});
+      async (pos) => {
+        try {
+          const res = await apiFetch('/api/me/location', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+            body: JSON.stringify({ latitude: pos.coords.latitude, longitude: pos.coords.longitude }),
+          });
+          if (res.status === 403) {
+            setLocationUnsupported(true);
+            return;
+          }
+          if (res.ok) {
+            const d = await res.json();
+            if (d.requiresConfirmation && d.detectedNeighborhood) {
+              setPendingLocation({
+                detectedNeighborhood: d.detectedNeighborhood,
+                latitude: d.latitude,
+                longitude: d.longitude,
+                isTravelShift: Boolean(d.isTravelShift),
+              });
+            }
+          }
+        } catch {}
       },
       () => {},
       { enableHighAccuracy: true, timeout: 10000 }
@@ -2489,6 +2530,36 @@ export default function AppScreen() {
         {/* TAB 1: DISCOVER SWIPE DECK OR POSTS FEED */}
         {activeTab === 'discover' && (
           <div className="flex-1 flex flex-col justify-between relative overflow-hidden">
+            {locationUnsupported && (
+              <div className="mx-4 mt-2 px-3.5 py-2 rounded-xl bg-[#FF6B6B]/15 border border-[#FF6B6B]/50 text-xs font-bold text-[#FF6B6B] shrink-0">
+                🚫 {t('location.unsupported')}
+              </div>
+            )}
+            {pendingLocation && !locationUnsupported && (
+              <div className="mx-4 mt-2 px-3.5 py-2 rounded-xl bg-[#161B22] border border-[#38BDF8]/40 flex items-center justify-between gap-2 shrink-0">
+                <span className="text-xs font-semibold text-[#F0EDE6] truncate">
+                  📍 {pendingLocation.detectedNeighborhood}
+                </span>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <button
+                    type="button"
+                    onClick={handleConfirmLocation}
+                    className="px-2.5 py-1 rounded-lg bg-[#38BDF8] text-[#0D1117] text-[11px] font-bold cursor-pointer"
+                  >
+                    {pendingLocation.isTravelShift ? t('location.updateLocation') : t('location.confirmCta')}
+                  </button>
+                  {pendingLocation.isTravelShift && (
+                    <button
+                      type="button"
+                      onClick={() => setPendingLocation(null)}
+                      className="px-2 py-1 rounded-lg bg-[#21262D] text-[#A8A49E] text-[11px] font-bold cursor-pointer"
+                    >
+                      {t('location.keepCurrent')}
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
             {/* 8 PM Rush Live Banner */}
             <button
               type="button"

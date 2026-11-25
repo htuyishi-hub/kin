@@ -374,7 +374,11 @@
     "checkIn": "🛡️ Umutekano",
     "allGood": "Ni Sawe 👍",
     "sos": "SOS 🚨",
-    "sosMessage": "SOS! Ndi kumwe na {{name}}. GPS: https://maps.google.com/?q={{lat}},{{lon}}"
+    "sosMessage": "SOS! Ndi kumwe na {{name}}. GPS: https://maps.google.com/?q={{lat}},{{lon}}",
+    "confirmCta": "Emeza ✓",
+    "updateLocation": "Hindura Aho Uri",
+    "keepCurrent": "Gumana Aho Wari Uri",
+    "unsupported": "Ukeneye kuba uri mu Rwanda"
   },
   "serious": {
     "tabTitle": "Abiyemeje",
