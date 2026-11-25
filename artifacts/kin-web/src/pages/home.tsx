@@ -35,9 +35,9 @@ const FAQS = [
   },
   {
     qEn: "How do MTN MoMo payments (100 / 200 / 300 RWF) work?",
-    aEn: "There are no expensive monthly subscriptions. Unlock secret admirers, send a virtual coffee or rose, or boost your profile anytime via MTN MoMo Code 623507.",
+    aEn: "There are no expensive monthly subscriptions. Unlock secret admirers, send a virtual coffee or rose, or boost your profile anytime via MTN MoMo.",
     qRw: "Kwishyura na MTN MoMo (100 / 200 / 300 RWF) bikora bite?",
-    aRw: "Nta fatabuguzi ry'ukwezi rihanitse rihari. Fungura abakunzi bawe cyangwa wohereze impano ukoresheje Code 623507 igihe ubishakiye.",
+    aRw: "Nta fatabuguzi ry'ukwezi rihanitse rihari. Fungura abakunzi bawe cyangwa wohereze impano ukoresheje MTN MoMo igihe ubishakiye.",
   },
   {
     qEn: "Can I hide my profile from friends, coworkers, or exes?",
@@ -180,7 +180,7 @@ export default function Home() {
             <div className="p-4 rounded-2xl bg-night/50 border border-divider/60">
               <div className="text-2xl md:text-3xl font-serif font-bold text-bone mb-1">100 RWF</div>
               <div className="text-xs font-semibold uppercase tracking-wider text-bone-dim">
-                {isRw ? "MTN MoMo Code 623507" : "MTN MoMo Sachet Economy"}
+                {isRw ? "MTN MoMo" : "MTN MoMo Sachet Economy"}
               </div>
             </div>
             <div className="p-4 rounded-2xl bg-night/50 border border-divider/60">
@@ -346,7 +346,7 @@ export default function Home() {
         <div className="container mx-auto px-4 lg:px-8 max-w-5xl">
           <div className="text-center mb-14">
             <span className="inline-block px-3.5 py-1 rounded-full bg-gold/10 border border-gold/30 text-gold text-xs font-bold uppercase tracking-widest mb-4">
-              MTN MoMo Code · 623507
+              MTN MoMo
             </span>
             <h2 className="font-serif text-4xl md:text-5xl font-bold text-bone mb-4">
               {isRw ? "Ibiciro byoroheye buri wese." : "Pay only for what you use."}
@@ -546,7 +546,7 @@ function PricingTier({
           featured ? "bg-gold text-night hover:bg-gold/90" : "bg-night border border-divider text-bone hover:border-gold/50"
         }`}
       >
-        MoMo · 623507
+        MTN MoMo
       </a>
     </div>
   );

@@ -21,7 +21,7 @@ export function Footer() {
             </span>
             <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-night border border-divider">
               <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-              MTN MoMo 623507
+              MTN MoMo
             </span>
           </div>
         </div>
