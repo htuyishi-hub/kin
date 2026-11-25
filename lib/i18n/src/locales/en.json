@@ -118,7 +118,12 @@
       "otherUniversity": "Other university",
       "city": "CITY",
       "cityPlaceholder": "e.g. Kigali",
-      "lookingFor": "WHAT ARE YOU LOOKING FOR?"
+      "lookingFor": "WHAT ARE YOU LOOKING FOR?",
+      "photoLabel": "Profile Photo",
+      "uploadPhoto": "Upload Photo",
+      "photoUploaded": "Photo ready",
+      "photoRequired": "Upload at least 1 photo",
+      "finish": "Finish"
     },
     "ur": {
       "step": "Step 3 of 3",
@@ -161,15 +166,30 @@
     "earlyAccessTitle": "Early access — you're in",
     "enterKin": "Enter kinn"
   },
+  "intent": {
+    "marriage": "💍 Marriage",
+    "serious": "❤️ Serious Dating",
+    "casual": "✨ Casual / Fun"
+  },
   "discover": {
     "tabTitle": "Discover",
     "goldenBids": "Golden Bids",
     "goldenBidAlert": "Golden Bid sent to {{name}}!",
     "matchAlert": "You liked {{name}}! (It's a Match)",
     "urStudentBadge": "UR STUDENT",
+    "verifiedBadge": "Verified",
     "trustBadge": "Trust {{score}}",
     "noMoreProfiles": "No more profiles right now",
-    "checkBackLater": "Check back soon for new curated intros."
+    "checkBackLater": "Check back soon for new curated intros.",
+    "rewind": "Rewind",
+    "pass": "Pass",
+    "like": "Like",
+    "superLike": "Super Like",
+    "fullProfile": "Profile Details",
+    "swipesLeft": "{{count}} swipes left",
+    "outOfSwipesTitle": "Out of Swipes",
+    "inviteWhatsAppButton": "Invite 2 friends on WhatsApp for 30 more swipes",
+    "whatsappInviteText": "Join me on kinn: {{link}}"
   },
   "matches": {
     "tabTitle": "Chat",

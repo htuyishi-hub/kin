@@ -118,7 +118,12 @@
       "otherUniversity": "Indi kaminuza",
       "city": "UMUJI",
       "cityPlaceholder": "urugero: Kigali",
-      "lookingFor": "URASHAKA IKI?"
+      "lookingFor": "URASHAKA IKI?",
+      "photoLabel": "Ifoto yawe",
+      "uploadPhoto": "Shyiraho Ifoto",
+      "photoUploaded": "Ifoto yagiye",
+      "photoRequired": "Shyiraho nibura ifoto 1",
+      "finish": "Rangiza"
     },
     "ur": {
       "step": "Intambwe ya 3 kuri 3",
@@ -161,15 +166,30 @@
     "earlyAccessTitle": "Uhawe kwinjira mbere",
     "enterKin": "Injira muri kinn"
   },
+  "intent": {
+    "marriage": "💍 Gushyingirwa",
+    "serious": "❤️ Umubano Uhamye",
+    "casual": "✨ Kumenyana Gusa"
+  },
   "discover": {
     "tabTitle": "Vumbura",
     "goldenBids": "Golden Bids",
     "goldenBidAlert": "Golden Bid yoherejwe kuri {{name}}!",
     "matchAlert": "Wakunze {{name}}! (Mwahujwe)",
     "urStudentBadge": "UMUNYESHURI WA UR",
+    "verifiedBadge": "Yemejwe",
     "trustBadge": "Icyizere {{score}}",
     "noMoreProfiles": "Nta yindi myirondoro iri hano muri aka kanya",
-    "checkBackLater": "Garuka vuba urebe abandi bantu bashya."
+    "checkBackLater": "Garuka vuba urebe abandi bantu bashya.",
+    "rewind": "Subiza Inyuma",
+    "pass": "Simbuka",
+    "like": "Kunda",
+    "superLike": "Super Like",
+    "fullProfile": "Amakuru Arambuye",
+    "swipesLeft": "Hasigaye {{count}}",
+    "outOfSwipesTitle": "Swipes Zashize",
+    "inviteWhatsAppButton": "Tumira inshuti 2 kuri WhatsApp ubone swipes 30",
+    "whatsappInviteText": "Injira muri kinn: {{link}}"
   },
   "matches": {
     "tabTitle": "Ubutumwa",
