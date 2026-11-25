@@ -6,6 +6,7 @@ import {
   ActivityIndicator,
   FlatList,
   Image,
+  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -44,7 +45,8 @@ export default function AdmirersScreen() {
   const [searchesUnmasked, setSearchesUnmasked] = useState(false);
   const [searchers, setSearchers] = useState<{ id: string; firstName: string; campus: string }[]>([]);
   const [revealingSearches, setRevealingSearches] = useState(false);
-  const [photoCompliments, setPhotoCompliments] = useState<{ id: string; senderFirstName: string; commentText: string }[]>([]);
+  const [photoCompliments, setPhotoCompliments] = useState<{ id: string; senderId?: string; senderFirstName: string; commentText: string; giftType?: string }[]>([]);
+  const [activityFilter, setActivityFilter] = useState<"all" | "likes" | "compliments" | "searches">("all");
 
   const apiBaseUrl =
     process.env.EXPO_PUBLIC_API_URL ??
@@ -169,11 +171,11 @@ export default function AdmirersScreen() {
     <View style={[styles.container, { backgroundColor: Colors.night, paddingTop: insets.top + 12 }]}>
       <View style={styles.header}>
         <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-          <Feather name="heart" size={20} color="#FF6B6B" />
-          <Text style={styles.title}>{t("admirers.tabTitle")}</Text>
-          {count > 0 && (
+          <Feather name="bell" size={20} color={Colors.gold} />
+          <Text style={styles.title}>{t("activity.title")}</Text>
+          {(count + photoCompliments.length + searchCount) > 0 && (
             <View style={styles.countBadge}>
-              <Text style={styles.countText}>{count}</Text>
+              <Text style={styles.countText}>{count + photoCompliments.length + searchCount}</Text>
             </View>
           )}
         </View>
@@ -184,7 +186,38 @@ export default function AdmirersScreen() {
         )}
       </View>
 
-      {searchCount > 0 && (
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, gap: 8, paddingBottom: 10 }}>
+        {(
+          [
+            { key: "all", label: t("activity.all") },
+            { key: "likes", label: t("activity.likes") },
+            { key: "compliments", label: t("activity.compliments") },
+            { key: "searches", label: t("activity.searches") },
+          ] as const
+        ).map((pill) => {
+          const active = activityFilter === pill.key;
+          return (
+            <TouchableOpacity
+              key={pill.key}
+              onPress={() => setActivityFilter(pill.key)}
+              style={{
+                paddingHorizontal: 14,
+                paddingVertical: 6,
+                borderRadius: 999,
+                backgroundColor: active ? Colors.gold : Colors.ink,
+                borderWidth: 1,
+                borderColor: active ? Colors.gold : "rgba(255,255,255,0.08)",
+              }}
+            >
+              <Text style={{ color: active ? "#0D1117" : Colors.boneDim, fontSize: 12, fontFamily: "Inter_700Bold" }}>
+                {pill.label}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
+      </ScrollView>
+
+      {(activityFilter === "all" || activityFilter === "searches") && searchCount > 0 && (
         <View style={styles.searchBanner}>
           <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
             <View style={{ flexDirection: "row", alignItems: "center", gap: 8, flex: 1 }}>
@@ -220,35 +253,51 @@ export default function AdmirersScreen() {
         </View>
       )}
 
-      {photoCompliments.length > 0 && (
+      {(activityFilter === "all" || activityFilter === "compliments") && photoCompliments.length > 0 && (
         <View style={{ marginHorizontal: 16, marginBottom: 8, gap: 6 }}>
-          {photoCompliments.map((c) => (
-            <View
-              key={c.id}
-              style={{
-                backgroundColor: "rgba(201,168,76,0.12)",
-                borderWidth: 1,
-                borderColor: "rgba(201,168,76,0.45)",
-                borderRadius: 12,
-                paddingHorizontal: 12,
-                paddingVertical: 8,
-                flexDirection: "row",
-                alignItems: "center",
-                gap: 6,
-              }}
-            >
-              <Text style={{ color: Colors.gold, fontSize: 12, fontFamily: "Inter_700Bold" }}>
-                {c.senderFirstName}:
-              </Text>
-              <Text style={{ color: Colors.bone, fontSize: 12, fontStyle: "italic", flexShrink: 1 }} numberOfLines={1}>
-                "{c.commentText}"
-              </Text>
-            </View>
-          ))}
+          {photoCompliments.map((c) => {
+            const isDrink = c.giftType === "coffee" || c.giftType === "cocktail";
+            return (
+              <View
+                key={c.id}
+                style={{
+                  backgroundColor: "rgba(201,168,76,0.12)",
+                  borderWidth: 1,
+                  borderColor: "rgba(201,168,76,0.45)",
+                  borderRadius: 12,
+                  paddingHorizontal: 12,
+                  paddingVertical: 10,
+                  flexDirection: "row",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: 8,
+                }}
+              >
+                <View style={{ flex: 1, minWidth: 0 }}>
+                  <Text style={{ color: Colors.gold, fontSize: 12, fontFamily: "Inter_700Bold" }}>
+                    {isDrink ? (c.giftType === "cocktail" ? "🍸" : "☕") : "💬"} {c.senderFirstName}
+                  </Text>
+                  <Text style={{ color: Colors.bone, fontSize: 12, fontStyle: "italic" }} numberOfLines={1}>
+                    "{c.commentText}"
+                  </Text>
+                </View>
+                {c.senderId && (
+                  <TouchableOpacity
+                    onPress={() => handleInstantMatch(c.senderId!)}
+                    style={{ backgroundColor: "#3FB950", paddingHorizontal: 10, paddingVertical: 6, borderRadius: 999 }}
+                  >
+                    <Text style={{ color: "#0D1117", fontSize: 11, fontFamily: "Inter_700Bold" }}>
+                      {t("activity.matchReply")}
+                    </Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            );
+          })}
         </View>
       )}
 
-      {loading ? (
+      {(activityFilter === "all" || activityFilter === "likes") && (loading ? (
         <View style={styles.center}>
           <ActivityIndicator color={Colors.trust} size="large" />
         </View>
@@ -318,7 +367,7 @@ export default function AdmirersScreen() {
             </View>
           )}
         />
-      )}
+      ))}
 
       {!isUnblurred && admirers.length > 0 && (
         <View style={[styles.ctaBar, { bottom: 16 }]}>

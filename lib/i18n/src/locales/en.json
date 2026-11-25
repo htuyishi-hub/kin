@@ -380,6 +380,15 @@
     "keepCurrent": "Keep Current",
     "unsupported": "Rwanda GPS required"
   },
+  "activity": {
+    "title": "Activity",
+    "all": "All",
+    "likes": "❤️ Likes",
+    "compliments": "💬 Compliments",
+    "searches": "🔎 Searches",
+    "matchReply": "Match & Reply",
+    "gift": "Virtual Gift"
+  },
   "serious": {
     "tabTitle": "Serious",
     "queueTitle": "Serious Queue",

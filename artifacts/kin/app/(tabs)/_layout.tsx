@@ -51,9 +51,9 @@ export default function TabLayout() {
       <Tabs.Screen
         name="admirers"
         options={{
-          title: t('admirers.tabTitle'),
+          title: t('activity.title'),
           tabBarIcon: ({ color, size }) => (
-            <TabIcon name="heart" color={color} size={size} />
+            <TabIcon name="bell" color={color} size={size} />
           ),
         }}
       />
@@ -78,6 +78,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="serious"
         options={{
+          href: null,
           title: t('serious.tabTitle'),
           tabBarIcon: ({ color, size }) => (
             <TabIcon name="star" color={color} size={size} />

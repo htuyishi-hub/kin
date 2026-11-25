@@ -285,6 +285,7 @@ router.get("/photos/compliments", requireAuth, async (req, res) => {
       senderId: photoCommentsTable.senderId,
       photoUrl: photoCommentsTable.photoUrl,
       commentText: photoCommentsTable.commentText,
+      giftType: photoCommentsTable.giftType,
       createdAt: photoCommentsTable.createdAt,
       senderName: profilesTable.fullName,
     })
@@ -301,6 +302,7 @@ router.get("/photos/compliments", requireAuth, async (req, res) => {
       senderFirstName: r.senderName?.trim().split(" ")[0] ?? "kinn Member",
       photoUrl: r.photoUrl,
       commentText: r.commentText,
+      giftType: r.giftType ?? "comment",
       createdAt: r.createdAt.toISOString(),
     }))
   );

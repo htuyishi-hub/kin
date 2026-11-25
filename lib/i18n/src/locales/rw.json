@@ -380,6 +380,15 @@
     "keepCurrent": "Gumana Aho Wari Uri",
     "unsupported": "Ukeneye kuba uri mu Rwanda"
   },
+  "activity": {
+    "title": "Ibikorwa",
+    "all": "Byose",
+    "likes": "❤️ Abakunze",
+    "compliments": "💬 Ibitekerezo",
+    "searches": "🔎 Abashakishije",
+    "matchReply": "Huza & Subiza",
+    "gift": "Impano"
+  },
   "serious": {
     "tabTitle": "Abiyemeje",
     "queueTitle": "Umurongo w'Abiyemeje",

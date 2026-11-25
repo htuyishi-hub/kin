@@ -1562,7 +1562,8 @@ export default function AppScreen() {
   const [blockedContacts, setBlockedContacts] = useState<{ id: string; blockedPhone: string }[]>([]);
   const [blockPhoneInput, setBlockPhoneInput] = useState('');
   const [blockingPhone, setBlockingPhone] = useState(false);
-  const [photoCompliments, setPhotoCompliments] = useState<{ id: string; senderFirstName: string; commentText: string }[]>([]);
+  const [photoCompliments, setPhotoCompliments] = useState<{ id: string; senderId?: string; senderFirstName: string; commentText: string; giftType?: string }[]>([]);
+  const [activityFilter, setActivityFilter] = useState<'all' | 'likes' | 'compliments' | 'searches'>('all');
 
   useEffect(() => {
     if (!token) return;
@@ -4229,18 +4230,18 @@ export default function AppScreen() {
           </div>
         )}
 
-        {/* TAB: ADMIRERS (LIKES YOU) */}
+        {/* TAB: ACTIVITY FEED (LIKES, COMPLIMENTS, DRINKS & SEARCHES) */}
         {activeTab === 'admirers' && (
           <div className="flex-1 flex flex-col p-4 gap-4 overflow-y-auto relative">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <Heart className="w-5 h-5 text-[#FF6B6B] fill-current" />
+                <Sparkles className="w-5 h-5 text-[#C9A84C]" />
                 <h2 className="font-serif text-lg font-bold text-[#F0EDE6]">
-                  {t('admirers.tabTitle')}
+                  {t('activity.title')}
                 </h2>
-                {admirersCount > 0 && (
+                {(admirersCount + photoCompliments.length + searchCount) > 0 && (
                   <span className="px-2 py-0.5 rounded-full bg-[#FF6B6B]/20 text-[#FF6B6B] text-xs font-bold">
-                    {admirersCount}
+                    {admirersCount + photoCompliments.length + searchCount}
                   </span>
                 )}
               </div>
@@ -4251,63 +4252,111 @@ export default function AppScreen() {
               )}
             </div>
 
-            {/* Received Photo Compliments */}
-            {photoCompliments.length > 0 && (
+            {/* Activity Filter Pills */}
+            <div className="flex gap-2 overflow-x-auto pb-1 shrink-0">
+              {(
+                [
+                  { key: 'all', label: t('activity.all') },
+                  { key: 'likes', label: t('activity.likes') },
+                  { key: 'compliments', label: t('activity.compliments') },
+                  { key: 'searches', label: t('activity.searches') },
+                ] as const
+              ).map((pill) => (
+                <button
+                  key={pill.key}
+                  type="button"
+                  onClick={() => setActivityFilter(pill.key)}
+                  className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-bold border transition-colors cursor-pointer ${
+                    activityFilter === pill.key
+                      ? 'bg-[#C9A84C] text-[#0D1117] border-[#C9A84C]'
+                      : 'bg-[#1A1A2E] text-[#A8A49E] border-[#21262D]'
+                  }`}
+                >
+                  {pill.label}
+                </button>
+              ))}
+            </div>
+
+            {/* Received Photo Compliments & Virtual Drinks */}
+            {(activityFilter === 'all' || activityFilter === 'compliments') && photoCompliments.length > 0 && (
               <div className="flex flex-col gap-2">
-                {photoCompliments.map((c) => (
-                  <div key={c.id} className="px-3.5 py-2.5 rounded-2xl bg-[#C9A84C]/10 border border-[#C9A84C]/40 flex items-center gap-2">
-                    <span className="text-xs font-bold text-[#C9A84C]">{c.senderFirstName}:</span>
-                    <span className="text-xs text-[#F0EDE6] italic truncate">"{c.commentText}"</span>
-                  </div>
-                ))}
+                {photoCompliments.map((c) => {
+                  const isDrink = c.giftType === 'coffee' || c.giftType === 'cocktail';
+                  return (
+                    <div key={c.id} className="p-3.5 rounded-2xl bg-[#C9A84C]/10 border border-[#C9A84C]/40 flex items-center justify-between gap-2">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-xs font-bold text-[#C9A84C]">
+                            {isDrink ? (c.giftType === 'cocktail' ? '🍸' : '☕') : '💬'} {c.senderFirstName}
+                          </span>
+                          {isDrink && (
+                            <span className="text-[10px] font-semibold text-[#38BDF8]">{t('activity.gift')}</span>
+                          )}
+                        </div>
+                        <p className="text-xs text-[#F0EDE6] italic truncate mt-0.5">"{c.commentText}"</p>
+                      </div>
+                      {c.senderId && (
+                        <button
+                          type="button"
+                          onClick={() => handleInstantMatch(c.senderId!)}
+                          className="px-3 py-1.5 rounded-full bg-[#3FB950] text-[#0D1117] text-[11px] font-bold shrink-0 cursor-pointer"
+                        >
+                          {t('activity.matchReply')}
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             )}
 
             {/* Name Search & Who Searched Your Name (300 RWF) */}
-            <div className="flex flex-col gap-2">
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => handleSearchName(e.target.value)}
-                placeholder={t('search.placeholder')}
-                className="w-full bg-[#1A1A2E] border border-[#21262D] focus:border-[#2563EB] rounded-xl px-3.5 py-2 text-xs text-[#F0EDE6] placeholder-[#4A4742] outline-none"
-              />
-              {searchResults.length > 0 && (
-                <div className="flex gap-2 overflow-x-auto pb-1">
-                  {searchResults.map((r) => (
-                    <div key={r.id} className="shrink-0 px-3 py-1.5 rounded-xl bg-[#1A1A2E] border border-[#21262D] text-xs text-[#F0EDE6] flex items-center gap-1.5">
-                      <span className="font-semibold">{r.firstName}</span>
-                      <span className="text-[10px] text-[#8B949E]">{r.campus}</span>
-                    </div>
-                  ))}
-                </div>
-              )}
-              {searchCount > 0 && (
-                <div className="p-3 rounded-2xl bg-[#161B22] border border-[#C9A84C]/40 flex items-center justify-between gap-2">
-                  <div className="flex flex-col">
-                    <span className="text-xs font-bold text-[#F0EDE6]">
-                      🔎 {t('search.searchedYouCount', { count: searchCount })}
-                    </span>
-                    {searchesUnmasked && revealedSearchers.length > 0 && (
-                      <span className="text-[11px] text-[#38BDF8] mt-0.5">
-                        {revealedSearchers.map((s) => s.firstName).join(', ')}
+            {(activityFilter === 'all' || activityFilter === 'searches') && (
+              <div className="flex flex-col gap-2">
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => handleSearchName(e.target.value)}
+                  placeholder={t('search.placeholder')}
+                  className="w-full bg-[#1A1A2E] border border-[#21262D] focus:border-[#2563EB] rounded-xl px-3.5 py-2 text-xs text-[#F0EDE6] placeholder-[#4A4742] outline-none"
+                />
+                {searchResults.length > 0 && (
+                  <div className="flex gap-2 overflow-x-auto pb-1">
+                    {searchResults.map((r) => (
+                      <div key={r.id} className="shrink-0 px-3 py-1.5 rounded-xl bg-[#1A1A2E] border border-[#21262D] text-xs text-[#F0EDE6] flex items-center gap-1.5">
+                        <span className="font-semibold">{r.firstName}</span>
+                        <span className="text-[10px] text-[#8B949E]">{r.campus}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {searchCount > 0 && (
+                  <div className="p-3 rounded-2xl bg-[#161B22] border border-[#C9A84C]/40 flex items-center justify-between gap-2">
+                    <div className="flex flex-col">
+                      <span className="text-xs font-bold text-[#F0EDE6]">
+                        🔎 {t('search.searchedYouCount', { count: searchCount })}
                       </span>
+                      {searchesUnmasked && revealedSearchers.length > 0 && (
+                        <span className="text-[11px] text-[#38BDF8] mt-0.5">
+                          {revealedSearchers.map((s) => s.firstName).join(', ')}
+                        </span>
+                      )}
+                    </div>
+                    {!searchesUnmasked && (
+                      <button
+                        type="button"
+                        onClick={handleRevealSearches}
+                        className="px-3 py-1.5 rounded-full bg-[#C9A84C] text-[#0D1117] text-[11px] font-bold cursor-pointer shrink-0"
+                      >
+                        {t('search.revealCta')}
+                      </button>
                     )}
                   </div>
-                  {!searchesUnmasked && (
-                    <button
-                      type="button"
-                      onClick={handleRevealSearches}
-                      className="px-3 py-1.5 rounded-full bg-[#C9A84C] text-[#0D1117] text-[11px] font-bold cursor-pointer shrink-0"
-                    >
-                      {t('search.revealCta')}
-                    </button>
-                  )}
-                </div>
-              )}
-            </div>
+                )}
+              </div>
+            )}
 
-            {admirers.length === 0 ? (
+            {(activityFilter === 'all' || activityFilter === 'likes') && (admirers.length === 0 ? (
               <div className="my-auto flex flex-col items-center justify-center py-14 gap-3 text-center">
                 <Heart className="w-10 h-10 text-[#4A4742]" />
                 <span className="text-sm font-semibold text-[#A8A49E]">{t('admirers.emptyTitle')}</span>
@@ -4371,7 +4420,7 @@ export default function AppScreen() {
                   </div>
                 ))}
               </div>
-            )}
+            ))}
 
             {!isAdmirersUnblurred && admirers.length > 0 && (
               <div className="sticky bottom-2 left-0 right-0 p-3 rounded-2xl bg-[#161B22]/95 backdrop-blur-md border border-[#C9A84C]/50 flex items-center justify-between gap-3 shadow-2xl">
@@ -4850,16 +4899,16 @@ export default function AppScreen() {
         <button
           onClick={() => setActiveTab('admirers')}
           className={`relative flex flex-col items-center gap-1 text-[10px] font-semibold transition-colors cursor-pointer ${
-            activeTab === 'admirers' ? 'text-[#FF6B6B]' : 'text-[#A8A49E]'
+            activeTab === 'admirers' ? 'text-[#C9A84C]' : 'text-[#A8A49E]'
           }`}
         >
-          <Heart className="w-5 h-5" />
-          {admirersCount > 0 && (
+          <Sparkles className="w-5 h-5" />
+          {(admirersCount + photoCompliments.length + searchCount) > 0 && (
             <span className="absolute -top-1 -right-2 px-1.5 py-0.2 rounded-full bg-[#FF6B6B] text-white text-[9px] font-bold">
-              {admirersCount}
+              {admirersCount + photoCompliments.length + searchCount}
             </span>
           )}
-          <span>{t('admirers.tabTitle')}</span>
+          <span>{t('activity.title')}</span>
         </button>
 
         <button
@@ -4880,16 +4929,6 @@ export default function AppScreen() {
         >
           <MessageCircle className="w-5 h-5" />
           <span>{t('matches.tabTitle')}</span>
-        </button>
-
-        <button
-          onClick={() => setActiveTab('serious')}
-          className={`flex flex-col items-center gap-1 text-[10px] font-semibold transition-colors cursor-pointer ${
-            activeTab === 'serious' ? 'text-[#C9A84C]' : 'text-[#A8A49E]'
-          }`}
-        >
-          <Sparkles className="w-5 h-5" />
-          <span>{t('serious.tabTitle')}</span>
         </button>
 
         <button
