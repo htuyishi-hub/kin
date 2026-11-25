@@ -23,6 +23,7 @@ import { useTranslation } from "@workspace/i18n";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 import { useColors } from "@/hooks/useColors";
+import { AvatarUpload } from "@/components/AvatarUpload";
 
 export default function OccupationScreen() {
   const colors = useColors();
@@ -51,13 +52,15 @@ export default function OccupationScreen() {
   const [intent, setIntent] = useState<OnboardingRequestPrimaryGoal | "">("");
   const [campusName, setCampusName] = useState("");
   const [city, setCity] = useState("Kigali");
+  const [photoUrl, setPhotoUrl] = useState<string | null>(null);
+  const [hasPhoto, setHasPhoto] = useState(false);
   const [error, setError] = useState("");
 
   const finalFullName = fullName || profile?.fullName || "";
   const finalGender = gender || profile?.gender || "Male";
   const finalDob = dateOfBirth || (profile as any)?.dateOfBirth || "2000-01-01";
 
-  // Pre-fill occupation / intent if already present in profile or draft
+  // Pre-fill occupation / intent / photo if already present in profile or draft
   useEffect(() => {
     let active = true;
 
@@ -74,6 +77,7 @@ export default function OccupationScreen() {
         if (initialOcc && !occupation) setOccupation(initialOcc as any);
         if (initialIntent && !intent) setIntent(initialIntent as any);
         if (initialCampus && !campusName) setCampusName(initialCampus);
+        if (((profile as any)?.photoCount ?? 0) > 0) setHasPhoto(true);
       } catch {}
     }
 
@@ -95,7 +99,7 @@ export default function OccupationScreen() {
       onSuccess: () => {
         AsyncStorage.removeItem("@kin_personal_draft").catch(() => {});
         AsyncStorage.removeItem("@kin_occupation_draft").catch(() => {});
-        router.push("/(onboarding)/invite");
+        router.replace("/(tabs)");
       },
       onError: (err: any) => {
         setError(err?.data?.message ?? t("common.networkError"));
@@ -106,6 +110,7 @@ export default function OccupationScreen() {
   function handleNext() {
     if (!occupation) { setError(t("onboarding.occupation.selectOccupation")); return; }
     if (!intent) { setError(t("onboarding.occupation.selectIntent")); return; }
+    if (!hasPhoto) { setError(t("onboarding.occupation.photoRequired")); return; }
     if (occupation === "Student" && !campusName.trim()) { setError(t("onboarding.occupation.chooseCampus")); return; }
 
     saveDraft(occupation, intent, campusName);
@@ -290,18 +295,43 @@ export default function OccupationScreen() {
         </View>
       </View>
 
+      <View style={styles.section}>
+        <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>
+          {t("onboarding.occupation.photoLabel")}
+        </Text>
+        <View style={{ alignItems: "center", paddingVertical: 8 }}>
+          <AvatarUpload
+            currentPhotoUrl={photoUrl}
+            size={104}
+            onUploadSuccess={(publicUrl) => {
+              setPhotoUrl(publicUrl);
+              setHasPhoto(true);
+              setError("");
+            }}
+          />
+        </View>
+      </View>
+
       {error ? <Text style={[styles.error, { color: colors.destructive }]}>{error}</Text> : null}
 
       <TouchableOpacity
-        style={[styles.button, { backgroundColor: colors.primary, opacity: isPending ? 0.7 : 1 }]}
+        style={[
+          styles.button,
+          {
+            backgroundColor: colors.primary,
+            opacity: isPending || !hasPhoto ? 0.45 : 1,
+          },
+        ]}
         onPress={handleNext}
-        disabled={isPending}
+        disabled={isPending || !hasPhoto}
         activeOpacity={0.85}
       >
         {isPending ? (
           <ActivityIndicator color={colors.primaryForeground} />
         ) : (
-          <Text style={[styles.buttonText, { color: colors.primaryForeground }]}>{t("onboarding.occupation.continue")}</Text>
+          <Text style={[styles.buttonText, { color: colors.primaryForeground }]}>
+            {t("onboarding.occupation.finish")}
+          </Text>
         )}
       </TouchableOpacity>
     </ScrollView>

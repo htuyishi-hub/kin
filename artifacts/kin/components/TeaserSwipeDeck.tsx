@@ -34,11 +34,17 @@ export type TeaserCandidate = {
   id: string;
   firstName: string;
   fullName?: string;
+  age?: number | null;
+  location?: string | null;
+  occupation?: string | null;
+  isUrStudent?: boolean;
+  isVerified?: boolean;
   photos: string[];
   primaryPhotoPath?: string | null;
   is_golden_bid?: boolean;
   incoming_reaction?: "campus" | "coffee" | "serious" | null;
   intent_class?: string;
+  primaryIntent?: string;
   trustScore?: number;
   approvedBy?: { fullName: string; firstName: string; isVerified: boolean } | null;
   vouchedBy?: { fullName: string; firstName: string; isVerified: boolean } | null;
@@ -55,6 +61,7 @@ interface TeaserSwipeDeckProps {
   onSwipeRight: (candidate: TeaserCandidate, reaction: ReactionType, isGoldenBid: boolean) => void;
   onSwipeLeft: (candidate: TeaserCandidate) => void;
   onSwipeDown: (candidate: TeaserCandidate) => void;
+  onRewind?: (candidate: TeaserCandidate) => void;
   goldenBidsRemaining?: number;
   onRefresh?: () => void;
 }
@@ -178,15 +185,15 @@ export function TeaserSwipeDeck({
   onSwipeRight,
   onSwipeLeft,
   onSwipeDown,
+  onRewind,
   goldenBidsRemaining = 3,
   onRefresh,
 }: TeaserSwipeDeckProps) {
   const { t } = useTranslation();
   const [currentIndex, setCurrentIndex] = useState(0);
   const [photoIndex, setPhotoIndex] = useState(0);
-
-  // Categorized Like Modal State
   const [likeModalVisible, setLikeModalVisible] = useState(false);
+  const [infoModalVisible, setInfoModalVisible] = useState(false);
   const [pendingCandidate, setPendingCandidate] = useState<TeaserCandidate | null>(null);
   const [useGoldenBid, setUseGoldenBid] = useState(false);
 
@@ -205,8 +212,22 @@ export function TeaserSwipeDeck({
   const advanceNextCard = () => {
     setCurrentIndex((prev) => prev + 1);
     setPhotoIndex(0);
+    setInfoModalVisible(false);
     translationX.value = 0;
     translationY.value = 0;
+  };
+
+  const handleRewindLast = () => {
+    if (currentIndex <= 0) return;
+    const prevIdx = currentIndex - 1;
+    const prevCandidate = candidates[prevIdx];
+    Haptics.impactAsync?.(Haptics.ImpactFeedbackStyle.Light);
+    setCurrentIndex(prevIdx);
+    setPhotoIndex(0);
+    setInfoModalVisible(false);
+    if (prevCandidate && onRewind) {
+      onRewind(prevCandidate);
+    }
   };
 
   const triggerLikeVibeSelect = (candidate: TeaserCandidate) => {
@@ -317,10 +338,19 @@ export function TeaserSwipeDeck({
     );
   }
 
-  const photos = currentCandidate.photos.slice(0, 2); // Strict maximum of 2 photos
+  const photos = currentCandidate.photos.length > 0
+    ? currentCandidate.photos.slice(0, 6)
+    : currentCandidate.primaryPhotoPath
+      ? [currentCandidate.primaryPhotoPath]
+      : [];
   const currentPhotoUrl = photos[photoIndex] ?? currentCandidate.primaryPhotoPath;
   const isGoldenBid = Boolean(currentCandidate.is_golden_bid);
-  const approver = currentCandidate.approvedBy ?? currentCandidate.vouchedBy;
+  const intentRaw = (currentCandidate.primaryIntent || currentCandidate.intent_class || "").toLowerCase();
+  const intentBadgeText = intentRaw.includes("marriage")
+    ? t("intent.marriage")
+    : intentRaw.includes("casual")
+      ? t("intent.casual")
+      : t("intent.serious");
 
   return (
     <View style={styles.container}>
@@ -332,7 +362,9 @@ export function TeaserSwipeDeck({
             style={styles.cardImage}
           />
           <View style={styles.cardOverlay}>
-            <Text style={styles.candidateName}>{nextCandidate.firstName}</Text>
+            <Text style={styles.candidateName}>
+              {nextCandidate.firstName}{nextCandidate.age ? `, ${nextCandidate.age}` : ""}
+            </Text>
           </View>
         </View>
       )}
@@ -346,13 +378,12 @@ export function TeaserSwipeDeck({
             cardAnimatedStyle,
           ]}
         >
-          {/* Photos (Strict Maximum 2 photos) */}
           <TeaserCardImage
             photoRef={currentPhotoUrl}
             style={styles.cardImage}
           />
 
-          {/* Photo Pagination Indicator (If 2 photos exist) */}
+          {/* Segmented Progress Bars at Top */}
           {photos.length > 1 && (
             <View style={styles.photoPagination}>
               {photos.map((_, idx) => (
@@ -372,23 +403,47 @@ export function TeaserSwipeDeck({
             </View>
           )}
 
-          {/* Tap Zones to toggle between Photo 1 and Photo 2 */}
+          {/* Left / Right Tap Zones */}
           {photos.length > 1 && (
             <View style={styles.photoTapZones} pointerEvents="box-none">
               <TouchableOpacity
                 style={styles.tapLeft}
-                onPress={() => setPhotoIndex(0)}
+                onPress={() => {
+                  Haptics.selectionAsync?.();
+                  setPhotoIndex((prev) => (prev > 0 ? prev - 1 : photos.length - 1));
+                }}
                 activeOpacity={1}
               />
               <TouchableOpacity
                 style={styles.tapRight}
-                onPress={() => setPhotoIndex(1)}
+                onPress={() => {
+                  Haptics.selectionAsync?.();
+                  setPhotoIndex((prev) => (prev + 1) % photos.length);
+                }}
                 activeOpacity={1}
               />
             </View>
           )}
 
-          {/* GOLDEN BID BADGE (Obsidian Navy + Coral Glowing Border) */}
+          {/* TOP BADGES: Intent + UR Student */}
+          <View style={{ position: "absolute", top: photos.length > 1 ? 26 : 14, left: 14, right: 14, flexDirection: "row", justifyContent: "space-between", alignItems: "center", zIndex: 15 }} pointerEvents="none">
+            <View style={{ flexDirection: "row", gap: 6 }}>
+              {currentCandidate.isUrStudent && (
+                <View style={{ backgroundColor: "#2563EB", paddingHorizontal: 8, paddingVertical: 3, borderRadius: 999 }}>
+                  <Text style={{ color: "#FFF", fontSize: 10, fontFamily: "Inter_700Bold" }}>
+                    {t("discover.urStudentBadge")}
+                  </Text>
+                </View>
+              )}
+            </View>
+            <View style={{ backgroundColor: "rgba(13,17,23,0.8)", paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999, borderWidth: 1, borderColor: "rgba(255,255,255,0.12)" }}>
+              <Text style={{ color: Colors.bone, fontSize: 11, fontFamily: "Inter_600SemiBold" }}>
+                {intentBadgeText}
+              </Text>
+            </View>
+          </View>
+
+          {/* GOLDEN BID BADGE */}
           {isGoldenBid && (
             <View style={styles.goldenBidRibbon}>
               <Feather name="zap" size={13} color="#FFF" />
@@ -416,16 +471,51 @@ export function TeaserSwipeDeck({
             <Text style={styles.softPassBadgeText}>14-DAY SNOOZE</Text>
           </Animated.View>
 
-          {/* TEASER DATA OVERLAY */}
+          {/* RICH BOTTOM INFORMATION OVERLAY */}
           <View style={styles.cardOverlay}>
-            <View style={styles.nameRow}>
-              <Text style={styles.candidateName}>{currentCandidate.firstName}</Text>
+            <View style={[styles.nameRow, { justifyContent: "space-between", alignItems: "flex-end" }]}>
+              <View style={{ flex: 1 }}>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                  <Text style={styles.candidateName}>
+                    {currentCandidate.firstName}{currentCandidate.age ? `, ${currentCandidate.age}` : ""}
+                  </Text>
+                  {(currentCandidate.isVerified || currentCandidate.isUrStudent) && (
+                    <Feather name="check-circle" size={18} color="#38BDF8" />
+                  )}
+                </View>
+                <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10, marginTop: 2 }}>
+                  {!!currentCandidate.location && (
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+                      <Feather name="map-pin" size={12} color="#38BDF8" />
+                      <Text style={{ color: "#CBD5E1", fontSize: 12, fontFamily: "Inter_500Medium" }}>
+                        {currentCandidate.location}
+                      </Text>
+                    </View>
+                  )}
+                  {!!currentCandidate.occupation && (
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+                      <Feather name="briefcase" size={12} color={Colors.gold} />
+                      <Text style={{ color: "#CBD5E1", fontSize: 12, fontFamily: "Inter_500Medium" }}>
+                        {currentCandidate.occupation}
+                      </Text>
+                    </View>
+                  )}
+                </View>
+              </View>
+              <TouchableOpacity
+                onPress={() => setInfoModalVisible(true)}
+                style={{ width: 34, height: 34, borderRadius: 17, backgroundColor: "rgba(255,255,255,0.15)", alignItems: "center", justifyContent: "center" }}
+                activeOpacity={0.8}
+              >
+                <Feather name="info" size={17} color={Colors.bone} />
+              </TouchableOpacity>
             </View>
+
             {currentCandidate.tags && currentCandidate.tags.length > 0 && (
               <View style={styles.tagsRow}>
-                {currentCandidate.tags.slice(0, 3).map((tag) => (
+                {currentCandidate.tags.slice(0, 4).map((tag) => (
                   <View key={tag} style={styles.tagChip}>
-                    <Text style={styles.tagChipText}>{t(`tags.${tag}`, { defaultValue: tag })}</Text>
+                    <Text style={styles.tagChipText}>#{t(`tags.${tag}`, { defaultValue: tag })}</Text>
                   </View>
                 ))}
               </View>
@@ -447,27 +537,37 @@ export function TeaserSwipeDeck({
         </Animated.View>
       </GestureDetector>
 
-      {/* QUICK ACTION BUTTONS */}
+      {/* 4-BUTTON ACTION DOCK: Rewind, Pass, Like, Super Like */}
       <View style={styles.actionButtonsRow}>
-        {/* Hard Reject (Left) */}
+        {/* Rewind (Undo) */}
+        <TouchableOpacity
+          style={[styles.actionBtn, styles.softPassBtn, { opacity: currentIndex > 0 ? 1 : 0.35 }]}
+          onPress={handleRewindLast}
+          disabled={currentIndex <= 0}
+          activeOpacity={0.8}
+        >
+          <Feather name="rotate-ccw" size={20} color="#F59E0B" />
+        </TouchableOpacity>
+
+        {/* Pass */}
         <TouchableOpacity
           style={[styles.actionBtn, styles.rejectBtn]}
           onPress={() => handleHardReject(currentCandidate)}
           activeOpacity={0.8}
         >
-          <Feather name="x" size={24} color={Colors.danger} />
+          <Feather name="x" size={26} color={Colors.danger} />
         </TouchableOpacity>
 
-        {/* Soft Pass 14 Days (Down) */}
+        {/* Like */}
         <TouchableOpacity
-          style={[styles.actionBtn, styles.softPassBtn]}
-          onPress={() => handleSoftPass(currentCandidate)}
+          style={[styles.actionBtn, styles.likeBtn]}
+          onPress={() => triggerLikeVibeSelect(currentCandidate)}
           activeOpacity={0.8}
         >
-          <Feather name="clock" size={20} color={Colors.gold} />
+          <Feather name="heart" size={26} color={Colors.success} />
         </TouchableOpacity>
 
-        {/* Golden Bid Instant Like */}
+        {/* Super Like (Golden Bid) */}
         <TouchableOpacity
           style={[styles.actionBtn, styles.goldenBidBtn]}
           onPress={() => {
@@ -476,18 +576,63 @@ export function TeaserSwipeDeck({
           }}
           activeOpacity={0.8}
         >
-          <Feather name="zap" size={22} color={Colors.coral} />
-        </TouchableOpacity>
-
-        {/* Categorized Silent Like (Right) */}
-        <TouchableOpacity
-          style={[styles.actionBtn, styles.likeBtn]}
-          onPress={() => triggerLikeVibeSelect(currentCandidate)}
-          activeOpacity={0.8}
-        >
-          <Feather name="heart" size={24} color={Colors.success} />
+          <Feather name="star" size={22} color="#38BDF8" />
         </TouchableOpacity>
       </View>
+
+      {/* FULL PROFILE DETAILS MODAL */}
+      <Modal
+        visible={infoModalVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setInfoModalVisible(false)}
+      >
+        <View style={styles.modalBackdrop}>
+          <View style={[styles.modalSheet, { gap: 12 }]}>
+            <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                <Text style={styles.modalTitle}>
+                  {currentCandidate.firstName}{currentCandidate.age ? `, ${currentCandidate.age}` : ""}
+                </Text>
+                {(currentCandidate.isVerified || currentCandidate.isUrStudent) && (
+                  <Feather name="check-circle" size={18} color="#38BDF8" />
+                )}
+              </View>
+              <TouchableOpacity onPress={() => setInfoModalVisible(false)}>
+                <Feather name="x" size={22} color={Colors.boneDim} />
+              </TouchableOpacity>
+            </View>
+            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+              <View style={{ backgroundColor: Colors.inkRaised, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999 }}>
+                <Text style={{ color: Colors.bone, fontSize: 12, fontFamily: "Inter_600SemiBold" }}>{intentBadgeText}</Text>
+              </View>
+              {currentCandidate.isUrStudent && (
+                <View style={{ backgroundColor: "#2563EB", paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999 }}>
+                  <Text style={{ color: "#FFF", fontSize: 12, fontFamily: "Inter_700Bold" }}>{t("discover.urStudentBadge")}</Text>
+                </View>
+              )}
+            </View>
+            {!!currentCandidate.location && (
+              <Text style={{ color: Colors.boneDim, fontSize: 13 }}>📍 {currentCandidate.location}</Text>
+            )}
+            {!!currentCandidate.occupation && (
+              <Text style={{ color: Colors.boneDim, fontSize: 13 }}>💼 {currentCandidate.occupation}</Text>
+            )}
+            {!!currentCandidate.bio && (
+              <Text style={{ color: Colors.bone, fontSize: 14, lineHeight: 20 }}>{currentCandidate.bio}</Text>
+            )}
+            {currentCandidate.tags && currentCandidate.tags.length > 0 && (
+              <View style={styles.tagsRow}>
+                {currentCandidate.tags.map((tag) => (
+                  <View key={tag} style={styles.tagChip}>
+                    <Text style={styles.tagChipText}>#{t(`tags.${tag}`, { defaultValue: tag })}</Text>
+                  </View>
+                ))}
+              </View>
+            )}
+          </View>
+        </View>
+      </Modal>
 
       {/* CATEGORIZED 'SILENT' LIKE BOTTOM SHEET MODAL (3 ICON-ONLY VIBES) */}
       <Modal

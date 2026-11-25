@@ -8,9 +8,11 @@ import {
 } from "@workspace/api-client-react";
 import * as Haptics from "expo-haptics";
 import { router } from "expo-router";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
+  Linking,
+  Modal,
   Platform,
   StyleSheet,
   Text,
@@ -117,16 +119,37 @@ export default function DiscoverScreen() {
   };
 
   const [matchNotification, setMatchNotification] = useState<string | null>(null);
+  const [swipesRemaining, setSwipesRemaining] = useState<number>(25);
+  const [outOfSwipesVisible, setOutOfSwipesVisible] = useState(false);
+  const [claimingBonus, setClaimingBonus] = useState(false);
+
+  useEffect(() => {
+    if (!token) return;
+    fetch(`${apiBaseUrl}/api/swipes/status`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (d && typeof d.remaining === "number") setSwipesRemaining(d.remaining);
+      })
+      .catch(() => {});
+  }, [token]);
 
   const candidates: TeaserCandidate[] = (queue as any[]).map((item) => ({
     id: item.id,
     firstName: item.firstName ?? item.fullName?.split(" ")[0] ?? "Member",
     fullName: item.fullName,
+    age: item.age ?? null,
+    location: item.location ?? item.campusName ?? item.city ?? null,
+    occupation: item.occupation ?? null,
+    isUrStudent: Boolean(item.isUrStudent),
+    isVerified: Boolean(item.isVerified),
     photos: item.photos?.length > 0 ? item.photos : item.primaryPhotoPath ? [item.primaryPhotoPath] : [],
     primaryPhotoPath: item.primaryPhotoPath ?? item.photos?.[0] ?? null,
     is_golden_bid: Boolean(item.is_golden_bid),
     incoming_reaction: item.incoming_reaction ?? null,
     intent_class: item.intent_class ?? item.primaryIntent,
+    primaryIntent: item.primaryIntent ?? item.intent_class,
     trustScore: item.trustScore ?? 1,
     bio: item.bio ?? null,
     tags: item.tags ?? [],
@@ -136,6 +159,7 @@ export default function DiscoverScreen() {
 
   const goldenBidsRemaining = (myProfile as any)?.goldenBidsRemaining ?? (myProfile as any)?.golden_bids_remaining ?? 3;
   const myIntentClass = (myProfile as any)?.intentClass ?? (myProfile as any)?.primaryIntent ?? "Serious";
+  const myInviteCode = (myProfile as any)?.inviteCode ?? (myProfile as any)?.invite_code ?? "KINN";
   const isApproverActive = Boolean(
     myProfile?.idVerified ||
     (myProfile as any)?.is_verified ||
@@ -152,6 +176,10 @@ export default function DiscoverScreen() {
     reaction: ReactionType,
     isGoldenBid: boolean
   ) {
+    if (swipesRemaining <= 0) {
+      setOutOfSwipesVisible(true);
+      return;
+    }
     try {
       const res = await fetch(`${apiBaseUrl}/api/interests`, {
         method: "POST",
@@ -166,6 +194,13 @@ export default function DiscoverScreen() {
         }),
       });
 
+      if (res.status === 429) {
+        setSwipesRemaining(0);
+        setOutOfSwipesVisible(true);
+        return;
+      }
+
+      setSwipesRemaining((prev) => Math.max(0, prev - 1));
       const data = await res.json();
       if (data.matchCreated && data.matchId) {
         Haptics.notificationAsync?.(Haptics.NotificationFeedbackType.Success);
@@ -182,8 +217,12 @@ export default function DiscoverScreen() {
 
   // Swipe Left = Hard Reject (Permanent)
   async function handleSwipeLeft(candidate: TeaserCandidate) {
+    if (swipesRemaining <= 0) {
+      setOutOfSwipesVisible(true);
+      return;
+    }
     try {
-      await fetch(`${apiBaseUrl}/api/passes`, {
+      const res = await fetch(`${apiBaseUrl}/api/passes`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -194,6 +233,12 @@ export default function DiscoverScreen() {
           action: "hard_reject",
         }),
       });
+      if (res.status === 429) {
+        setSwipesRemaining(0);
+        setOutOfSwipesVisible(true);
+        return;
+      }
+      setSwipesRemaining((prev) => Math.max(0, prev - 1));
     } catch {
       // non-fatal
     }
@@ -201,8 +246,12 @@ export default function DiscoverScreen() {
 
   // Swipe Down = Soft Pass (14-day temporary hide)
   async function handleSwipeDown(candidate: TeaserCandidate) {
+    if (swipesRemaining <= 0) {
+      setOutOfSwipesVisible(true);
+      return;
+    }
     try {
-      await fetch(`${apiBaseUrl}/api/passes`, {
+      const res = await fetch(`${apiBaseUrl}/api/passes`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -213,8 +262,52 @@ export default function DiscoverScreen() {
           action: "soft_pass",
         }),
       });
+      if (res.status === 429) {
+        setSwipesRemaining(0);
+        setOutOfSwipesVisible(true);
+        return;
+      }
+      setSwipesRemaining((prev) => Math.max(0, prev - 1));
     } catch {
       // non-fatal
+    }
+  }
+
+  async function handleRewind(candidate: TeaserCandidate) {
+    try {
+      const res = await fetch(`${apiBaseUrl}/api/swipes/rewind`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ targetUserId: candidate.id }),
+      });
+      if (res.ok) {
+        const d = await res.json();
+        if (typeof d.remaining === "number") setSwipesRemaining(d.remaining);
+      }
+    } catch {}
+  }
+
+  async function handleClaimWhatsAppBonus() {
+    const inviteLink = `https://kinn.ink/invite/${myInviteCode}`;
+    const text = encodeURIComponent(t("discover.whatsappInviteText", { link: inviteLink }));
+    Linking.openURL(`https://wa.me/?text=${text}`).catch(() => {});
+
+    setClaimingBonus(true);
+    try {
+      const res = await fetch(`${apiBaseUrl}/api/swipes/whatsapp-bonus`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const d = await res.json();
+        if (typeof d.remaining === "number") setSwipesRemaining(d.remaining);
+      }
+      setOutOfSwipesVisible(false);
+    } finally {
+      setClaimingBonus(false);
     }
   }
 
@@ -334,10 +427,44 @@ export default function DiscoverScreen() {
           onSwipeRight={handleSwipeRight}
           onSwipeLeft={handleSwipeLeft}
           onSwipeDown={handleSwipeDown}
+          onRewind={handleRewind}
           goldenBidsRemaining={goldenBidsRemaining}
           onRefresh={refetch}
         />
       )}
+
+      {/* OUT OF SWIPES MODAL */}
+      <Modal
+        visible={outOfSwipesVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setOutOfSwipesVisible(false)}
+      >
+        <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.8)", justifyContent: "center", alignItems: "center", padding: 24 }}>
+          <View style={{ width: "100%", maxWidth: 360, backgroundColor: "#161B22", borderRadius: 24, padding: 24, alignItems: "center", gap: 16, borderWidth: 1, borderColor: "#21262D" }}>
+            <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: "rgba(37,99,235,0.2)", alignItems: "center", justifyContent: "center" }}>
+              <Feather name="zap" size={28} color="#38BDF8" />
+            </View>
+            <Text style={{ fontFamily: "Fraunces_700Bold", fontSize: 22, color: Colors.bone, textAlign: "center" }}>
+              {t("discover.outOfSwipesTitle")}
+            </Text>
+            <TouchableOpacity
+              onPress={handleClaimWhatsAppBonus}
+              disabled={claimingBonus}
+              style={{ width: "100%", backgroundColor: "#25D366", paddingVertical: 14, paddingHorizontal: 16, borderRadius: 16, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8 }}
+              activeOpacity={0.85}
+            >
+              <Feather name="share-2" size={18} color="#0D1117" />
+              <Text style={{ fontFamily: "Inter_700Bold", fontSize: 14, color: "#0D1117", flexShrink: 1, textAlign: "center" }}>
+                {t("discover.inviteWhatsAppButton")}
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => setOutOfSwipesVisible(false)}>
+              <Text style={{ color: Colors.boneDim, fontSize: 13 }}>{t("chat.cancel")}</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }

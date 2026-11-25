@@ -34,12 +34,25 @@ import {
   EyeOff,
   Camera,
   Users,
+  RotateCcw,
+  Info,
+  BadgeCheck,
+  MapPin,
+  Briefcase,
+  Share2,
 } from 'lucide-react';
 import { useTranslation, changeLanguage, getCurrentLanguage, type SupportedLanguage } from '@workspace/i18n';
 import { useAuth } from '@/contexts/AuthContext';
 import { getSupabaseClient } from '@/lib/supabase';
 import { encryptMessage, decryptMessage } from '@/lib/e2eeService';
 import { apiFetch, API_BASE } from '@/lib/api';
+
+function getIntentBadgeLabel(intent: string | null | undefined, t: (k: string) => string): string {
+  const val = (intent || '').toLowerCase();
+  if (val.includes('marriage')) return t('intent.marriage');
+  if (val.includes('casual')) return t('intent.casual');
+  return t('intent.serious');
+}
 
 function getDateKey(isoDateStr: string): string {
   const d = new Date(isoDateStr);
@@ -81,9 +94,11 @@ interface Candidate {
   location: string;
   occupation: string;
   isUrStudent: boolean;
+  isVerified?: boolean;
   intent: string;
   trustScore: number;
   photoUrl: string;
+  photos: string[];
   bio?: string | null;
   tags?: string[];
   voiceIntroPath?: string | null;
@@ -105,9 +120,11 @@ const SAMPLE_PROFILES: Candidate[] = [
     location: 'Kigali, Nyarugenge',
     occupation: 'Software Engineer & UR Alum',
     isUrStudent: true,
+    isVerified: true,
     intent: 'Serious Marriage',
     trustScore: 85,
     photoUrl: '/images/couple1.jpg',
+    photos: ['/images/couple1.jpg', '/images/couple2.jpg', '/images/couple3.jpg'],
     tags: ['technology', 'faith', 'reading'],
     bio: 'Software engineer building tools for community growth.',
     voiceIntroPath: 'https://actions.google.com/sounds/v1/speech/hello_world.ogg',
@@ -120,9 +137,11 @@ const SAMPLE_PROFILES: Candidate[] = [
     location: 'Huye Campus',
     occupation: 'UR Medicine Student (Year 4)',
     isUrStudent: true,
+    isVerified: true,
     intent: 'Long-term Relationship',
     trustScore: 92,
     photoUrl: '/images/couple2.jpg',
+    photos: ['/images/couple2.jpg', '/images/couple3.jpg'],
     tags: ['education', 'fitness', 'music'],
     bio: 'Medical student passionate about healthcare and running.',
     voiceIntroPath: 'https://actions.google.com/sounds/v1/speech/hello_world.ogg',
@@ -135,9 +154,11 @@ const SAMPLE_PROFILES: Candidate[] = [
     location: 'Kigali, Remera',
     occupation: 'Architect & Designer',
     isUrStudent: false,
+    isVerified: true,
     intent: 'Serious Marriage',
     trustScore: 78,
     photoUrl: '/images/couple3.jpg',
+    photos: ['/images/couple3.jpg', '/images/couple1.jpg'],
     tags: ['art', 'travel', 'cooking'],
     bio: 'Architect designing sustainable spaces across Rwanda.',
   },
@@ -152,7 +173,15 @@ export default function AppScreen() {
   const [currentLang, setCurrentLang] = useState<SupportedLanguage>(getCurrentLanguage());
 
   const [activeTab, setActiveTab] = useState<'discover' | 'matches' | 'serious' | 'profile'>('discover');
+  const [deckProfiles, setDeckProfiles] = useState<Candidate[]>(SAMPLE_PROFILES);
   const [profileIndex, setProfileIndex] = useState(0);
+  const [cardPhotoIndex, setCardPhotoIndex] = useState(0);
+  const [showProfileDetail, setShowProfileDetail] = useState(false);
+  const [swipeHistory, setSwipeHistory] = useState<Array<{ index: number; candidateId: string }>>([]);
+  const [swipesRemaining, setSwipesRemaining] = useState<number>(25);
+  const [outOfSwipesOpen, setOutOfSwipesOpen] = useState(false);
+  const [myInviteCode, setMyInviteCode] = useState<string>('KINN');
+  const [claimingBonus, setClaimingBonus] = useState(false);
   const [goldenBids, setGoldenBids] = useState(3);
   const [matchAlert, setMatchAlert] = useState<string | null>(null);
 
@@ -1513,7 +1542,66 @@ export default function AppScreen() {
     }
   }
 
-  const currentProfile = SAMPLE_PROFILES[profileIndex % SAMPLE_PROFILES.length];
+  useEffect(() => {
+    if (!token) return;
+    apiFetch('/api/match-queue', {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (Array.isArray(data) && data.length > 0) {
+          const mapped: Candidate[] = data.map((c: any) => {
+            const photos: string[] = Array.isArray(c.photos) && c.photos.length > 0
+              ? c.photos
+              : c.primaryPhotoPath
+                ? [c.primaryPhotoPath]
+                : ['/images/couple1.jpg'];
+            return {
+              id: c.id,
+              name: c.firstName || 'kinn Member',
+              age: c.age ?? 24,
+              location: c.location || c.campusName || c.city || 'Kigali',
+              occupation: c.occupation || '',
+              isUrStudent: Boolean(c.isUrStudent),
+              isVerified: Boolean(c.isVerified),
+              intent: c.primaryIntent || c.intent_class || 'Serious',
+              trustScore: c.trustScore ?? 1,
+              photoUrl: photos[0] || '/images/couple1.jpg',
+              photos,
+              bio: c.bio ?? null,
+              tags: Array.isArray(c.tags) ? c.tags : [],
+              voiceIntroPath: c.voiceIntroPath ?? null,
+              voiceIntroDurationMs: c.voiceIntroDurationMs ?? null,
+            };
+          });
+          setDeckProfiles(mapped);
+          setProfileIndex(0);
+          setCardPhotoIndex(0);
+        }
+      })
+      .catch(() => {});
+
+    apiFetch('/api/swipes/status', {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((status) => {
+        if (status && typeof status.remaining === 'number') {
+          setSwipesRemaining(status.remaining);
+        }
+        if (status?.inviteCode) {
+          setMyInviteCode(status.inviteCode);
+        }
+      })
+      .catch(() => {});
+  }, [token]);
+
+  const currentProfile = deckProfiles[profileIndex % deckProfiles.length] || SAMPLE_PROFILES[0];
+
+  useEffect(() => {
+    setCardPhotoIndex(0);
+    setShowProfileDetail(false);
+  }, [profileIndex, currentProfile?.id]);
 
   async function handleLanguageSelect(lang: SupportedLanguage) {
     await changeLanguage(lang);
@@ -1529,14 +1617,47 @@ export default function AppScreen() {
     }
   }
 
-  function handleSwipe(action: 'pass' | 'like' | 'bid') {
+  async function handleSwipe(action: 'pass' | 'like' | 'bid') {
+    if (swipesRemaining <= 0) {
+      setOutOfSwipesOpen(true);
+      return;
+    }
+
     if (candidateAudioRef.current) {
       candidateAudioRef.current.pause();
     }
     setPlayingCandidateAudio(false);
 
+    if (action === 'bid' && goldenBids <= 0) return;
+
+    if (token && !['1', '2', '3'].includes(currentProfile.id)) {
+      try {
+        const endpoint = action === 'pass' ? '/api/passes' : '/api/interests';
+        const payload =
+          action === 'pass'
+            ? { targetUserId: currentProfile.id, action: 'soft_pass' }
+            : { toUserId: currentProfile.id, reactionType: 'serious', isGoldenBid: action === 'bid' };
+
+        const res = await apiFetch(endpoint, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify(payload),
+        });
+        if (res.status === 429) {
+          setSwipesRemaining(0);
+          setOutOfSwipesOpen(true);
+          return;
+        }
+      } catch {}
+    }
+
+    setSwipesRemaining((prev) => Math.max(0, prev - 1));
+    setSwipeHistory((prev) => [...prev.slice(-9), { index: profileIndex, candidateId: currentProfile.id }]);
+
     if (action === 'bid') {
-      if (goldenBids <= 0) return;
       setGoldenBids((prev) => prev - 1);
       setMatchAlert(t('discover.goldenBidAlert', { name: currentProfile.name }));
     } else if (action === 'like') {
@@ -1546,7 +1667,64 @@ export default function AppScreen() {
     setTimeout(() => {
       setMatchAlert(null);
       setProfileIndex((prev) => prev + 1);
-    }, 1500);
+    }, action === 'pass' ? 150 : 900);
+  }
+
+  async function handleRewind() {
+    if (swipeHistory.length === 0) return;
+    const last = swipeHistory[swipeHistory.length - 1];
+    setSwipeHistory((prev) => prev.slice(0, -1));
+    setProfileIndex(last.index);
+    setCardPhotoIndex(0);
+    setMatchAlert(null);
+
+    if (token && !['1', '2', '3'].includes(last.candidateId)) {
+      try {
+        const res = await apiFetch('/api/swipes/rewind', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ targetUserId: last.candidateId }),
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (typeof data.remaining === 'number') setSwipesRemaining(data.remaining);
+        }
+      } catch {}
+    }
+  }
+
+  async function handleClaimWhatsAppBonus() {
+    const inviteLink = `https://kinn.ink/invite/${myInviteCode || 'KINN'}`;
+    const text = encodeURIComponent(t('discover.whatsappInviteText', { link: inviteLink }));
+    window.open(`https://wa.me/?text=${text}`, '_blank', 'noopener,noreferrer');
+
+    setClaimingBonus(true);
+    try {
+      if (token) {
+        const res = await apiFetch('/api/swipes/whatsapp-bonus', {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (typeof data.remaining === 'number') {
+            setSwipesRemaining(data.remaining);
+          } else {
+            setSwipesRemaining((prev) => prev + 30);
+          }
+        } else {
+          setSwipesRemaining((prev) => prev + 30);
+        }
+      } else {
+        setSwipesRemaining((prev) => prev + 30);
+      }
+      setOutOfSwipesOpen(false);
+    } finally {
+      setClaimingBonus(false);
+    }
   }
 
   async function handleSignOut() {
@@ -2028,119 +2206,298 @@ export default function AppScreen() {
                 )}
 
                 {/* Profile Card */}
-                <div className="w-full flex-1 rounded-3xl bg-[#1A1A2E] border border-[#21262D] overflow-hidden flex flex-col relative shadow-2xl">
-                  {/* Photo Area */}
-                  <div className="relative h-64 w-full bg-[#242438] overflow-hidden">
-                    <img
-                      src={currentProfile.photoUrl}
-                      alt={currentProfile.name}
-                      className="w-full h-full object-cover"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-[#1A1A2E] via-transparent to-black/30" />
+                {(() => {
+                  const photos = currentProfile.photos?.length ? currentProfile.photos : [currentProfile.photoUrl];
+                  const activePhoto = photos[cardPhotoIndex] || currentProfile.photoUrl;
+                  return (
+                    <div className="w-full flex-1 rounded-3xl bg-[#1A1A2E] border border-[#21262D] overflow-hidden flex flex-col relative shadow-2xl min-h-[400px]">
+                      {/* Full-bleed Photo Area with Story Tapping */}
+                      <div className="relative flex-1 w-full bg-[#242438] overflow-hidden">
+                        <img
+                          src={activePhoto}
+                          alt={currentProfile.name}
+                          className="w-full h-full object-cover transition-opacity duration-200"
+                        />
 
-                    {/* Badge tags */}
-                    <div className="absolute top-3 left-3 flex flex-wrap gap-1.5">
-                      {currentProfile.isUrStudent && (
-                        <span className="bg-[#2563EB] text-white text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1 shadow">
-                          <GraduationCap className="w-3 h-3" />
-                          {t('discover.urStudentBadge')}
-                        </span>
-                      )}
-                      <span className="bg-[#0D1117]/80 backdrop-blur-sm text-[#3FB950] text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1 border border-[#3FB950]/30">
-                        <ShieldCheck className="w-3 h-3" />
-                        {t('discover.trustBadge', { score: currentProfile.trustScore })}
-                      </span>
+                        {/* Segmented Progress Bars at Top */}
+                        {photos.length > 1 && (
+                          <div className="absolute top-2.5 left-3 right-3 z-20 flex gap-1.5">
+                            {photos.map((_, idx) => (
+                              <div
+                                key={idx}
+                                className={`h-1 flex-1 rounded-full transition-colors ${
+                                  idx === cardPhotoIndex ? 'bg-white shadow' : 'bg-white/35'
+                                }`}
+                              />
+                            ))}
+                          </div>
+                        )}
+
+                        {/* Left / Right Tap Zones */}
+                        <div className="absolute inset-0 z-10 flex">
+                          <button
+                            type="button"
+                            aria-label="Previous photo"
+                            onClick={() =>
+                              setCardPhotoIndex((prev) => (prev > 0 ? prev - 1 : photos.length - 1))
+                            }
+                            className="w-1/2 h-full cursor-pointer bg-transparent focus:outline-none"
+                          />
+                          <button
+                            type="button"
+                            aria-label="Next photo"
+                            onClick={() =>
+                              setCardPhotoIndex((prev) => (prev + 1) % photos.length)
+                            }
+                            className="w-1/2 h-full cursor-pointer bg-transparent focus:outline-none"
+                          />
+                        </div>
+
+                        {/* Top Badges */}
+                        <div className="absolute top-6 left-3 right-3 z-20 flex items-center justify-between pointer-events-none">
+                          <div className="flex flex-wrap gap-1.5">
+                            {currentProfile.isUrStudent && (
+                              <span className="bg-[#2563EB] text-white text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1 shadow">
+                                <GraduationCap className="w-3 h-3" />
+                                {t('discover.urStudentBadge')}
+                              </span>
+                            )}
+                            <span className="bg-[#0D1117]/80 backdrop-blur-sm text-[#3FB950] text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1 border border-[#3FB950]/30">
+                              <ShieldCheck className="w-3 h-3" />
+                              {t('discover.trustBadge', { score: currentProfile.trustScore })}
+                            </span>
+                          </div>
+                          <span className="bg-[#0D1117]/80 backdrop-blur-sm text-[#F0EDE6] text-[10px] font-semibold px-2.5 py-0.5 rounded-full border border-[#21262D]">
+                            {getIntentBadgeLabel(currentProfile.intent, t)}
+                          </span>
+                        </div>
+
+                        {/* Dark Bottom Gradient + Rich Info Overlay */}
+                        <div className="absolute inset-x-0 bottom-0 z-20 bg-gradient-to-t from-[#0D1117] via-[#0D1117]/85 to-transparent pt-16 pb-4 px-4 flex flex-col gap-1.5 pointer-events-none">
+                          <div className="flex items-end justify-between gap-2">
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-1.5">
+                                <h2 className="text-2xl font-bold font-serif text-[#F0EDE6] truncate">
+                                  {currentProfile.name}, {currentProfile.age}
+                                </h2>
+                                {(currentProfile.isVerified || currentProfile.isUrStudent) && (
+                                  <BadgeCheck className="w-5 h-5 text-[#38BDF8] shrink-0" />
+                                )}
+                              </div>
+                              <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-[#CBD5E1] mt-0.5">
+                                <span className="flex items-center gap-1">
+                                  <MapPin className="w-3.5 h-3.5 text-[#38BDF8]" />
+                                  {currentProfile.location}
+                                </span>
+                                {currentProfile.occupation && (
+                                  <span className="flex items-center gap-1">
+                                    <Briefcase className="w-3.5 h-3.5 text-[#C9A84C]" />
+                                    {currentProfile.occupation}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Info Button */}
+                            <button
+                              type="button"
+                              onClick={() => setShowProfileDetail(true)}
+                              aria-label={t('discover.fullProfile')}
+                              className="pointer-events-auto w-9 h-9 rounded-full bg-white/15 backdrop-blur-md border border-white/20 text-[#F0EDE6] flex items-center justify-center hover:bg-white/25 transition-colors cursor-pointer shrink-0"
+                            >
+                              <Info className="w-4 h-4" />
+                            </button>
+                          </div>
+
+                          {/* Passion Pill Tags */}
+                          {currentProfile.tags && currentProfile.tags.length > 0 && (
+                            <div className="flex flex-wrap gap-1.5 mt-1">
+                              {currentProfile.tags.slice(0, 4).map((tag) => (
+                                <span
+                                  key={tag}
+                                  className="bg-white/12 backdrop-blur-sm text-[#F0EDE6] text-[10px] font-semibold px-2.5 py-0.5 rounded-full border border-white/15"
+                                >
+                                  #{t(`tags.${tag}`, { defaultValue: tag })}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+
+                          {/* Voice Intro Pill */}
+                          {currentProfile.voiceIntroPath && (
+                            <button
+                              type="button"
+                              onClick={() => toggleCandidateVoice(currentProfile.voiceIntroPath!)}
+                              className="pointer-events-auto self-start flex items-center gap-1.5 bg-[#0D1117]/90 hover:bg-[#0D1117] border border-[#C9A84C]/40 px-2.5 py-1 rounded-full text-xs font-medium text-[#C9A84C] transition-colors cursor-pointer mt-1"
+                            >
+                              {playingCandidateAudio ? (
+                                <Pause className="w-3.5 h-3.5 fill-current" />
+                              ) : (
+                                <Play className="w-3.5 h-3.5 fill-current" />
+                              )}
+                              <Volume2 className="w-3.5 h-3.5 text-[#A8A49E]" />
+                              <span>
+                                {t('profile.voiceDuration', {
+                                  seconds: Math.max(1, Math.round((currentProfile.voiceIntroDurationMs || 5000) / 1000)),
+                                })}
+                              </span>
+                            </button>
+                          )}
+
+                          {/* Bio Snippet */}
+                          {currentProfile.bio && (
+                            <p className="text-xs text-[#CBD5E1] line-clamp-2 mt-0.5">
+                              {currentProfile.bio}
+                            </p>
+                          )}
+                        </div>
+                      </div>
                     </div>
+                  );
+                })()}
 
-                {/* Bottom Photo Info */}
-                <div className="absolute bottom-3 left-4 right-4 flex items-end justify-between">
-                  <div>
-                    <h2 className="text-xl font-bold font-serif text-[#F0EDE6]">
-                      {currentProfile.name}, {currentProfile.age}
-                    </h2>
-                    <p className="text-xs text-[#A8A49E] font-medium">{currentProfile.location}</p>
-                  </div>
+                {/* 4-Button Action Dock: Rewind, Pass, Like, Super Like */}
+                <div className="flex items-center justify-center gap-4 py-3">
+                  {/* Rewind */}
+                  <button
+                    type="button"
+                    onClick={handleRewind}
+                    disabled={swipeHistory.length === 0}
+                    title={t('discover.rewind')}
+                    aria-label={t('discover.rewind')}
+                    className="w-11 h-11 rounded-full bg-[#1A1A2E] border border-[#21262D] text-[#F59E0B] flex items-center justify-center hover:border-[#F59E0B] active:scale-95 transition-all shadow-md disabled:opacity-35 cursor-pointer"
+                  >
+                    <RotateCcw className="w-5 h-5" />
+                  </button>
+
+                  {/* Pass */}
+                  <button
+                    type="button"
+                    onClick={() => handleSwipe('pass')}
+                    title={t('discover.pass')}
+                    aria-label={t('discover.pass')}
+                    className="w-14 h-14 rounded-full bg-[#1A1A2E] border border-[#21262D] text-[#FF6B6B] flex items-center justify-center hover:border-[#FF6B6B] active:scale-95 transition-all shadow-md cursor-pointer"
+                  >
+                    <X className="w-7 h-7" />
+                  </button>
+
+                  {/* Like */}
+                  <button
+                    type="button"
+                    onClick={() => handleSwipe('like')}
+                    title={t('discover.like')}
+                    aria-label={t('discover.like')}
+                    className="w-14 h-14 rounded-full bg-[#1A1A2E] border border-[#21262D] text-[#3FB950] flex items-center justify-center hover:border-[#3FB950] active:scale-95 transition-all shadow-md cursor-pointer"
+                  >
+                    <Heart className="w-7 h-7 fill-current" />
+                  </button>
+
+                  {/* Super Like */}
+                  <button
+                    type="button"
+                    onClick={() => handleSwipe('bid')}
+                    disabled={goldenBids <= 0}
+                    title={t('discover.superLike')}
+                    aria-label={t('discover.superLike')}
+                    className="w-11 h-11 rounded-full bg-[#2563EB] text-white flex items-center justify-center font-bold active:scale-95 transition-all shadow-[0_0_16px_rgba(37,99,235,0.4)] disabled:opacity-40 cursor-pointer"
+                  >
+                    <Star className="w-5 h-5 fill-current" />
+                  </button>
                 </div>
-              </div>
 
-              {/* Card Details */}
-              <div className="p-4 flex flex-col gap-3 flex-1 justify-between bg-[#1A1A2E]">
-                <div className="flex flex-col gap-2">
-                  <div className="flex items-center gap-2 text-xs text-[#C9A84C] font-semibold">
-                    <Heart className="w-3.5 h-3.5 fill-current" />
-                    <span>{currentProfile.intent}</span>
-                  </div>
-                  <p className="text-xs text-[#F0EDE6]/90 font-medium">
-                    {currentProfile.occupation}
-                  </p>
-                  {currentProfile.tags && currentProfile.tags.length > 0 && (
-                    <div className="flex flex-wrap gap-1.5 mt-1">
-                      {currentProfile.tags.slice(0, 3).map((tag) => (
-                        <span
-                          key={tag}
-                          className="bg-white/10 text-white/80 text-[10px] font-medium px-2 py-0.5 rounded-full border border-white/15"
+                {/* Full Profile Details Slide-Up Modal */}
+                {showProfileDetail && (
+                  <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-end sm:items-center justify-center p-4">
+                    <div className="w-full max-w-md bg-[#161B22] border border-[#21262D] rounded-3xl p-5 flex flex-col gap-3 max-h-[80vh] overflow-y-auto shadow-2xl">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <h3 className="font-serif text-xl font-bold text-[#F0EDE6]">
+                            {currentProfile.name}, {currentProfile.age}
+                          </h3>
+                          {(currentProfile.isVerified || currentProfile.isUrStudent) && (
+                            <BadgeCheck className="w-5 h-5 text-[#38BDF8]" />
+                          )}
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setShowProfileDetail(false)}
+                          className="p-1.5 rounded-full bg-[#21262D] text-[#A8A49E] hover:text-white cursor-pointer"
                         >
-                          {t(`tags.${tag}`, { defaultValue: tag })}
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        <span className="bg-[#0D1117] text-[#F0EDE6] text-xs font-semibold px-3 py-1 rounded-full border border-[#21262D]">
+                          {getIntentBadgeLabel(currentProfile.intent, t)}
                         </span>
-                      ))}
-                    </div>
-                  )}
-                  {currentProfile.voiceIntroPath && (
-                    <button
-                      type="button"
-                      onClick={() => toggleCandidateVoice(currentProfile.voiceIntroPath!)}
-                      className="self-start flex items-center gap-1.5 bg-[#0D1117]/80 hover:bg-[#0D1117] border border-[#C9A84C]/40 px-2.5 py-1 rounded-full text-xs font-medium text-[#C9A84C] transition-colors cursor-pointer mt-1"
-                    >
-                      {playingCandidateAudio ? (
-                        <Pause className="w-3.5 h-3.5 fill-current" />
-                      ) : (
-                        <Play className="w-3.5 h-3.5 fill-current" />
+                        {currentProfile.isUrStudent && (
+                          <span className="bg-[#2563EB] text-white text-xs font-bold px-3 py-1 rounded-full">
+                            {t('discover.urStudentBadge')}
+                          </span>
+                        )}
+                      </div>
+                      <div className="text-xs text-[#CBD5E1] space-y-1">
+                        <p className="flex items-center gap-1.5">
+                          <MapPin className="w-3.5 h-3.5 text-[#38BDF8]" />
+                          {currentProfile.location}
+                        </p>
+                        {currentProfile.occupation && (
+                          <p className="flex items-center gap-1.5">
+                            <Briefcase className="w-3.5 h-3.5 text-[#C9A84C]" />
+                            {currentProfile.occupation}
+                          </p>
+                        )}
+                      </div>
+                      {currentProfile.bio && (
+                        <p className="text-sm text-[#F0EDE6] leading-relaxed bg-[#0D1117] p-3 rounded-xl border border-[#21262D]">
+                          {currentProfile.bio}
+                        </p>
                       )}
-                      <Volume2 className="w-3.5 h-3.5 text-[#A8A49E]" />
-                      <span>
-                        {t('profile.voiceDuration', {
-                          seconds: Math.max(1, Math.round((currentProfile.voiceIntroDurationMs || 5000) / 1000)),
-                        })}
-                      </span>
-                    </button>
-                  )}
-                  {currentProfile.bio && (
-                    <p className="text-xs text-[#A8A49E] line-clamp-2 mt-0.5">
-                      {currentProfile.bio}
-                    </p>
-                  )}
-                </div>
-              </div>
-            </div>
+                      {currentProfile.tags && currentProfile.tags.length > 0 && (
+                        <div className="flex flex-wrap gap-1.5">
+                          {currentProfile.tags.map((tag) => (
+                            <span
+                              key={tag}
+                              className="bg-[#1A1A2E] text-[#CBD5E1] text-xs px-2.5 py-1 rounded-full border border-[#21262D]"
+                            >
+                              #{t(`tags.${tag}`, { defaultValue: tag })}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
 
-            {/* Swipe Action Buttons */}
-            <div className="flex items-center justify-center gap-6 py-3">
-              {/* Pass Button */}
-              <button
-                onClick={() => handleSwipe('pass')}
-                className="w-13 h-13 rounded-full bg-[#1A1A2E] border border-[#21262D] text-[#A8A49E] flex items-center justify-center hover:text-[#FF6B6B] hover:border-[#FF6B6B] active:scale-95 transition-all shadow-md cursor-pointer"
-              >
-                <X className="w-6 h-6" />
-              </button>
-
-              {/* Golden Bid Button */}
-              <button
-                onClick={() => handleSwipe('bid')}
-                disabled={goldenBids <= 0}
-                className="w-15 h-15 rounded-full bg-[#C9A84C] text-[#0D1117] flex items-center justify-center font-bold active:scale-95 transition-all shadow-[0_0_20px_rgba(201,168,76,0.35)] disabled:opacity-50 cursor-pointer"
-                title={t('discover.goldenBids')}
-              >
-                <Star className="w-7 h-7 fill-current" />
-              </button>
-
-              {/* Like Button */}
-              <button
-                onClick={() => handleSwipe('like')}
-                className="w-13 h-13 rounded-full bg-[#1A1A2E] border border-[#21262D] text-[#A8A49E] flex items-center justify-center hover:text-[#3FB950] hover:border-[#3FB950] active:scale-95 transition-all shadow-md cursor-pointer"
-              >
-                <Heart className="w-6 h-6 fill-current text-[#FF6B6B]" />
-              </button>
-            </div>
+                {/* Out of Swipes Modal */}
+                {outOfSwipesOpen && (
+                  <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+                    <div className="w-full max-w-sm bg-[#161B22] border border-[#21262D] rounded-3xl p-6 flex flex-col items-center text-center gap-4 shadow-2xl">
+                      <div className="w-14 h-14 rounded-full bg-[#2563EB]/20 border border-[#2563EB] flex items-center justify-center text-[#38BDF8]">
+                        <Flame className="w-7 h-7" />
+                      </div>
+                      <h3 className="font-serif text-xl font-bold text-[#F0EDE6]">
+                        {t('discover.outOfSwipesTitle')}
+                      </h3>
+                      <button
+                        type="button"
+                        onClick={handleClaimWhatsAppBonus}
+                        disabled={claimingBonus}
+                        className="w-full py-3.5 px-4 bg-[#25D366] text-[#0D1117] rounded-2xl font-bold text-sm flex items-center justify-center gap-2 hover:opacity-95 active:scale-[0.98] transition-all cursor-pointer shadow-lg"
+                      >
+                        <Share2 className="w-4 h-4" />
+                        <span>{t('discover.inviteWhatsAppButton')}</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setOutOfSwipesOpen(false)}
+                        className="text-xs text-[#8B949E] hover:text-[#F0EDE6] cursor-pointer"
+                      >
+                        {t('chat.cancel')}
+                      </button>
+                    </div>
+                  </div>
+                )}
           </div>
         )}
       </div>
@@ -2280,6 +2637,7 @@ export default function AppScreen() {
                         const isMe = msg.senderId === user?.id || msg.senderId === 'me';
                         const isDeleted = Boolean(msg.deletedAt);
                         const canEdit = isMe && !isDeleted && (Date.now() - new Date(msg.createdAt).getTime() <= 15 * 60 * 1000);
+                        const partnerPhoto = selectedMatch?.otherUserPrimaryPhoto || selectedMatch?.photoUrl;
 
                         return (
                           <div
@@ -2288,6 +2646,24 @@ export default function AppScreen() {
                               item.isLastInGroup ? 'mb-2.5' : 'mb-0.5'
                             }`}
                           >
+                            <div className={`flex items-end gap-2 ${isMe ? 'justify-end' : 'justify-start'} w-full`}>
+                              {!isMe && (
+                                <div className="w-8 h-8 shrink-0 flex items-center justify-center">
+                                  {item.isLastInGroup && (
+                                    partnerPhoto ? (
+                                      <img
+                                        src={partnerPhoto}
+                                        alt={selectedMatch?.otherUserName || 'Partner'}
+                                        className="w-8 h-8 rounded-full object-cover border border-[#21262D]"
+                                      />
+                                    ) : (
+                                      <div className="w-8 h-8 rounded-full bg-[#1A1A2E] border border-[#21262D] flex items-center justify-center text-xs font-bold text-[#A8A49E]">
+                                        {(selectedMatch?.otherUserName || 'K').charAt(0)}
+                                      </div>
+                                    )
+                                  )}
+                                </div>
+                              )}
                             {isDeleted ? (
                               <div className="px-3.5 py-1.5 rounded-2xl text-xs italic bg-[#161B22] border border-[#21262D] text-[#8B949E] flex items-center gap-1.5">
                                 <Trash2 className="w-3 h-3 text-[#6E7681]" />
@@ -2352,9 +2728,10 @@ export default function AppScreen() {
                                 </div>
                               </div>
                             )}
+                            </div>
 
                             {item.isLastInGroup && (
-                              <div className={`flex items-center gap-1.5 mt-1 px-1 text-[10px] text-[#8B949E]`}>
+                              <div className={`flex items-center gap-1.5 mt-1 px-1 text-[10px] text-[#8B949E] ${!isMe ? 'ml-10' : ''}`}>
                                 <span>{item.timeText}</span>
                                 {msg.editedAt && (
                                   <span className="italic text-[9px] text-[#6E7681]">({t('chat.edited')})</span>

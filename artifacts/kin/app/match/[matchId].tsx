@@ -28,6 +28,7 @@ import { useColors } from "@/hooks/useColors";
 import { useAudioPlayer, useAudioPlayerStatus } from "expo-audio";
 import { getVoiceSignedUrl } from "@/services/voiceIntroService";
 import { encryptMessage, decryptMessage } from "@/services/e2eeService";
+import { ProfilePhoto } from "@/components/ProfilePhoto";
 
 type MessageItem = {
   id: string;
@@ -820,6 +821,18 @@ export default function MatchScreen() {
 
               return (
                 <View style={[styles.messageRow, { marginBottom: item.isLastInGroup ? 8 : 2 }]}>
+                  <View style={{ flexDirection: "row", alignItems: "flex-end", justifyContent: isMe ? "flex-end" : "flex-start", gap: 8 }}>
+                    {!isMe && (
+                      <View style={{ width: 32, height: 32, justifyContent: "center", alignItems: "center" }}>
+                        {item.isLastInGroup && (
+                          <ProfilePhoto
+                            url={match?.otherUserPrimaryPhoto ?? null}
+                            size={32}
+                            borderRadius={16}
+                          />
+                        )}
+                      </View>
+                    )}
                   <TouchableOpacity
                     onLongPress={() => {
                       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -876,9 +889,10 @@ export default function MatchScreen() {
                       {textContent}
                     </Text>
                   </TouchableOpacity>
+                  </View>
 
                   {item.isLastInGroup && (
-                    <View style={[styles.metaRow, isMe ? styles.metaRowMe : styles.metaRowThem]}>
+                    <View style={[styles.metaRow, isMe ? styles.metaRowMe : [styles.metaRowThem, { marginLeft: 40 }]]}>
                       <Text style={[styles.timeText, { color: colors.mutedForeground }]}>
                         {item.timeText}
                       </Text>
