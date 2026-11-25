@@ -21,7 +21,25 @@ async function ensureDatabaseSchema() {
     await pool.query("ALTER TABLE profiles ALTER COLUMN phone_number DROP NOT NULL;");
     await pool.query("ALTER TABLE profiles ADD COLUMN IF NOT EXISTS bonus_swipes_today INTEGER DEFAULT 0;");
     await pool.query("ALTER TABLE profiles ADD COLUMN IF NOT EXISTS bonus_swipes_date TEXT;");
-    logger.info("Database schema verified: profiles columns up to date");
+    await pool.query("ALTER TABLE matches ADD COLUMN IF NOT EXISTS streak_count INTEGER NOT NULL DEFAULT 0;");
+    await pool.query("ALTER TABLE matches ADD COLUMN IF NOT EXISTS last_streak_date TEXT;");
+    await pool.query("ALTER TABLE matches ADD COLUMN IF NOT EXISTS is_revived BOOLEAN NOT NULL DEFAULT FALSE;");
+    await pool.query("ALTER TABLE messages ADD COLUMN IF NOT EXISTS media_type TEXT NOT NULL DEFAULT 'text';");
+    await pool.query("ALTER TABLE messages ADD COLUMN IF NOT EXISTS media_url TEXT;");
+    await pool.query("ALTER TABLE messages ADD COLUMN IF NOT EXISTS reactions JSONB NOT NULL DEFAULT '{}'::jsonb;");
+    await pool.query("ALTER TABLE messages ADD COLUMN IF NOT EXISTS game_data JSONB;");
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS chat_gifts (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        match_id UUID NOT NULL REFERENCES matches(id) ON DELETE CASCADE,
+        sender_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+        recipient_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+        gift_type TEXT NOT NULL,
+        amount_rwf INTEGER NOT NULL,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+    `);
+    logger.info("Database schema verified: profiles, matches, messages, chat_gifts up to date");
   } catch (err: any) {
     logger.warn({ err: err?.message }, "Database schema migration warning");
   }

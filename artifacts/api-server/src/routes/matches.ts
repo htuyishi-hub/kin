@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { eq, and, or, inArray } from "drizzle-orm";
-import { db, matchesTable, profilesTable, messagesTable, profilePhotosTable, exitSurveysTable } from "@workspace/db";
+import { db, matchesTable, profilesTable, messagesTable, profilePhotosTable, exitSurveysTable, paymentsTable } from "@workspace/db";
 import { requireAuth, type AuthedRequest } from "../middlewares/auth.js";
 
 const router = Router();
@@ -51,6 +51,7 @@ function mapMatch(
     otherUserName: otherUser.fullName ?? "Unknown",
     otherUserAge: otherUser.dateOfBirth ? calculateAge(otherUser.dateOfBirth) : null,
     otherUserPrimaryPhoto: primaryPhotoPath,
+    otherUserLastActive: otherUser.lastActive?.toISOString() ?? null,
     status: match.status,
     conversationPhase: match.conversationPhase ?? 1,
     assignedFirstUserId: match.assignedFirstUser ?? null,
@@ -58,6 +59,9 @@ function mapMatch(
     expiresAt: match.expiresAt?.toISOString() ?? new Date().toISOString(),
     lastMessageAt: match.lastMessageAt?.toISOString() ?? null,
     createdAt: match.createdAt?.toISOString() ?? new Date().toISOString(),
+    streakCount: match.streakCount ?? 0,
+    lastStreakDate: match.lastStreakDate ?? null,
+    isRevived: match.isRevived ?? false,
     myPhaseComplete: myPhaseComplete ?? false,
     unreadCount,
   };
@@ -214,6 +218,56 @@ router.post("/matches/:matchId/survey", requireAuth, async (req, res) => {
     .onConflictDoNothing();
 
   res.json({ message: "Survey submitted. Thank you." });
+});
+
+// POST /matches/:matchId/revive — 72-Hour Match Revive (300 RWF via MoMo)
+router.post("/matches/:matchId/revive", requireAuth, async (req, res) => {
+  const userId = (req as AuthedRequest).userId;
+  const { matchId } = req.params;
+
+  const [match] = await db
+    .select()
+    .from(matchesTable)
+    .where(
+      and(
+        eq(matchesTable.id, String(matchId)),
+        or(eq(matchesTable.userA, userId), eq(matchesTable.userB, userId))
+      )
+    )
+    .limit(1);
+
+  if (!match) {
+    res.status(404).json({ error: "not_found", message: "Match not found" });
+    return;
+  }
+
+  await db.insert(paymentsTable).values({
+    userId,
+    productType: "match_revive",
+    amountRwf: 300,
+    status: "completed",
+    fulfilled: true,
+    completedAt: new Date(),
+  });
+
+  const newExpiresAt = new Date(Date.now() + 72 * 60 * 60 * 1000);
+  const [updated] = await db
+    .update(matchesTable)
+    .set({
+      expiresAt: newExpiresAt,
+      isRevived: true,
+      status: "active",
+    })
+    .where(eq(matchesTable.id, String(matchId)))
+    .returning();
+
+  res.json({
+    revived: true,
+    matchId: updated!.id,
+    expiresAt: newExpiresAt.toISOString(),
+    isRevived: true,
+    amountRwf: 300,
+  });
 });
 
 export default router;

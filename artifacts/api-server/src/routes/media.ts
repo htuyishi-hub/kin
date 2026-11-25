@@ -556,4 +556,32 @@ router.delete("/media/voice", requireAuth, async (req, res) => {
   res.json({ success: true, message: "Voice intro deleted" });
 });
 
+// POST /media/voice-upload — Pre-signed upload URL for 60s chat voice notes
+router.post("/media/voice-upload", requireAuth, async (req, res) => {
+  const userId = (req as AuthedRequest).userId;
+  const path = `chat-media/voice/${userId}/${randomUUID()}.m4a`;
+  const admin = getStorageAdmin();
+  if (!admin) {
+    res.status(503).json({ error: "storage_not_configured", code: "STORAGE_NOT_CONFIGURED" });
+    return;
+  }
+
+  const { data, error } = await admin.storage
+    .from("voice-intros")
+    .createSignedUploadUrl(path);
+
+  if (error || !data) {
+    res.status(500).json({ error: "storage_error", message: error?.message });
+    return;
+  }
+
+  res.json({
+    uploadUrl: data.signedUrl,
+    token: data.token,
+    path,
+    maxDurationSeconds: 60,
+    expiresIn: 120,
+  });
+});
+
 export default router;

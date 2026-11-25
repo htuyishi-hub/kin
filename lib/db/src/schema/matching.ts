@@ -42,6 +42,10 @@ export const matchesTable = pgTable("matches", {
   lastMessageAt: timestamp("last_message_at", { withTimezone: true }),
   smartCloseAt: timestamp("smart_close_at", { withTimezone: true }),
 
+  streakCount: smallint("streak_count").default(0).notNull(),
+  lastStreakDate: text("last_streak_date"),
+  isRevived: boolean("is_revived").default(false).notNull(),
+
   exitPrompted: boolean("exit_prompted").default(false),
   exitedAt: timestamp("exited_at", { withTimezone: true }),
 

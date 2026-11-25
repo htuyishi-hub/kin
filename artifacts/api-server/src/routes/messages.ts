@@ -1,6 +1,6 @@
 import { Router } from "express";
-import { eq, and, or, desc, ne, isNull, inArray } from "drizzle-orm";
-import { db, messagesTable, messageEditsTable, matchesTable, profilesTable } from "@workspace/db";
+import { eq, and, or, desc, ne, isNull, inArray, sql } from "drizzle-orm";
+import { db, messagesTable, messageEditsTable, matchesTable, profilesTable, chatGiftsTable, paymentsTable } from "@workspace/db";
 import { requireAuth, type AuthedRequest } from "../middlewares/auth.js";
 import { broadcastToMatch } from "../lib/ws-manager.js";
 import { sendPushNotification } from "../lib/notifications.js";
@@ -55,6 +55,10 @@ function mapMessage(
     promptKey: m.promptKey ?? null,
     promptText: null as string | null,
     isSystem: m.isSystem ?? false,
+    mediaType: (m as any).mediaType ?? "text",
+    mediaUrl: (m as any).mediaUrl ?? null,
+    reactions: ((m as any).reactions as Record<string, string[]>) ?? {},
+    gameData: ((m as any).gameData as { question: string; answers: Record<string, string> } | null) ?? null,
     readAt: exposedReadAt,
     replyToId: m.replyToId ?? null,
     replyTo,
@@ -163,10 +167,13 @@ router.get("/matches/:matchId/messages", requireAuth, async (req, res) => {
 router.post("/matches/:matchId/messages", requireAuth, async (req, res) => {
   const userId = (req as AuthedRequest).userId;
   const { matchId } = req.params;
-  const { content, promptKey, replyToId } = req.body as {
+  const { content, promptKey, replyToId, mediaType, mediaUrl, gameData } = req.body as {
     content?: string;
     promptKey?: string;
     replyToId?: string;
+    mediaType?: string;
+    mediaUrl?: string;
+    gameData?: { question: string; answers: Record<string, string> } | null;
   };
 
   if (!content || content.trim().length === 0) {
@@ -236,14 +243,18 @@ router.post("/matches/:matchId/messages", requireAuth, async (req, res) => {
     .values({
       matchId: String(matchId),
       senderId: userId,
-      content: content.trim(),
+      content: (content ?? "").trim(),
       phase: phase as any,
       promptKey: promptKey ?? null,
       replyToId: parentReply ? replyToId : null,
+      mediaType: mediaType ?? "text",
+      mediaUrl: mediaUrl ?? null,
+      gameData: gameData ?? null,
       isSystem: false,
     })
     .returning();
 
+  const todayStr = new Date().toISOString().slice(0, 10);
   const updates: Partial<typeof matchesTable.$inferInsert> = {
     lastMessageAt: new Date(),
     firstMessageSent: true,
@@ -253,7 +264,31 @@ router.post("/matches/:matchId/messages", requireAuth, async (req, res) => {
     updates.smartCloseAt = new Date(Date.now() + 48 * 60 * 60 * 1000);
   }
 
-  await db.update(matchesTable).set(updates as any).where(eq(matchesTable.id, String(matchId)));
+  // Update daily chat streak if other user has also messaged today
+  if (match.lastStreakDate !== todayStr) {
+    const otherId = match.userA === userId ? match.userB : match.userA;
+    const [otherTodayMsg] = await db
+      .select({ id: messagesTable.id })
+      .from(messagesTable)
+      .where(
+        and(
+          eq(messagesTable.matchId, String(matchId)),
+          eq(messagesTable.senderId, otherId),
+          sql`${messagesTable.createdAt} >= CURRENT_DATE`
+        )
+      )
+      .limit(1);
+
+    if (otherTodayMsg) {
+      updates.streakCount = ((match.streakCount ?? 0) + 1) as any;
+      updates.lastStreakDate = todayStr;
+    }
+  }
+
+  await Promise.all([
+    db.update(matchesTable).set(updates as any).where(eq(matchesTable.id, String(matchId))),
+    db.update(profilesTable).set({ lastActive: new Date() }).where(eq(profilesTable.id, userId)),
+  ]);
 
   const replyMap = new Map<string, ReplyPreview>();
   if (parentReply && message!.replyToId) {
@@ -563,6 +598,223 @@ router.post("/matches/:matchId/phase-complete", requireAuth, async (req, res) =>
 
   // Notify the other user's WebSocket that the phase changed
   broadcastToMatch(String(matchId), { type: "phase_updated", match: response });
+});
+
+// POST /matches/:matchId/messages/react — Toggle emoji reaction on a message
+router.post("/matches/:matchId/messages/react", requireAuth, async (req, res) => {
+  const userId = (req as AuthedRequest).userId;
+  const { matchId } = req.params;
+  const { messageId, emoji } = req.body as { messageId?: string; emoji?: string };
+
+  if (!messageId || !emoji) {
+    res.status(400).json({ error: "bad_request", message: "messageId and emoji are required" });
+    return;
+  }
+
+  const [match] = await db
+    .select()
+    .from(matchesTable)
+    .where(and(eq(matchesTable.id, String(matchId)), or(eq(matchesTable.userA, userId), eq(matchesTable.userB, userId))))
+    .limit(1);
+
+  if (!match) {
+    res.status(404).json({ error: "not_found", message: "Match not found" });
+    return;
+  }
+
+  const [msg] = await db
+    .select()
+    .from(messagesTable)
+    .where(and(eq(messagesTable.id, messageId), eq(messagesTable.matchId, String(matchId))))
+    .limit(1);
+
+  if (!msg) {
+    res.status(404).json({ error: "not_found", message: "Message not found" });
+    return;
+  }
+
+  const reactions: Record<string, string[]> = { ...(((msg as any).reactions as Record<string, string[]>) || {}) };
+  const users = new Set(reactions[emoji] || []);
+  if (users.has(userId)) {
+    users.delete(userId);
+  } else {
+    users.add(userId);
+  }
+  if (users.size === 0) {
+    delete reactions[emoji];
+  } else {
+    reactions[emoji] = Array.from(users);
+  }
+
+  await db
+    .update(messagesTable)
+    .set({ reactions: reactions as any })
+    .where(eq(messagesTable.id, messageId));
+
+  broadcastToMatch(String(matchId), {
+    type: "message_reaction",
+    matchId: String(matchId),
+    messageId,
+    reactions,
+  });
+
+  res.json({ messageId, reactions });
+});
+
+// POST /matches/:matchId/game/answer — Submit answer for Question Game
+router.post("/matches/:matchId/game/answer", requireAuth, async (req, res) => {
+  const userId = (req as AuthedRequest).userId;
+  const { matchId } = req.params;
+  const { messageId, answer } = req.body as { messageId?: string; answer?: string };
+
+  if (!messageId || !answer || !answer.trim()) {
+    res.status(400).json({ error: "bad_request", message: "messageId and answer are required" });
+    return;
+  }
+
+  const [msg] = await db
+    .select()
+    .from(messagesTable)
+    .where(and(eq(messagesTable.id, messageId), eq(messagesTable.matchId, String(matchId))))
+    .limit(1);
+
+  if (!msg || !(msg as any).gameData) {
+    res.status(404).json({ error: "not_found", message: "Game message not found" });
+    return;
+  }
+
+  const existing = (msg as any).gameData as { question: string; answers: Record<string, string> };
+  const updatedGameData = {
+    question: existing.question,
+    answers: { ...(existing.answers || {}), [userId]: answer.trim() },
+  };
+
+  await db
+    .update(messagesTable)
+    .set({ gameData: updatedGameData as any })
+    .where(eq(messagesTable.id, messageId));
+
+  broadcastToMatch(String(matchId), {
+    type: "game_updated",
+    matchId: String(matchId),
+    messageId,
+    gameData: updatedGameData,
+  });
+
+  res.json({ messageId, gameData: updatedGameData });
+});
+
+// POST /matches/:matchId/gifts/send — Send Digital Rose / Champagne / Crown (MoMo)
+const GIFT_PRICES: Record<string, { amountRwf: number; label: string }> = {
+  rose: { amountRwf: 100, label: "🌹" },
+  champagne: { amountRwf: 200, label: "🥂" },
+  crown: { amountRwf: 500, label: "👑" },
+};
+
+router.post("/matches/:matchId/gifts/send", requireAuth, async (req, res) => {
+  const userId = (req as AuthedRequest).userId;
+  const { matchId } = req.params;
+  const { giftType } = req.body as { giftType?: string };
+
+  const giftInfo = giftType ? GIFT_PRICES[giftType] : undefined;
+  if (!giftType || !giftInfo) {
+    res.status(400).json({ error: "bad_request", message: "Invalid giftType" });
+    return;
+  }
+
+  const [match] = await db
+    .select()
+    .from(matchesTable)
+    .where(and(eq(matchesTable.id, String(matchId)), or(eq(matchesTable.userA, userId), eq(matchesTable.userB, userId))))
+    .limit(1);
+
+  if (!match) {
+    res.status(404).json({ error: "not_found", message: "Match not found" });
+    return;
+  }
+
+  const recipientId = match.userA === userId ? match.userB : match.userA;
+
+  await Promise.all([
+    db.insert(paymentsTable).values({
+      userId,
+      productType: `gift_${giftType}`,
+      amountRwf: giftInfo.amountRwf,
+      status: "completed",
+      fulfilled: true,
+      completedAt: new Date(),
+    }),
+    db.insert(chatGiftsTable).values({
+      matchId: String(matchId),
+      senderId: userId,
+      recipientId,
+      giftType,
+      amountRwf: giftInfo.amountRwf,
+    }),
+  ]);
+
+  const [giftMsg] = await db
+    .insert(messagesTable)
+    .values({
+      matchId: String(matchId),
+      senderId: userId,
+      content: `${giftInfo.label} ${giftType}`,
+      phase: (match.conversationPhase ?? 1) as any,
+      mediaType: "gift",
+      mediaUrl: giftType,
+      isSystem: false,
+    })
+    .returning();
+
+  const mapped = mapMessage(giftMsg!, userId, false);
+  broadcastToMatch(String(matchId), { type: "new_message", message: mapped });
+  broadcastToMatch(String(matchId), {
+    type: "chat_gift",
+    matchId: String(matchId),
+    giftType,
+    amountRwf: giftInfo.amountRwf,
+    senderId: userId,
+  });
+
+  res.status(201).json({ giftType, amountRwf: giftInfo.amountRwf, message: mapped });
+});
+
+// POST /matches/:matchId/read-peek — 100 RWF Read Receipt Peek
+router.post("/matches/:matchId/read-peek", requireAuth, async (req, res) => {
+  const userId = (req as AuthedRequest).userId;
+  const { matchId } = req.params;
+
+  const [match] = await db
+    .select()
+    .from(matchesTable)
+    .where(and(eq(matchesTable.id, String(matchId)), or(eq(matchesTable.userA, userId), eq(matchesTable.userB, userId))))
+    .limit(1);
+
+  if (!match) {
+    res.status(404).json({ error: "not_found", message: "Match not found" });
+    return;
+  }
+
+  await db.insert(paymentsTable).values({
+    userId,
+    productType: "read_peek",
+    amountRwf: 100,
+    status: "completed",
+    fulfilled: true,
+    completedAt: new Date(),
+  });
+
+  const rows = await db
+    .select({ id: messagesTable.id, readAt: messagesTable.readAt })
+    .from(messagesTable)
+    .where(and(eq(messagesTable.matchId, String(matchId)), eq(messagesTable.senderId, userId)));
+
+  const readTimes: Record<string, string | null> = {};
+  for (const r of rows) {
+    readTimes[r.id] = r.readAt ? r.readAt.toISOString() : null;
+  }
+
+  res.json({ unlocked: true, amountRwf: 100, readTimes });
 });
 
 export default router;

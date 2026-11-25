@@ -1,4 +1,4 @@
-import { pgTable, text, smallint, boolean, uuid, timestamp, index } from "drizzle-orm/pg-core";
+import { pgTable, text, smallint, boolean, uuid, timestamp, index, integer, jsonb } from "drizzle-orm/pg-core";
 import { profilesTable } from "./profiles";
 import { matchesTable } from "./matching";
 import { promptDefinitionsTable } from "./prompts";
@@ -11,6 +11,10 @@ export const messagesTable = pgTable("messages", {
   phase: smallint("phase").default(1).notNull(),
   promptKey: text("prompt_key").references(() => promptDefinitionsTable.key),
   isSystem: boolean("is_system").default(false).notNull(),
+  mediaType: text("media_type").default("text").notNull(), // text | voice | gift | game_prompt
+  mediaUrl: text("media_url"),
+  reactions: jsonb("reactions").$type<Record<string, string[]>>().default({}).notNull(),
+  gameData: jsonb("game_data").$type<{ question: string; answers: Record<string, string> } | null>(),
   readAt: timestamp("read_at", { withTimezone: true }),
   replyToId: uuid("reply_to_id"),
   editedAt: timestamp("edited_at", { withTimezone: true }),
@@ -21,6 +25,18 @@ export const messagesTable = pgTable("messages", {
   index("messages_match_id_idx").on(table.matchId),
   index("messages_match_created_idx").on(table.matchId, table.createdAt),
   index("messages_reply_to_id_idx").on(table.replyToId),
+]);
+
+export const chatGiftsTable = pgTable("chat_gifts", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  matchId: uuid("match_id").notNull().references(() => matchesTable.id, { onDelete: "cascade" }),
+  senderId: uuid("sender_id").notNull().references(() => profilesTable.id, { onDelete: "cascade" }),
+  recipientId: uuid("recipient_id").notNull().references(() => profilesTable.id, { onDelete: "cascade" }),
+  giftType: text("gift_type").notNull(), // rose | champagne | crown
+  amountRwf: integer("amount_rwf").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+}, (table) => [
+  index("chat_gifts_match_id_idx").on(table.matchId),
 ]);
 
 export const messageEditsTable = pgTable("message_edits", {
@@ -43,6 +59,7 @@ export const exitSurveysTable = pgTable("exit_surveys", {
 
 export type Message = typeof messagesTable.$inferSelect;
 export type InsertMessage = typeof messagesTable.$inferInsert;
+export type ChatGift = typeof chatGiftsTable.$inferSelect;
 export type MessageEdit = typeof messageEditsTable.$inferSelect;
 export type InsertMessageEdit = typeof messageEditsTable.$inferInsert;
 export type ExitSurvey = typeof exitSurveysTable.$inferSelect;
