@@ -25,6 +25,49 @@ async function ensureDatabaseSchema() {
     await pool.query("ALTER TABLE profiles ADD COLUMN IF NOT EXISTS unblurred_likes_until TIMESTAMPTZ DEFAULT NULL;");
     await pool.query("ALTER TABLE profiles ADD COLUMN IF NOT EXISTS verification_status TEXT NOT NULL DEFAULT 'none';");
     await pool.query("ALTER TABLE profiles ADD COLUMN IF NOT EXISTS is_incognito BOOLEAN NOT NULL DEFAULT FALSE;");
+    await pool.query("ALTER TABLE profiles ADD COLUMN IF NOT EXISTS popularity_score INTEGER NOT NULL DEFAULT 0;");
+    await pool.query("ALTER TABLE profiles ADD COLUMN IF NOT EXISTS weekly_rank INTEGER DEFAULT NULL;");
+    await pool.query("ALTER TABLE profiles ADD COLUMN IF NOT EXISTS campus_zone TEXT DEFAULT 'Kigali';");
+    await pool.query("ALTER TABLE profiles ADD COLUMN IF NOT EXISTS spotlight_until TIMESTAMPTZ DEFAULT NULL;");
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS popularity_votes (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        voter_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+        target_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+        points INTEGER NOT NULL DEFAULT 1,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+    `);
+    await pool.query("CREATE INDEX IF NOT EXISTS idx_votes_target ON popularity_votes(target_id);");
+    await pool.query("CREATE INDEX IF NOT EXISTS idx_votes_voter_today ON popularity_votes(voter_id, created_at);");
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS rush_sessions (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_a UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+        user_b UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+        status TEXT NOT NULL DEFAULT 'active',
+        started_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        ends_at TIMESTAMPTZ NOT NULL DEFAULT (NOW() + INTERVAL '3 minutes'),
+        user_a_decision TEXT DEFAULT 'pending',
+        user_b_decision TEXT DEFAULT 'pending',
+        match_id UUID REFERENCES matches(id) ON DELETE SET NULL
+      );
+    `);
+    await pool.query("CREATE INDEX IF NOT EXISTS idx_rush_user_a ON rush_sessions(user_a);");
+    await pool.query("CREATE INDEX IF NOT EXISTS idx_rush_user_b ON rush_sessions(user_b);");
+    await pool.query(`
+      DO $$
+      BEGIN
+        IF NOT EXISTS (
+          SELECT 1 FROM pg_publication_tables
+          WHERE pubname = 'supabase_realtime' AND schemaname = 'public' AND tablename = 'rush_sessions'
+        ) THEN
+          ALTER PUBLICATION supabase_realtime ADD TABLE public.rush_sessions;
+        END IF;
+      EXCEPTION WHEN undefined_object THEN
+        NULL;
+      END $$;
+    `);
     await pool.query(`
       CREATE TABLE IF NOT EXISTS name_searches (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

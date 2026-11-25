@@ -33,6 +33,7 @@ export default function OnboardingPersonal() {
   const [year, setYear] = useState('');
   const [dob, setDob] = useState('');
   const [gender, setGender] = useState<'female' | 'male' | ''>('');
+  const [phoneSuffix, setPhoneSuffix] = useState('');
   const [error, setError] = useState('');
   const [isPending, setIsPending] = useState(false);
 
@@ -63,9 +64,15 @@ export default function OnboardingPersonal() {
         const rawGender = (draft?.gender || profile?.gender || '').toLowerCase();
         const initialGender = rawGender === 'male' || rawGender === 'female' ? rawGender : '';
         const rawDob = draft?.dob || profile?.dateOfBirth || '';
+        const rawPhone = String(draft?.phoneSuffix || profile?.phoneNumber || '').replace(/\s+/g, '');
 
         if (initialName && !fullName) setFullName(initialName);
         if (initialGender && !gender) setGender(initialGender as any);
+        if (rawPhone && !phoneSuffix) {
+          if (rawPhone.startsWith('+250')) setPhoneSuffix(rawPhone.slice(4));
+          else if (rawPhone.startsWith('07')) setPhoneSuffix(rawPhone.slice(1));
+          else if (/^7[2389]\d{7}$/.test(rawPhone)) setPhoneSuffix(rawPhone);
+        }
 
         if (rawDob && !dob) {
           const match = String(rawDob).match(/^(\d{4})-(\d{2})-(\d{2})/);
@@ -85,12 +92,12 @@ export default function OnboardingPersonal() {
     };
   }, [token]);
 
-  function saveDraft(name: string, d: string, m: string, y: string, g: string) {
+  function saveDraft(name: string, d: string, m: string, y: string, g: string, p?: string) {
     const dobStr = d && m && y ? `${y}-${m}-${d}` : '';
     try {
       localStorage.setItem(
         'kin_personal_draft',
-        JSON.stringify({ fullName: name, dob: dobStr, gender: g })
+        JSON.stringify({ fullName: name, dob: dobStr, gender: g, phoneSuffix: p ?? phoneSuffix })
       );
     } catch {}
   }
@@ -137,6 +144,11 @@ export default function OnboardingPersonal() {
       setError(t('onboarding.personal.enterFullName'));
       return;
     }
+    const cleanSuffix = phoneSuffix.replace(/\s+/g, '').replace(/^0/, '');
+    if (!/^7[2389]\d{7}$/.test(cleanSuffix)) {
+      setError(t('contacts.phoneRequired'));
+      return;
+    }
     if (!dob) {
       setError(t('onboarding.personal.selectDob'));
       return;
@@ -168,6 +180,7 @@ export default function OnboardingPersonal() {
         },
         body: JSON.stringify({
           fullName: fullName.trim(),
+          phoneNumber: `+250${cleanSuffix}`,
           dateOfBirth: dob,
           gender,
         }),
@@ -230,6 +243,30 @@ export default function OnboardingPersonal() {
             }}
             className="w-full bg-[#1A1A2E] border-1.5 border-[#21262D] rounded-xl px-4 py-3 text-[#F0EDE6] placeholder-[#4A4742] outline-none focus:border-[#2563EB] font-medium"
           />
+        </div>
+
+        {/* Phone Number (+250) */}
+        <div className="flex flex-col gap-1.5">
+          <label className="text-xs font-semibold uppercase tracking-wider text-[#A8A49E]">
+            {t('auth.phoneLabel', { defaultValue: 'Phone' })}
+          </label>
+          <div className="flex items-center bg-[#1A1A2E] border-1.5 border-[#21262D] rounded-xl overflow-hidden focus-within:border-[#2563EB]">
+            <span className="px-3.5 py-3 text-sm font-bold text-[#A8A49E] border-r border-[#21262D]">+250</span>
+            <input
+              type="tel"
+              inputMode="numeric"
+              maxLength={10}
+              placeholder="788 123 456"
+              value={phoneSuffix}
+              onChange={(e) => {
+                const val = e.target.value.replace(/[^\d]/g, '');
+                setPhoneSuffix(val);
+                saveDraft(fullName, day, month, year, gender, val);
+                setError('');
+              }}
+              className="flex-1 bg-transparent px-3 py-3 text-[#F0EDE6] placeholder-[#4A4742] outline-none font-medium"
+            />
+          </div>
         </div>
 
         {/* Date of Birth */}

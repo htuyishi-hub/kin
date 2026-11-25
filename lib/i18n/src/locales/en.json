@@ -311,7 +311,35 @@
     "placeholder": "078...",
     "block": "Block",
     "unblock": "Unblock",
-    "empty": "No blocked contacts"
+    "empty": "No blocked contacts",
+    "importButton": "Import Phone Contacts",
+    "bulkPastePlaceholder": "0788123456, 0799887766",
+    "blockSelected": "Block Selected",
+    "blockedCount": "{{count}} blocked",
+    "phoneRequired": "Rwandan phone number required"
+  },
+  "leaderboard": {
+    "title": "Trending",
+    "allRwanda": "All Rwanda",
+    "spotlight": "VIP Spotlight",
+    "mostWanted": "Most Wanted",
+    "points": "pts",
+    "voteFree": "Vote",
+    "voteRose": "Rose · 100 RWF",
+    "boostSpotlight": "Spotlight · 300 RWF",
+    "shareStatus": "WhatsApp Status",
+    "shareText": "Vote for me on Kinn Trending! kinn.ink"
+  },
+  "rush": {
+    "title": "8 PM Rush 🔥",
+    "liveBanner": "8 PM Rush LIVE",
+    "joinQueue": "Join Blind Date",
+    "waitingPartner": "Finding blind date...",
+    "timerLabel": "Time left",
+    "reveal": "Reveal & Match ❤️",
+    "pass": "Pass",
+    "itIsAMatch": "Matched! Photos Unlocked 🎉",
+    "continueChat": "Open Chat"
   },
   "serious": {
     "tabTitle": "Serious",

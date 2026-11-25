@@ -58,6 +58,10 @@ export const profilesTable = pgTable("profiles", {
   unblurredLikesUntil: timestamp("unblurred_likes_until", { withTimezone: true }),
   verificationStatus: text("verification_status").default("none").notNull(),
   isIncognito: boolean("is_incognito").default(false).notNull(),
+  popularityScore: integer("popularity_score").default(0).notNull(),
+  weeklyRank: integer("weekly_rank"),
+  campusZone: text("campus_zone").default("Kigali"),
+  spotlightUntil: timestamp("spotlight_until", { withTimezone: true }),
   profileActive: boolean("profile_active").default(true),
   profilePaused: boolean("profile_paused").default(false),
 

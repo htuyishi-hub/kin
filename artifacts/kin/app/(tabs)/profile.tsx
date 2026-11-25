@@ -1,4 +1,5 @@
 import { Feather } from "@expo/vector-icons";
+import * as Contacts from "expo-contacts";
 import {
   useGetMe, useAddPhoto,
   usePauseProfile,
@@ -20,6 +21,7 @@ import {
 import { uploadVoiceIntroFile, resolveAudioUrl, getVoiceSignedUrl } from "@/services/voiceIntroService";
 import {
   ActivityIndicator,
+  FlatList,
   Modal,
   Platform,
   ScrollView,
@@ -392,6 +394,63 @@ export default function ProfileScreen() {
       method: "DELETE",
       headers: { Authorization: `Bearer ${token}` },
     }).catch(() => {});
+  };
+
+  const [contactPickerOpen, setContactPickerOpen] = useState(false);
+  const [phoneContacts, setPhoneContacts] = useState<{ id: string; name: string; phone: string }[]>([]);
+  const [selectedContactPhones, setSelectedContactPhones] = useState<Record<string, boolean>>({});
+  const [contactSearch, setContactSearch] = useState("");
+
+  const handleOpenContactPicker = async () => {
+    try {
+      const { status } = await Contacts.requestPermissionsAsync();
+      if (status !== "granted") return;
+      const { data } = await Contacts.getContactsAsync({
+        fields: [Contacts.Fields.Name, Contacts.Fields.PhoneNumbers],
+      });
+      const list: { id: string; name: string; phone: string }[] = [];
+      for (const c of data || []) {
+        const num = c.phoneNumbers?.[0]?.number;
+        if (num) {
+          list.push({ id: c.id ?? num, name: c.name || num, phone: num });
+        }
+      }
+      setPhoneContacts(list);
+      setSelectedContactPhones({});
+      setContactSearch("");
+      setContactPickerOpen(true);
+    } catch {}
+  };
+
+  const handleBlockSelectedContacts = async () => {
+    if (!token) return;
+    const phones = Object.entries(selectedContactPhones)
+      .filter(([, checked]) => checked)
+      .map(([phone]) => phone);
+    if (phones.length === 0) return;
+    setBlockingPhone(true);
+    try {
+      const res = await fetch(`${apiBaseUrl}/api/contacts/block-bulk`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ phoneNumbers: phones }),
+      });
+      if (res.ok) {
+        const listRes = await fetch(`${apiBaseUrl}/api/contacts/blocked`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (listRes.ok) {
+          const d = await listRes.json();
+          if (Array.isArray(d.contacts)) setBlockedContacts(d.contacts);
+        }
+        setContactPickerOpen(false);
+      }
+    } finally {
+      setBlockingPhone(false);
+    }
   };
 
   useEffect(() => {
@@ -951,6 +1010,22 @@ export default function ProfileScreen() {
                 </Text>
               </TouchableOpacity>
             </View>
+            <TouchableOpacity
+              onPress={handleOpenContactPicker}
+              style={{
+                backgroundColor: "rgba(37,99,235,0.18)",
+                borderWidth: 1,
+                borderColor: "rgba(56,189,248,0.4)",
+                paddingVertical: 9,
+                borderRadius: 10,
+                alignItems: "center",
+              }}
+              activeOpacity={0.85}
+            >
+              <Text style={{ color: "#38BDF8", fontSize: 12, fontFamily: "Inter_700Bold" }}>
+                📖 {t('contacts.importButton')}
+              </Text>
+            </TouchableOpacity>
             {blockedContacts.map((c) => (
               <View
                 key={c.id}
@@ -973,6 +1048,90 @@ export default function ProfileScreen() {
               </View>
             ))}
           </View>
+
+          <Modal
+            visible={contactPickerOpen}
+            transparent
+            animationType="slide"
+            onRequestClose={() => setContactPickerOpen(false)}
+          >
+            <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.75)", justifyContent: "flex-end" }}>
+              <View style={{ backgroundColor: "#161B22", borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 20, maxHeight: "80%", gap: 12 }}>
+                <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+                  <Text style={{ color: Colors.bone, fontSize: 16, fontFamily: "Inter_700Bold" }}>
+                    {t('contacts.title')}
+                  </Text>
+                  <TouchableOpacity onPress={() => setContactPickerOpen(false)}>
+                    <Feather name="x" size={20} color={Colors.boneDim} />
+                  </TouchableOpacity>
+                </View>
+                <TextInput
+                  value={contactSearch}
+                  onChangeText={setContactSearch}
+                  placeholder={t('search.placeholder')}
+                  placeholderTextColor={Colors.boneGhost}
+                  style={{
+                    backgroundColor: Colors.ink,
+                    color: Colors.bone,
+                    borderRadius: 10,
+                    paddingHorizontal: 12,
+                    paddingVertical: 9,
+                    fontSize: 13,
+                  }}
+                />
+                <FlatList
+                  data={phoneContacts.filter(
+                    (c) =>
+                      !contactSearch.trim() ||
+                      c.name.toLowerCase().includes(contactSearch.toLowerCase()) ||
+                      c.phone.includes(contactSearch)
+                  )}
+                  keyExtractor={(item) => item.id}
+                  style={{ maxHeight: 340 }}
+                  renderItem={({ item }) => {
+                    const checked = Boolean(selectedContactPhones[item.phone]);
+                    return (
+                      <TouchableOpacity
+                        onPress={() =>
+                          setSelectedContactPhones((prev) => ({
+                            ...prev,
+                            [item.phone]: !prev[item.phone],
+                          }))
+                        }
+                        style={{
+                          flexDirection: "row",
+                          alignItems: "center",
+                          justifyContent: "space-between",
+                          paddingVertical: 10,
+                          borderBottomWidth: 1,
+                          borderBottomColor: "rgba(255,255,255,0.06)",
+                        }}
+                      >
+                        <View>
+                          <Text style={{ color: Colors.bone, fontSize: 14, fontFamily: "Inter_600SemiBold" }}>{item.name}</Text>
+                          <Text style={{ color: Colors.boneDim, fontSize: 12 }}>{item.phone}</Text>
+                        </View>
+                        <Feather
+                          name={checked ? "check-square" : "square"}
+                          size={20}
+                          color={checked ? Colors.gold : Colors.boneDim}
+                        />
+                      </TouchableOpacity>
+                    );
+                  }}
+                />
+                <TouchableOpacity
+                  onPress={handleBlockSelectedContacts}
+                  disabled={blockingPhone}
+                  style={{ backgroundColor: Colors.gold, paddingVertical: 13, borderRadius: 999, alignItems: "center" }}
+                >
+                  <Text style={{ color: "#0D1117", fontSize: 14, fontFamily: "Inter_700Bold" }}>
+                    {t('contacts.blockSelected')} ({Object.values(selectedContactPhones).filter(Boolean).length})
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </Modal>
 
           <TouchableOpacity
             style={styles.actionRow}

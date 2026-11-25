@@ -34,6 +34,7 @@ export default function PersonalScreen() {
   const [year, setYear] = useState("");
   const [activePicker, setActivePicker] = useState<"day" | "month" | "year" | null>(null);
   const [gender, setGender] = useState("");
+  const [phoneSuffix, setPhoneSuffix] = useState("");
   const [error, setError] = useState("");
 
   const genders = [
@@ -54,9 +55,15 @@ export default function PersonalScreen() {
         const initialName = draft?.fullName || profile?.fullName || "";
         const initialGender = draft?.gender || profile?.gender || "";
         const rawDob = draft?.dateOfBirth || (profile as any)?.dateOfBirth || "";
+        const rawPhone = String(draft?.phoneSuffix || (profile as any)?.phoneNumber || "").replace(/\s+/g, "");
 
         if (initialName && !fullName) setFullName(initialName);
         if (initialGender && !gender) setGender(initialGender);
+        if (rawPhone && !phoneSuffix) {
+          if (rawPhone.startsWith("+250")) setPhoneSuffix(rawPhone.slice(4));
+          else if (rawPhone.startsWith("07")) setPhoneSuffix(rawPhone.slice(1));
+          else if (/^7[2389]\d{7}$/.test(rawPhone)) setPhoneSuffix(rawPhone);
+        }
 
         if (rawDob && !dateOfBirth) {
           const match = String(rawDob).match(/^(\d{4})-(\d{2})-(\d{2})/);
@@ -76,11 +83,11 @@ export default function PersonalScreen() {
     };
   }, [profile]);
 
-  function saveDraft(name: string, d: string, m: string, y: string, g: string) {
+  function saveDraft(name: string, d: string, m: string, y: string, g: string, p?: string) {
     const dobStr = d && m && y ? `${y}-${m}-${d}` : "";
     AsyncStorage.setItem(
       "@kin_personal_draft",
-      JSON.stringify({ fullName: name, dateOfBirth: dobStr, gender: g })
+      JSON.stringify({ fullName: name, dateOfBirth: dobStr, gender: g, phoneSuffix: p ?? phoneSuffix })
     ).catch(() => {});
   }
 
@@ -110,6 +117,11 @@ export default function PersonalScreen() {
 
   function handleNext() {
     if (!fullName.trim()) { setError(t("onboarding.personal.enterFullName")); return; }
+    const cleanSuffix = phoneSuffix.replace(/\s+/g, "").replace(/^0/, "");
+    if (!/^7[2389]\d{7}$/.test(cleanSuffix)) {
+      setError(t("contacts.phoneRequired"));
+      return;
+    }
     if (!dateOfBirth || !dateOfBirth.match(/^\d{4}-\d{2}-\d{2}$/)) {
       setError(t("onboarding.personal.selectDob"));
       return;
@@ -129,7 +141,14 @@ export default function PersonalScreen() {
 
     if (!gender) { setError(t("onboarding.personal.selectGender")); return; }
     setError("");
-    updateMe({ data: { fullName: fullName.trim(), dateOfBirth, gender: gender as UpdateProfileRequestGender } });
+    updateMe({
+      data: {
+        fullName: fullName.trim(),
+        phoneNumber: `+250${cleanSuffix}`,
+        dateOfBirth,
+        gender: gender as UpdateProfileRequestGender,
+      } as any,
+    });
   }
 
   return (
@@ -162,6 +181,26 @@ export default function PersonalScreen() {
             autoCapitalize="words"
             returnKeyType="next"
           />
+        </Field>
+
+        <Field label={t("auth.phoneLabel", { defaultValue: "Phone" })} colors={colors}>
+          <View style={{ flexDirection: "row", alignItems: "center", borderWidth: 1, borderColor: colors.border, borderRadius: 12, backgroundColor: colors.card, overflow: "hidden" }}>
+            <Text style={{ paddingHorizontal: 12, color: colors.mutedForeground, fontFamily: "Inter_600SemiBold", fontSize: 15 }}>+250</Text>
+            <TextInput
+              style={[styles.input, { flex: 1, borderWidth: 0, color: colors.foreground, backgroundColor: "transparent" }]}
+              placeholder="788 123 456"
+              placeholderTextColor={colors.mutedForeground}
+              keyboardType="phone-pad"
+              maxLength={10}
+              value={phoneSuffix}
+              onChangeText={(val) => {
+                const cleaned = val.replace(/[^\d]/g, "");
+                setPhoneSuffix(cleaned);
+                saveDraft(fullName, day, month, year, gender, cleaned);
+                setError("");
+              }}
+            />
+          </View>
         </Field>
 
         <Field label={t("onboarding.personal.dobLabel")} colors={colors}>

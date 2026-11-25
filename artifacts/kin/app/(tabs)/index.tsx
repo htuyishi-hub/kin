@@ -422,15 +422,44 @@ export default function DiscoverScreen() {
           <Text style={styles.loadingText}>Curating intent-gated matches...</Text>
         </View>
       ) : (
-        <TeaserSwipeDeck
-          candidates={candidates}
-          onSwipeRight={handleSwipeRight}
-          onSwipeLeft={handleSwipeLeft}
-          onSwipeDown={handleSwipeDown}
-          onRewind={handleRewind}
-          goldenBidsRemaining={goldenBidsRemaining}
-          onRefresh={refetch}
-        />
+        <View style={{ flex: 1 }}>
+          <TouchableOpacity
+            onPress={() => router.push("/rush" as any)}
+            activeOpacity={0.85}
+            style={{
+              marginHorizontal: 16,
+              marginBottom: 8,
+              paddingHorizontal: 14,
+              paddingVertical: 9,
+              borderRadius: 14,
+              backgroundColor: "rgba(255,107,107,0.16)",
+              borderWidth: 1,
+              borderColor: "rgba(255,107,107,0.4)",
+              flexDirection: "row",
+              alignItems: "center",
+              justifyContent: "space-between",
+            }}
+          >
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+              <Feather name="zap" size={14} color="#FF6B6B" />
+              <Text style={{ color: Colors.bone, fontSize: 12, fontFamily: "Inter_700Bold" }}>
+                {t("rush.liveBanner")}
+              </Text>
+            </View>
+            <Text style={{ color: Colors.gold, fontSize: 11, fontFamily: "Inter_700Bold" }}>
+              {t("rush.joinQueue")} →
+            </Text>
+          </TouchableOpacity>
+          <TeaserSwipeDeck
+            candidates={candidates}
+            onSwipeRight={handleSwipeRight}
+            onSwipeLeft={handleSwipeLeft}
+            onSwipeDown={handleSwipeDown}
+            onRewind={handleRewind}
+            goldenBidsRemaining={goldenBidsRemaining}
+            onRefresh={refetch}
+          />
+        </View>
       )}
 
       {/* OUT OF SWIPES MODAL */}

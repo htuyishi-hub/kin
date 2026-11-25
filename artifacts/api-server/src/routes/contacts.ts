@@ -100,4 +100,43 @@ router.delete("/contacts/block/:id", requireAuth, async (req, res) => {
   res.json({ ok: true });
 });
 
+// POST /contacts/block-bulk — Batch block contacts from phone book or bulk paste
+router.post("/contacts/block-bulk", requireAuth, async (req, res) => {
+  const userId = (req as AuthedRequest).userId;
+  const { phoneNumbers } = req.body as { phoneNumbers?: string[] };
+
+  if (!Array.isArray(phoneNumbers)) {
+    res.status(400).json({ error: "invalid_payload", message: "phoneNumbers array required" });
+    return;
+  }
+
+  const normalized = Array.from(
+    new Set(phoneNumbers.map((p) => normalizeRwandaPhone(String(p || ""))).filter((p) => p.length >= 6))
+  );
+
+  if (normalized.length === 0) {
+    res.json({ success: true, count: 0 });
+    return;
+  }
+
+  const existing = await db
+    .select({ blockedPhone: blockedContactsTable.blockedPhone })
+    .from(blockedContactsTable)
+    .where(eq(blockedContactsTable.userId, userId));
+
+  const existingSet = new Set(existing.map((e) => e.blockedPhone));
+  const toInsert = normalized.filter((p) => !existingSet.has(p));
+
+  if (toInsert.length > 0) {
+    await db.insert(blockedContactsTable).values(
+      toInsert.map((blockedPhone) => ({
+        userId,
+        blockedPhone,
+      }))
+    );
+  }
+
+  res.json({ success: true, count: toInsert.length });
+});
+
 export default router;

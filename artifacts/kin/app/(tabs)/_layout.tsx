@@ -58,6 +58,15 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
+        name="trending"
+        options={{
+          title: t('leaderboard.title'),
+          tabBarIcon: ({ color, size }) => (
+            <TabIcon name="award" color={color} size={size} />
+          ),
+        }}
+      />
+      <Tabs.Screen
         name="matches"
         options={{
           title: t('matches.tabTitle'),

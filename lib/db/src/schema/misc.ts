@@ -84,6 +84,34 @@ export const blockedContactsTable = pgTable("blocked_contacts", {
   index("idx_blocked_contacts_phone").on(table.blockedPhone),
 ]);
 
+// Most Wanted Popularity Votes (1 pt free daily, 5 pts 100 RWF Rose)
+export const popularityVotesTable = pgTable("popularity_votes", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  voterId: uuid("voter_id").notNull().references(() => profilesTable.id, { onDelete: "cascade" }),
+  targetId: uuid("target_id").notNull().references(() => profilesTable.id, { onDelete: "cascade" }),
+  points: integer("points").default(1).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+}, (table) => [
+  index("idx_votes_target").on(table.targetId),
+  index("idx_votes_voter_today").on(table.voterId, table.createdAt),
+]);
+
+// The 8 PM Rush Blind Speed Date Sessions
+export const rushSessionsTable = pgTable("rush_sessions", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userA: uuid("user_a").notNull().references(() => profilesTable.id, { onDelete: "cascade" }),
+  userB: uuid("user_b").notNull().references(() => profilesTable.id, { onDelete: "cascade" }),
+  status: text("status").default("active").notNull(),
+  startedAt: timestamp("started_at", { withTimezone: true }).defaultNow().notNull(),
+  endsAt: timestamp("ends_at", { withTimezone: true }).notNull(),
+  userADecision: text("user_a_decision").default("pending"),
+  userBDecision: text("user_b_decision").default("pending"),
+  matchId: uuid("match_id").references(() => matchesTable.id, { onDelete: "set null" }),
+}, (table) => [
+  index("idx_rush_user_a").on(table.userA),
+  index("idx_rush_user_b").on(table.userB),
+]);
+
 export type OtpSession = typeof otpSessionsTable.$inferSelect;
 export type TrustEvent = typeof trustEventsTable.$inferSelect;
 export type Report = typeof reportsTable.$inferSelect;
@@ -91,3 +119,5 @@ export type NameSearch = typeof nameSearchesTable.$inferSelect;
 export type PhotoComment = typeof photoCommentsTable.$inferSelect;
 export type DateInvite = typeof dateInvitesTable.$inferSelect;
 export type BlockedContact = typeof blockedContactsTable.$inferSelect;
+export type PopularityVote = typeof popularityVotesTable.$inferSelect;
+export type RushSession = typeof rushSessionsTable.$inferSelect;

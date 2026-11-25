@@ -311,7 +311,35 @@
     "placeholder": "078...",
     "block": "Funga",
     "unblock": "Fungura",
-    "empty": "Nta nimero zifunzwe"
+    "empty": "Nta nimero zifunzwe",
+    "importButton": "Vana mu Mazina",
+    "bulkPastePlaceholder": "0788123456, 0799887766",
+    "blockSelected": "Funga Zahiswemo",
+    "blockedCount": "{{count}} zafunzwe",
+    "phoneRequired": "Nimero yo mu Rwanda irakenewe"
+  },
+  "leaderboard": {
+    "title": "Abakunzwe",
+    "allRwanda": "U Rwanda Rwose",
+    "spotlight": "VIP Spotlight",
+    "mostWanted": "Abakunzwe Cyane",
+    "points": "amanota",
+    "voteFree": "Tora",
+    "voteRose": "Urubuto · 100 RWF",
+    "boostSpotlight": "Spotlight · 300 RWF",
+    "shareStatus": "WhatsApp Status",
+    "shareText": "Ntora kuri Kinn Trending! kinn.ink"
+  },
+  "rush": {
+    "title": "8 PM Rush 🔥",
+    "liveBanner": "8 PM Rush IRABA",
+    "joinQueue": "Injira mu Kinyabupfura",
+    "waitingPartner": "Turashaka uwo muganira...",
+    "timerLabel": "Igihe gisigaye",
+    "reveal": "Fungura & Muhuze ❤️",
+    "pass": "Oya",
+    "itIsAMatch": "Mwahuye! Amafoto Yafunguwe 🎉",
+    "continueChat": "Fungura Ikiganiro"
   },
   "serious": {
     "tabTitle": "Abiyemeje",

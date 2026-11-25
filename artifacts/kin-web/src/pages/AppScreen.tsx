@@ -50,6 +50,9 @@ import { useAuth } from '@/contexts/AuthContext';
 import { getSupabaseClient } from '@/lib/supabase';
 import { encryptMessage, decryptMessage } from '@/lib/e2eeService';
 import { apiFetch, API_BASE } from '@/lib/api';
+import { TrendingView } from '@/components/TrendingView';
+import { RushModal } from '@/components/RushModal';
+import { Trophy } from 'lucide-react';
 
 function getIntentBadgeLabel(intent: string | null | undefined, t: (k: string) => string): string {
   const val = (intent || '').toLowerCase();
@@ -176,7 +179,8 @@ export default function AppScreen() {
   const { t } = useTranslation();
   const [currentLang, setCurrentLang] = useState<SupportedLanguage>(getCurrentLanguage());
 
-  const [activeTab, setActiveTab] = useState<'discover' | 'admirers' | 'matches' | 'serious' | 'profile'>('discover');
+  const [activeTab, setActiveTab] = useState<'discover' | 'admirers' | 'trending' | 'matches' | 'serious' | 'profile'>('discover');
+  const [rushModalOpen, setRushModalOpen] = useState(false);
   const [admirers, setAdmirers] = useState<any[]>([]);
   const [admirersCount, setAdmirersCount] = useState(0);
   const [isAdmirersUnblurred, setIsAdmirersUnblurred] = useState(false);
@@ -1608,6 +1612,54 @@ export default function AppScreen() {
     }).catch(() => {});
   }
 
+  const [bulkPasteText, setBulkPasteText] = useState('');
+
+  async function submitBulkPhones(rawNumbers: string[]) {
+    if (!token || rawNumbers.length === 0) return;
+    setBlockingPhone(true);
+    try {
+      const res = await apiFetch('/api/contacts/block-bulk', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ phoneNumbers: rawNumbers }),
+      });
+      if (res.ok) {
+        const listRes = await apiFetch('/api/contacts/blocked', {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (listRes.ok) {
+          const d = await listRes.json();
+          if (Array.isArray(d.contacts)) setBlockedContacts(d.contacts);
+        }
+        setBulkPasteText('');
+      }
+    } finally {
+      setBlockingPhone(false);
+    }
+  }
+
+  async function handlePickContactsWeb() {
+    const nav = navigator as any;
+    if ('contacts' in nav && 'ContactsManager' in window) {
+      try {
+        const picked = await nav.contacts.select(['name', 'tel'], { multiple: true });
+        const tels: string[] = [];
+        for (const c of picked || []) {
+          if (Array.isArray(c.tel)) tels.push(...c.tel);
+        }
+        await submitBulkPhones(tels);
+      } catch {}
+    }
+  }
+
+  async function handleBulkBlockPaste() {
+    const parts = bulkPasteText
+      .split(/[\n,;]+/)
+      .map((s) => s.trim())
+      .filter(Boolean);
+    await submitBulkPhones(parts);
+  }
+
   async function handleSendDateInvite(spot: { name: string; area: string }) {
     if (!selectedMatch?.id || !token) return;
     setDateModalOpen(false);
@@ -2325,6 +2377,18 @@ export default function AppScreen() {
         {/* TAB 1: DISCOVER SWIPE DECK OR POSTS FEED */}
         {activeTab === 'discover' && (
           <div className="flex-1 flex flex-col justify-between relative overflow-hidden">
+            {/* 8 PM Rush Live Banner */}
+            <button
+              type="button"
+              onClick={() => setRushModalOpen(true)}
+              className="mx-4 mt-2 px-3.5 py-2 rounded-2xl bg-gradient-to-r from-[#FF6B6B]/20 to-[#C9A84C]/20 border border-[#FF6B6B]/40 flex items-center justify-between cursor-pointer shrink-0"
+            >
+              <div className="flex items-center gap-2">
+                <Flame className="w-4 h-4 text-[#FF6B6B]" />
+                <span className="text-xs font-bold text-[#F0EDE6]">{t('rush.liveBanner')}</span>
+              </div>
+              <span className="text-[11px] font-bold text-[#C9A84C]">{t('rush.joinQueue')} →</span>
+            </button>
             {/* Segmented Control */}
             {(isFeedEnabled || isPeopleEnabled) && (
               <div className="px-4 py-2 border-b border-[#21262D] bg-[#0D1117]/80 flex gap-2 shrink-0">
@@ -4030,6 +4094,9 @@ export default function AppScreen() {
           </div>
         )}
 
+        {/* TAB: TRENDING (MOST WANTED) */}
+        {activeTab === 'trending' && <TrendingView token={token} />}
+
         {/* TAB 3: SERIOUS INTENT QUEUE */}
         {activeTab === 'serious' && (
           <div className="flex-1 flex flex-col p-5 gap-4">
@@ -4141,6 +4208,35 @@ export default function AppScreen() {
                   >
                     {t('contacts.block')}
                   </button>
+                </div>
+                {'contacts' in navigator && 'ContactsManager' in window && (
+                  <button
+                    type="button"
+                    onClick={handlePickContactsWeb}
+                    disabled={blockingPhone}
+                    className="w-full py-2 rounded-xl bg-[#2563EB]/20 border border-[#2563EB]/40 text-[#38BDF8] text-xs font-bold cursor-pointer"
+                  >
+                    📖 {t('contacts.importButton')}
+                  </button>
+                )}
+                <div className="flex flex-col gap-1.5">
+                  <textarea
+                    rows={2}
+                    value={bulkPasteText}
+                    onChange={(e) => setBulkPasteText(e.target.value)}
+                    placeholder={t('contacts.bulkPastePlaceholder')}
+                    className="w-full bg-[#161B22] border border-[#21262D] focus:border-[#C9A84C] rounded-xl px-3 py-2 text-xs text-[#F0EDE6] placeholder-[#4A4742] outline-none resize-none"
+                  />
+                  {bulkPasteText.trim().length > 0 && (
+                    <button
+                      type="button"
+                      onClick={handleBulkBlockPaste}
+                      disabled={blockingPhone}
+                      className="self-end px-3 py-1.5 rounded-xl bg-[#C9A84C] text-[#0D1117] text-[11px] font-bold cursor-pointer"
+                    >
+                      {t('contacts.blockSelected')}
+                    </button>
+                  )}
                 </div>
                 {blockedContacts.length > 0 && (
                   <div className="flex flex-col gap-1.5">
@@ -4426,6 +4522,16 @@ export default function AppScreen() {
         </button>
 
         <button
+          onClick={() => setActiveTab('trending')}
+          className={`flex flex-col items-center gap-1 text-[10px] font-semibold transition-colors cursor-pointer ${
+            activeTab === 'trending' ? 'text-[#C9A84C]' : 'text-[#A8A49E]'
+          }`}
+        >
+          <Trophy className="w-5 h-5" />
+          <span>{t('leaderboard.title')}</span>
+        </button>
+
+        <button
           onClick={() => setActiveTab('matches')}
           className={`flex flex-col items-center gap-1 text-[10px] font-semibold transition-colors cursor-pointer ${
             activeTab === 'matches' ? 'text-[#2563EB]' : 'text-[#A8A49E]'
@@ -4706,6 +4812,18 @@ export default function AppScreen() {
           </div>
         </div>
       )}
+      <RushModal
+        open={rushModalOpen}
+        onClose={() => setRushModalOpen(false)}
+        token={token}
+        currentUserId={user?.id}
+        onMatched={(matchId) => {
+          setActiveTab('matches');
+          if (matchId) {
+            setSelectedMatch({ id: matchId } as any);
+          }
+        }}
+      />
     </div>
   );
 }

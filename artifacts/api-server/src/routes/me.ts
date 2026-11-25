@@ -258,10 +258,14 @@ router.patch("/me", requireAuth, async (req, res) => {
   const userName = authed.userName;
   const body = req.body as Record<string, unknown>;
 
-  const allowed = ["fullName", "gender", "dateOfBirth", "campusName", "faculty", "yearOfStudy", "hostelName", "city", "district", "proximityConsent", "language", "primaryIntent", "readReceiptsEnabled", "hideFromPeople", "onboardingComplete"];
+  const allowed = ["fullName", "phoneNumber", "gender", "dateOfBirth", "campusName", "campusZone", "faculty", "yearOfStudy", "hostelName", "city", "district", "proximityConsent", "language", "primaryIntent", "readReceiptsEnabled", "hideFromPeople", "onboardingComplete"];
   const updates: Record<string, unknown> = {};
   for (const key of allowed) {
     if (key in body) updates[key] = body[key];
+  }
+
+  if (typeof updates.phoneNumber === "string") {
+    updates.phoneNumber = updates.phoneNumber.replace(/\s+/g, "");
   }
 
   if (Object.keys(updates).length === 0) {
@@ -270,6 +274,19 @@ router.patch("/me", requireAuth, async (req, res) => {
   }
 
   if (updates.onboardingComplete === true) {
+    const rwPhoneRegex = /^(07[2389]\d{7}|\+2507[2389]\d{7})$/;
+    const candidatePhone = typeof updates.phoneNumber === "string"
+      ? updates.phoneNumber
+      : (await db.select({ phoneNumber: profilesTable.phoneNumber }).from(profilesTable).where(eq(profilesTable.id, userId)).limit(1))[0]?.phoneNumber ?? "";
+    const cleanPhone = String(candidatePhone).replace(/\s+/g, "");
+    if (!cleanPhone || !rwPhoneRegex.test(cleanPhone)) {
+      res.status(400).json({
+        error: "PHONE_NUMBER_REQUIRED",
+        message: "A valid Rwandan MTN or Airtel phone number (078/079/072/073) is required",
+      });
+      return;
+    }
+
     const [photoRow] = await db
       .select({ count: sql<number>`count(*)::int` })
       .from(profilePhotosTable)
