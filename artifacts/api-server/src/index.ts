@@ -3,6 +3,7 @@ import app from "./app.js";
 import { createWsServer } from "./lib/ws-manager.js";
 import { logger } from "./lib/logger.js";
 import { pool } from "@workspace/db";
+import { getStorageAdmin } from "./lib/storage.js";
 
 const rawPort = process.env["PORT"];
 
@@ -53,7 +54,24 @@ async function ensureDatabaseSchema() {
         END IF;
       END $$;
     `);
-    logger.info("Database schema verified: profiles, matches, messages, chat_gifts up to date");
+    await pool.query(`
+      DO $$
+      BEGIN
+        BEGIN
+          ALTER PUBLICATION supabase_realtime ADD TABLE public.messages;
+        EXCEPTION WHEN OTHERS THEN NULL;
+        END;
+        BEGIN
+          ALTER PUBLICATION supabase_realtime ADD TABLE public.chat_gifts;
+        EXCEPTION WHEN OTHERS THEN NULL;
+        END;
+      END $$;
+    `);
+    const admin = getStorageAdmin();
+    if (admin) {
+      await admin.storage.createBucket("chat-media", { public: false }).catch(() => {});
+    }
+    logger.info("Database schema verified: profiles, matches, messages, chat_gifts, realtime, chat-media up to date");
   } catch (err: any) {
     logger.warn({ err: err?.message }, "Database schema migration warning");
   }

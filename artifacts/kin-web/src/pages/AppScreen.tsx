@@ -249,11 +249,16 @@ export default function AppScreen() {
   const [readReceiptsEnabled, setReadReceiptsEnabled] = useState(false);
   const [hideFromPeople, setHideFromPeople] = useState(false);
 
-  // Chat Playground state: gifts, question game, read peek
+  // Chat Playground state: gifts, question game, read peek, voice notes
   const [giftTrayOpen, setGiftTrayOpen] = useState(false);
   const [activeGiftOverlay, setActiveGiftOverlay] = useState<string | null>(null);
   const [gameAnswersDraft, setGameAnswersDraft] = useState<Record<string, string>>({});
   const [unlockedReadTimes, setUnlockedReadTimes] = useState<Record<string, string | null>>({});
+  const [chatRecording, setChatRecording] = useState(false);
+  const [playingChatVoiceId, setPlayingChatVoiceId] = useState<string | null>(null);
+  const chatMediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const chatAudioChunksRef = useRef<Blob[]>([]);
+  const chatVoiceAudioRef = useRef<HTMLAudioElement | null>(null);
 
   // Discover Part B state: People list
   type WebPersonItem = {
@@ -1236,6 +1241,105 @@ export default function AppScreen() {
         }
       }
     } catch {}
+  }
+
+  async function handleToggleChatVoiceRecord() {
+    if (!selectedMatch?.id || !token) return;
+    if (chatRecording && chatMediaRecorderRef.current) {
+      chatMediaRecorderRef.current.stop();
+      setChatRecording(false);
+      return;
+    }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mr = new MediaRecorder(stream);
+      chatAudioChunksRef.current = [];
+      mr.ondataavailable = (e) => {
+        if (e.data.size > 0) chatAudioChunksRef.current.push(e.data);
+      };
+      mr.onstop = async () => {
+        stream.getTracks().forEach((tr) => tr.stop());
+        const blob = new Blob(chatAudioChunksRef.current, { type: 'audio/webm' });
+        let mediaUrl = '';
+        try {
+          const uploadRes = await apiFetch('/api/media/voice-upload', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+            body: JSON.stringify({ matchId: selectedMatch.id, ext: 'webm' }),
+          });
+          if (uploadRes.ok) {
+            const { uploadUrl, path } = await uploadRes.json();
+            const putRes = await fetch(uploadUrl, {
+              method: 'PUT',
+              headers: { 'Content-Type': 'audio/webm' },
+              body: blob,
+            });
+            if (putRes.ok) mediaUrl = path;
+          }
+        } catch {}
+
+        if (!mediaUrl) {
+          mediaUrl = await new Promise<string>((resolve) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(String(reader.result || ''));
+            reader.readAsDataURL(blob);
+          });
+        }
+
+        if (mediaUrl) {
+          const msgRes = await apiFetch(`/api/matches/${selectedMatch.id}/messages`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+            body: JSON.stringify({
+              content: t('playground.recordVoice'),
+              mediaType: 'voice',
+              mediaUrl,
+            }),
+          });
+          if (msgRes.ok) {
+            const saved = await msgRes.json();
+            setChatMessages((prev) => (prev.some((m) => m.id === saved.id) ? prev : [...prev, { ...saved, status: 'sent' }]));
+          }
+        }
+      };
+      chatMediaRecorderRef.current = mr;
+      mr.start();
+      setChatRecording(true);
+      setTimeout(() => {
+        if (chatMediaRecorderRef.current?.state === 'recording') {
+          chatMediaRecorderRef.current.stop();
+          setChatRecording(false);
+        }
+      }, 60000);
+    } catch {}
+  }
+
+  async function handlePlayChatVoice(msgId: string, mediaUrl?: string | null) {
+    if (!mediaUrl) return;
+    if (playingChatVoiceId === msgId && chatVoiceAudioRef.current) {
+      chatVoiceAudioRef.current.pause();
+      setPlayingChatVoiceId(null);
+      return;
+    }
+    let playUrl = mediaUrl;
+    if (!mediaUrl.startsWith('http') && !mediaUrl.startsWith('data:') && token) {
+      try {
+        const res = await apiFetch(`/api/media/chat-voice/url?path=${encodeURIComponent(mediaUrl)}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (res.ok) {
+          const d = await res.json();
+          if (d.url) playUrl = d.url;
+        }
+      } catch {}
+    }
+    if (!chatVoiceAudioRef.current) {
+      chatVoiceAudioRef.current = new Audio();
+    }
+    chatVoiceAudioRef.current.src = playUrl;
+    chatVoiceAudioRef.current.onended = () => setPlayingChatVoiceId(null);
+    chatVoiceAudioRef.current.play().catch(() => {});
+    setPlayingChatVoiceId(msgId);
   }
 
   async function handleCompletePhase() {
@@ -2695,9 +2799,19 @@ export default function AppScreen() {
                             {t('chat.typing')}
                           </span>
                         ) : (
-                          <span className="text-[10px] font-semibold text-[#2563EB]">
-                            {t('matches.phase', { phase: selectedMatch.conversationPhase || 1 })}
-                          </span>
+                          <div className="flex items-center gap-2">
+                            <span className="text-[10px] font-semibold text-[#2563EB]">
+                              {t('matches.phase', { phase: selectedMatch.conversationPhase || 1 })}
+                            </span>
+                            {selectedMatch.expiresAt && (
+                              <span className="text-[10px] font-semibold text-[#A8A49E] flex items-center gap-0.5">
+                                <Clock className="w-2.5 h-2.5" />
+                                {t('matches.hoursLeft', {
+                                  count: Math.max(0, Math.ceil((new Date(selectedMatch.expiresAt).getTime() - Date.now()) / 3600000)),
+                                })}
+                              </span>
+                            )}
+                          </div>
                         )}
                       </div>
                     </div>
@@ -2845,6 +2959,24 @@ export default function AppScreen() {
                                     </div>
                                     <div className="text-xs font-bold text-[#F0EDE6]">{msg.content}</div>
                                   </div>
+                                ) : msg.mediaType === 'voice' ? (
+                                  <button
+                                    type="button"
+                                    onClick={() => handlePlayChatVoice(msg.id, msg.mediaUrl)}
+                                    className={`px-4 py-2.5 rounded-2xl flex items-center gap-2.5 text-xs font-semibold cursor-pointer ${
+                                      isMe
+                                        ? 'bg-[#2563EB] text-[#F0EDE6]'
+                                        : 'bg-[#1A1A2E] border border-[#21262D] text-[#F0EDE6]'
+                                    }`}
+                                  >
+                                    {playingChatVoiceId === msg.id ? (
+                                      <Pause className="w-4 h-4 fill-current" />
+                                    ) : (
+                                      <Play className="w-4 h-4 fill-current" />
+                                    )}
+                                    <Volume2 className="w-4 h-4 opacity-80" />
+                                    <span>{t('playground.recordVoice')}</span>
+                                  </button>
                                 ) : msg.mediaType === 'game_prompt' && msg.gameData ? (
                                   (() => {
                                     const answers = msg.gameData.answers || {};
@@ -3162,6 +3294,18 @@ export default function AppScreen() {
                       title={t('playground.giftRose')}
                     >
                       <Gift className="w-4 h-4" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleToggleChatVoiceRecord}
+                      className={`w-10 h-10 rounded-full border flex items-center justify-center transition-colors cursor-pointer shrink-0 mb-0.5 ${
+                        chatRecording
+                          ? 'bg-[#EF4444]/20 border-[#EF4444] text-[#EF4444] animate-pulse'
+                          : 'bg-[#1A1A2E] border-[#21262D] text-[#38BDF8] hover:border-[#38BDF8]'
+                      }`}
+                      title={chatRecording ? t('playground.recording') : t('playground.recordVoice')}
+                    >
+                      {chatRecording ? <Square className="w-4 h-4 fill-current" /> : <Mic className="w-4 h-4" />}
                     </button>
                     <textarea
                       ref={textareaRef}

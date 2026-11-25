@@ -25,7 +25,7 @@ import { useTranslation } from "@workspace/i18n";
 
 import { useAuth } from "@/contexts/AuthContext";
 import { useColors } from "@/hooks/useColors";
-import { useAudioPlayer, useAudioPlayerStatus } from "expo-audio";
+import { useAudioPlayer, useAudioPlayerStatus, useAudioRecorder, useAudioRecorderState, RecordingPresets, AudioModule } from "expo-audio";
 import { getVoiceSignedUrl } from "@/services/voiceIntroService";
 import { encryptMessage, decryptMessage } from "@/services/e2eeService";
 import { ProfilePhoto } from "@/components/ProfilePhoto";
@@ -504,6 +504,57 @@ export default function MatchScreen() {
     } catch {}
   }
 
+  const chatRecorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
+  const chatRecorderState = useAudioRecorderState(chatRecorder, 200);
+
+  async function handleToggleChatVoiceRecord() {
+    if (!token) return;
+    if (chatRecorderState.isRecording) {
+      try {
+        await chatRecorder.stop();
+        const uri = chatRecorder.uri;
+        if (!uri) return;
+        let mediaUrl = uri;
+        try {
+          const uploadRes = await fetch(`${mobileApiBaseUrl}/api/media/voice-upload`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+            body: JSON.stringify({ matchId: String(matchId), ext: "m4a" }),
+          });
+          if (uploadRes.ok) {
+            const { uploadUrl, path } = await uploadRes.json();
+            const fileBlob = await (await fetch(uri)).blob();
+            const putRes = await fetch(uploadUrl, {
+              method: "PUT",
+              headers: { "Content-Type": "audio/mp4" },
+              body: fileBlob,
+            });
+            if (putRes.ok) mediaUrl = path;
+          }
+        } catch {}
+
+        await fetch(`${mobileApiBaseUrl}/api/matches/${matchId}/messages`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+          body: JSON.stringify({
+            content: t("playground.recordVoice"),
+            mediaType: "voice",
+            mediaUrl,
+          }),
+        });
+        refetchMessages();
+      } catch {}
+      return;
+    }
+
+    try {
+      const perm = await AudioModule.requestRecordingPermissionsAsync();
+      if (!perm.granted) return;
+      await chatRecorder.prepareToRecordAsync();
+      chatRecorder.record();
+    } catch {}
+  }
+
   const handleIncomingMessage = useCallback(() => {
     if (!isNearBottom) {
       setShowNewMessagesPill(true);
@@ -847,10 +898,19 @@ export default function MatchScreen() {
                 </Text>
               </View>
             ) : (
-              <View style={[styles.phasePill, { backgroundColor: colors.secondary }]}>
-                <Text style={[styles.phaseText, { color: colors.primary }]}>
-                  {t("matches.phase", { phase })}: {phaseLabels[phase] ?? ""}
-                </Text>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                <View style={[styles.phasePill, { backgroundColor: colors.secondary }]}>
+                  <Text style={[styles.phaseText, { color: colors.primary }]}>
+                    {t("matches.phase", { phase })}: {phaseLabels[phase] ?? ""}
+                  </Text>
+                </View>
+                {!!match.expiresAt && (
+                  <Text style={{ color: colors.mutedForeground, fontSize: 10 }}>
+                    ⏰ {t("matches.hoursLeft", {
+                      count: Math.max(0, Math.ceil((new Date(match.expiresAt).getTime() - Date.now()) / 3600000)),
+                    })}
+                  </Text>
+                )}
               </View>
             )}
           </View>
@@ -1033,6 +1093,8 @@ export default function MatchScreen() {
                           {textContent}
                         </Text>
                       </View>
+                    ) : item.message.mediaType === "voice" && item.message.mediaUrl ? (
+                      <MatchVoicePlayer path={item.message.mediaUrl} colors={colors} />
                     ) : item.message.mediaType === "game_prompt" && item.message.gameData ? (
                       (() => {
                         const answers = item.message.gameData.answers || {};
@@ -1282,6 +1344,25 @@ export default function MatchScreen() {
                 style={{ width: 38, height: 38, borderRadius: 19, backgroundColor: colors.background, borderWidth: 1, borderColor: colors.border, alignItems: "center", justifyContent: "center" }}
               >
                 <Feather name="gift" size={17} color="#C9A84C" />
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={handleToggleChatVoiceRecord}
+                style={{
+                  width: 38,
+                  height: 38,
+                  borderRadius: 19,
+                  backgroundColor: chatRecorderState.isRecording ? "rgba(239,68,68,0.2)" : colors.background,
+                  borderWidth: 1,
+                  borderColor: chatRecorderState.isRecording ? "#EF4444" : colors.border,
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <Feather
+                  name={chatRecorderState.isRecording ? "square" : "mic"}
+                  size={17}
+                  color={chatRecorderState.isRecording ? "#EF4444" : "#38BDF8"}
+                />
               </TouchableOpacity>
               <TextInput
                 ref={inputRef}

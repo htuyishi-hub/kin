@@ -777,6 +777,24 @@ router.post("/matches/:matchId/gifts/send", requireAuth, async (req, res) => {
   });
 
   res.status(201).json({ giftType, amountRwf: giftInfo.amountRwf, message: mapped });
+
+  try {
+    const [sender, recipient] = await Promise.all([
+      db.select({ fullName: profilesTable.fullName }).from(profilesTable).where(eq(profilesTable.id, userId)).limit(1),
+      db.select({ pushNotificationToken: profilesTable.pushNotificationToken, language: profilesTable.language }).from(profilesTable).where(eq(profilesTable.id, recipientId)).limit(1),
+    ]);
+    const lang = recipient[0]?.language ?? "en";
+    const senderName = sender[0]?.fullName?.trim().split(/\s+/)[0] || "kinn";
+    const title = lang === "rw"
+      ? `${giftInfo.label} ${senderName} yaguhaye impano kuri kinn!`
+      : `${giftInfo.label} ${senderName} sent you a gift on kinn!`;
+    await sendPushNotification({
+      to: recipient[0]?.pushNotificationToken,
+      title,
+      body: `${giftInfo.label} ${giftType}`,
+      data: { matchId: String(matchId), screen: "chat" },
+    });
+  } catch {}
 });
 
 // POST /matches/:matchId/read-peek — 100 RWF Read Receipt Peek

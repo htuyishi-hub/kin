@@ -559,7 +559,9 @@ router.delete("/media/voice", requireAuth, async (req, res) => {
 // POST /media/voice-upload — Pre-signed upload URL for 60s chat voice notes
 router.post("/media/voice-upload", requireAuth, async (req, res) => {
   const userId = (req as AuthedRequest).userId;
-  const path = `chat-media/voice/${userId}/${randomUUID()}.m4a`;
+  const matchId = typeof req.body?.matchId === "string" ? req.body.matchId : userId;
+  const ext = typeof req.body?.ext === "string" ? req.body.ext.replace(/[^a-z0-9]/gi, "") : "m4a";
+  const path = `${matchId}/${userId}-${randomUUID()}.${ext}`;
   const admin = getStorageAdmin();
   if (!admin) {
     res.status(503).json({ error: "storage_not_configured", code: "STORAGE_NOT_CONFIGURED" });
@@ -567,7 +569,7 @@ router.post("/media/voice-upload", requireAuth, async (req, res) => {
   }
 
   const { data, error } = await admin.storage
-    .from("voice-intros")
+    .from("chat-media")
     .createSignedUploadUrl(path);
 
   if (error || !data) {
@@ -579,9 +581,36 @@ router.post("/media/voice-upload", requireAuth, async (req, res) => {
     uploadUrl: data.signedUrl,
     token: data.token,
     path,
+    bucket: "chat-media",
     maxDurationSeconds: 60,
     expiresIn: 120,
   });
+});
+
+// GET /media/chat-voice/url — Signed download URL for a chat voice note
+router.get("/media/chat-voice/url", requireAuth, async (req, res) => {
+  const path = typeof req.query["path"] === "string" ? req.query["path"] : "";
+  if (!path) {
+    res.status(400).json({ error: "bad_request", message: "path is required" });
+    return;
+  }
+
+  const admin = getStorageAdmin();
+  if (!admin) {
+    res.status(503).json({ error: "storage_not_configured", code: "STORAGE_NOT_CONFIGURED" });
+    return;
+  }
+
+  const { data, error } = await admin.storage
+    .from("chat-media")
+    .createSignedUrl(path, 300);
+
+  if (error || !data) {
+    res.status(500).json({ error: "storage_error", message: error?.message });
+    return;
+  }
+
+  res.json({ url: data.signedUrl, expiresIn: 300 });
 });
 
 export default router;
