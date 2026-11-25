@@ -42,6 +42,7 @@ import {
   Share2,
   Gift,
   Dices,
+  Lock,
 } from 'lucide-react';
 import { useTranslation, changeLanguage, getCurrentLanguage, type SupportedLanguage } from '@workspace/i18n';
 import { useAuth } from '@/contexts/AuthContext';
@@ -174,7 +175,12 @@ export default function AppScreen() {
   const { t } = useTranslation();
   const [currentLang, setCurrentLang] = useState<SupportedLanguage>(getCurrentLanguage());
 
-  const [activeTab, setActiveTab] = useState<'discover' | 'matches' | 'serious' | 'profile'>('discover');
+  const [activeTab, setActiveTab] = useState<'discover' | 'admirers' | 'matches' | 'serious' | 'profile'>('discover');
+  const [admirers, setAdmirers] = useState<any[]>([]);
+  const [admirersCount, setAdmirersCount] = useState(0);
+  const [isAdmirersUnblurred, setIsAdmirersUnblurred] = useState(false);
+  const [isUnblurringAdmirers, setIsUnblurringAdmirers] = useState(false);
+  const [matchingAdmirerId, setMatchingAdmirerId] = useState<string | null>(null);
   const [deckProfiles, setDeckProfiles] = useState<Candidate[]>(SAMPLE_PROFILES);
   const [profileIndex, setProfileIndex] = useState(0);
   const [cardPhotoIndex, setCardPhotoIndex] = useState(0);
@@ -1340,6 +1346,66 @@ export default function AppScreen() {
     chatVoiceAudioRef.current.onended = () => setPlayingChatVoiceId(null);
     chatVoiceAudioRef.current.play().catch(() => {});
     setPlayingChatVoiceId(msgId);
+  }
+
+  const fetchAdmirers = useCallback(async () => {
+    if (!token) return;
+    try {
+      const res = await apiFetch('/api/likes/received', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setAdmirers(Array.isArray(data.admirers) ? data.admirers : []);
+        setAdmirersCount(data.count ?? 0);
+        setIsAdmirersUnblurred(Boolean(data.isUnblurred));
+      }
+    } catch {}
+  }, [token]);
+
+  useEffect(() => {
+    fetchAdmirers();
+  }, [fetchAdmirers, activeTab]);
+
+  async function handleUnblurAdmirers() {
+    if (!token) return;
+    setIsUnblurringAdmirers(true);
+    try {
+      const res = await apiFetch('/api/likes/unblur', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        setIsAdmirersUnblurred(true);
+        await fetchAdmirers();
+      }
+    } finally {
+      setIsUnblurringAdmirers(false);
+    }
+  }
+
+  async function handleInstantMatch(admirerId: string) {
+    if (!token) return;
+    setMatchingAdmirerId(admirerId);
+    try {
+      const res = await apiFetch('/api/likes/instant-match', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ admirerId }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        await fetchAdmirers();
+        if (data.matchId) {
+          setActiveTab('matches');
+        }
+      }
+    } finally {
+      setMatchingAdmirerId(null);
+    }
   }
 
   async function handleCompletePhase() {
@@ -3493,6 +3559,110 @@ export default function AppScreen() {
           </div>
         )}
 
+        {/* TAB: ADMIRERS (LIKES YOU) */}
+        {activeTab === 'admirers' && (
+          <div className="flex-1 flex flex-col p-4 gap-4 overflow-y-auto relative">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Heart className="w-5 h-5 text-[#FF6B6B] fill-current" />
+                <h2 className="font-serif text-lg font-bold text-[#F0EDE6]">
+                  {t('admirers.tabTitle')}
+                </h2>
+                {admirersCount > 0 && (
+                  <span className="px-2 py-0.5 rounded-full bg-[#FF6B6B]/20 text-[#FF6B6B] text-xs font-bold">
+                    {admirersCount}
+                  </span>
+                )}
+              </div>
+              {isAdmirersUnblurred && (
+                <span className="px-2.5 py-0.5 rounded-full bg-[#3FB950]/15 border border-[#3FB950]/40 text-[#3FB950] text-[10px] font-bold">
+                  {t('admirers.unblurredBadge')}
+                </span>
+              )}
+            </div>
+
+            {admirers.length === 0 ? (
+              <div className="my-auto flex flex-col items-center justify-center py-14 gap-3 text-center">
+                <Heart className="w-10 h-10 text-[#4A4742]" />
+                <span className="text-sm font-semibold text-[#A8A49E]">{t('admirers.emptyTitle')}</span>
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 gap-3 pb-20">
+                {admirers.map((adm) => (
+                  <div
+                    key={adm.id}
+                    className="rounded-2xl bg-[#1A1A2E] border border-[#21262D] overflow-hidden flex flex-col relative shadow-lg"
+                  >
+                    <div className="relative h-44 w-full bg-[#242438] overflow-hidden">
+                      {adm.photoUrl ? (
+                        <img
+                          src={adm.photoUrl}
+                          alt={adm.displayName || t('admirers.secretAdmirer')}
+                          className={`w-full h-full object-cover transition-all ${
+                            !isAdmirersUnblurred ? 'blur-lg scale-110' : ''
+                          }`}
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center">
+                          <User className="w-10 h-10 text-[#4A4742]" />
+                        </div>
+                      )}
+                      {!isAdmirersUnblurred && (
+                        <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                          <div className="w-10 h-10 rounded-full bg-[#0D1117]/80 border border-[#C9A84C] flex items-center justify-center text-[#C9A84C]">
+                            <Lock className="w-4 h-4" />
+                          </div>
+                        </div>
+                      )}
+                      <div className="absolute top-2 left-2 right-2 flex justify-between">
+                        <span className="bg-[#0D1117]/80 text-[#F0EDE6] text-[9px] font-semibold px-2 py-0.5 rounded-full">
+                          {getIntentBadgeLabel(adm.primaryIntent, t)}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="p-2.5 flex flex-col gap-1.5">
+                      <div className="flex items-center gap-1">
+                        <span className="text-xs font-bold text-[#F0EDE6] truncate">
+                          {isAdmirersUnblurred
+                            ? `${adm.displayName || t('admirers.secretAdmirer')}${adm.age ? `, ${adm.age}` : ''}`
+                            : t('admirers.secretAdmirer')}
+                        </span>
+                        {adm.isVerified && <BadgeCheck className="w-3.5 h-3.5 text-[#38BDF8] shrink-0" />}
+                      </div>
+                      <span className="text-[10px] text-[#8B949E] truncate">{adm.campus}</span>
+                      {isAdmirersUnblurred && (
+                        <button
+                          type="button"
+                          onClick={() => handleInstantMatch(adm.id)}
+                          disabled={matchingAdmirerId === adm.id}
+                          className="mt-1 w-full py-1.5 rounded-xl bg-[#3FB950] text-[#0D1117] text-xs font-bold hover:opacity-90 cursor-pointer"
+                        >
+                          {matchingAdmirerId === adm.id ? '...' : t('admirers.matchInstantly')}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {!isAdmirersUnblurred && admirers.length > 0 && (
+              <div className="sticky bottom-2 left-0 right-0 p-3 rounded-2xl bg-[#161B22]/95 backdrop-blur-md border border-[#C9A84C]/50 flex items-center justify-between gap-3 shadow-2xl">
+                <span className="text-xs font-bold text-[#C9A84C]">{t('admirers.momoPay')}</span>
+                <button
+                  type="button"
+                  onClick={handleUnblurAdmirers}
+                  disabled={isUnblurringAdmirers}
+                  className="px-4 py-2 rounded-full bg-[#C9A84C] text-[#0D1117] text-xs font-bold hover:opacity-95 cursor-pointer"
+                >
+                  {isUnblurringAdmirers ? '...' : t('admirers.unblurCta')}
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* TAB 3: SERIOUS INTENT QUEUE */}
         {activeTab === 'serious' && (
           <div className="flex-1 flex flex-col p-5 gap-4">
@@ -3788,6 +3958,21 @@ export default function AppScreen() {
         >
           <Flame className="w-5 h-5" />
           <span>{t('discover.tabTitle')}</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('admirers')}
+          className={`relative flex flex-col items-center gap-1 text-[10px] font-semibold transition-colors cursor-pointer ${
+            activeTab === 'admirers' ? 'text-[#FF6B6B]' : 'text-[#A8A49E]'
+          }`}
+        >
+          <Heart className="w-5 h-5" />
+          {admirersCount > 0 && (
+            <span className="absolute -top-1 -right-2 px-1.5 py-0.2 rounded-full bg-[#FF6B6B] text-white text-[9px] font-bold">
+              {admirersCount}
+            </span>
+          )}
+          <span>{t('admirers.tabTitle')}</span>
         </button>
 
         <button

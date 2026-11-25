@@ -49,6 +49,15 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
+        name="admirers"
+        options={{
+          title: t('admirers.tabTitle'),
+          tabBarIcon: ({ color, size }) => (
+            <TabIcon name="heart" color={color} size={size} />
+          ),
+        }}
+      />
+      <Tabs.Screen
         name="matches"
         options={{
           title: t('matches.tabTitle'),

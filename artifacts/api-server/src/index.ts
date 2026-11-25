@@ -22,6 +22,7 @@ async function ensureDatabaseSchema() {
     await pool.query("ALTER TABLE profiles ALTER COLUMN phone_number DROP NOT NULL;");
     await pool.query("ALTER TABLE profiles ADD COLUMN IF NOT EXISTS bonus_swipes_today INTEGER DEFAULT 0;");
     await pool.query("ALTER TABLE profiles ADD COLUMN IF NOT EXISTS bonus_swipes_date TEXT;");
+    await pool.query("ALTER TABLE profiles ADD COLUMN IF NOT EXISTS unblurred_likes_until TIMESTAMPTZ DEFAULT NULL;");
     await pool.query("ALTER TABLE matches ADD COLUMN IF NOT EXISTS streak_count INTEGER NOT NULL DEFAULT 0;");
     await pool.query("ALTER TABLE matches ADD COLUMN IF NOT EXISTS last_streak_date TEXT;");
     await pool.query("ALTER TABLE matches ADD COLUMN IF NOT EXISTS is_revived BOOLEAN NOT NULL DEFAULT FALSE;");

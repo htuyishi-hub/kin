@@ -264,6 +264,15 @@
     "recordVoice": "Ijwi",
     "recording": "Birafatwa..."
   },
+  "admirers": {
+    "tabTitle": "Abagukunze",
+    "secretAdmirer": "Ugukunda",
+    "unblurCta": "Fungura 24h · 500 RWF",
+    "momoPay": "MoMo 623507",
+    "matchInstantly": "Huza",
+    "emptyTitle": "Nta ugukunda uraboneka",
+    "unblurredBadge": "24h"
+  },
   "serious": {
     "tabTitle": "Abiyemeje",
     "queueTitle": "Umurongo w'Abiyemeje",

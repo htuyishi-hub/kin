@@ -1,0 +1,333 @@
+import { Feather } from "@expo/vector-icons";
+import * as Haptics from "expo-haptics";
+import { router } from "expo-router";
+import React, { useCallback, useEffect, useState } from "react";
+import {
+  ActivityIndicator,
+  FlatList,
+  Image,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useTranslation } from "@workspace/i18n";
+
+import { Colors } from "@/constants/colors";
+import { useAuth } from "@/contexts/AuthContext";
+
+type AdmirerItem = {
+  id: string;
+  displayName: string | null;
+  age: number | null;
+  photoUrl: string | null;
+  primaryIntent: string;
+  occupation: string | null;
+  campus: string;
+  isVerified: boolean;
+};
+
+export default function AdmirersScreen() {
+  const insets = useSafeAreaInsets();
+  const { token } = useAuth();
+  const { t } = useTranslation();
+
+  const [admirers, setAdmirers] = useState<AdmirerItem[]>([]);
+  const [count, setCount] = useState(0);
+  const [isUnblurred, setIsUnblurred] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [unblurring, setUnblurring] = useState(false);
+  const [matchingId, setMatchingId] = useState<string | null>(null);
+
+  const apiBaseUrl =
+    process.env.EXPO_PUBLIC_API_URL ??
+    process.env.VITE_API_URL ??
+    (process.env.EXPO_PUBLIC_DOMAIN
+      ? `https://${process.env.EXPO_PUBLIC_DOMAIN}`
+      : "https://kin-x81d.onrender.com");
+
+  const fetchAdmirers = useCallback(async () => {
+    if (!token) {
+      setLoading(false);
+      return;
+    }
+    try {
+      const res = await fetch(`${apiBaseUrl}/api/likes/received`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setAdmirers(Array.isArray(data.admirers) ? data.admirers : []);
+        setCount(data.count ?? 0);
+        setIsUnblurred(Boolean(data.isUnblurred));
+      }
+    } finally {
+      setLoading(false);
+    }
+  }, [token]);
+
+  useEffect(() => {
+    fetchAdmirers();
+  }, [fetchAdmirers]);
+
+  async function handleUnblur() {
+    if (!token) return;
+    setUnblurring(true);
+    try {
+      const res = await fetch(`${apiBaseUrl}/api/likes/unblur`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        Haptics.notificationAsync?.(Haptics.NotificationFeedbackType.Success);
+        setIsUnblurred(true);
+        await fetchAdmirers();
+      }
+    } finally {
+      setUnblurring(false);
+    }
+  }
+
+  async function handleInstantMatch(admirerId: string) {
+    if (!token) return;
+    setMatchingId(admirerId);
+    try {
+      const res = await fetch(`${apiBaseUrl}/api/likes/instant-match`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ admirerId }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        Haptics.notificationAsync?.(Haptics.NotificationFeedbackType.Success);
+        await fetchAdmirers();
+        if (data.matchId) {
+          router.push(`/match/${data.matchId}`);
+        }
+      }
+    } finally {
+      setMatchingId(null);
+    }
+  }
+
+  function getIntentLabel(intent: string) {
+    const v = intent.toLowerCase();
+    if (v.includes("marriage")) return t("intent.marriage");
+    if (v.includes("casual")) return t("intent.casual");
+    return t("intent.serious");
+  }
+
+  return (
+    <View style={[styles.container, { backgroundColor: Colors.night, paddingTop: insets.top + 12 }]}>
+      <View style={styles.header}>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+          <Feather name="heart" size={20} color="#FF6B6B" />
+          <Text style={styles.title}>{t("admirers.tabTitle")}</Text>
+          {count > 0 && (
+            <View style={styles.countBadge}>
+              <Text style={styles.countText}>{count}</Text>
+            </View>
+          )}
+        </View>
+        {isUnblurred && (
+          <View style={styles.unblurredPill}>
+            <Text style={styles.unblurredText}>{t("admirers.unblurredBadge")}</Text>
+          </View>
+        )}
+      </View>
+
+      {loading ? (
+        <View style={styles.center}>
+          <ActivityIndicator color={Colors.trust} size="large" />
+        </View>
+      ) : admirers.length === 0 ? (
+        <View style={styles.center}>
+          <Feather name="heart" size={44} color={Colors.boneGhost} />
+          <Text style={styles.emptyTitle}>{t("admirers.emptyTitle")}</Text>
+        </View>
+      ) : (
+        <FlatList
+          data={admirers}
+          keyExtractor={(item) => item.id}
+          numColumns={2}
+          columnWrapperStyle={{ gap: 12 }}
+          contentContainerStyle={{ padding: 16, gap: 12, paddingBottom: 100 }}
+          renderItem={({ item }) => (
+            <View style={styles.card}>
+              <View style={styles.imageWrap}>
+                {item.photoUrl ? (
+                  <Image
+                    source={{ uri: item.photoUrl }}
+                    style={styles.cardImage}
+                    blurRadius={isUnblurred ? 0 : 28}
+                  />
+                ) : (
+                  <View style={[styles.cardImage, styles.placeholder]}>
+                    <Feather name="user" size={32} color={Colors.boneGhost} />
+                  </View>
+                )}
+                {!isUnblurred && (
+                  <View style={styles.lockOverlay}>
+                    <View style={styles.lockCircle}>
+                      <Feather name="lock" size={16} color={Colors.gold} />
+                    </View>
+                  </View>
+                )}
+                <View style={styles.intentChip}>
+                  <Text style={styles.intentText}>{getIntentLabel(item.primaryIntent)}</Text>
+                </View>
+              </View>
+
+              <View style={styles.cardBody}>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+                  <Text style={styles.nameText} numberOfLines={1}>
+                    {isUnblurred
+                      ? `${item.displayName || t("admirers.secretAdmirer")}${item.age ? `, ${item.age}` : ""}`
+                      : t("admirers.secretAdmirer")}
+                  </Text>
+                  {item.isVerified && <Feather name="check-circle" size={12} color="#38BDF8" />}
+                </View>
+                <Text style={styles.campusText} numberOfLines={1}>
+                  {item.campus}
+                </Text>
+                {isUnblurred && (
+                  <TouchableOpacity
+                    style={styles.matchBtn}
+                    onPress={() => handleInstantMatch(item.id)}
+                    disabled={matchingId === item.id}
+                    activeOpacity={0.85}
+                  >
+                    <Text style={styles.matchBtnText}>
+                      {matchingId === item.id ? "..." : t("admirers.matchInstantly")}
+                    </Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            </View>
+          )}
+        />
+      )}
+
+      {!isUnblurred && admirers.length > 0 && (
+        <View style={[styles.ctaBar, { bottom: 16 }]}>
+          <Text style={styles.momoText}>{t("admirers.momoPay")}</Text>
+          <TouchableOpacity
+            style={styles.unblurBtn}
+            onPress={handleUnblur}
+            disabled={unblurring}
+            activeOpacity={0.85}
+          >
+            <Text style={styles.unblurBtnText}>
+              {unblurring ? "..." : t("admirers.unblurCta")}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      )}
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: { flex: 1 },
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 16,
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: "#21262D",
+  },
+  title: { fontFamily: "Fraunces_700Bold", fontSize: 22, color: Colors.bone },
+  countBadge: {
+    backgroundColor: "rgba(255,107,107,0.2)",
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 999,
+  },
+  countText: { color: "#FF6B6B", fontSize: 12, fontFamily: "Inter_700Bold" },
+  unblurredPill: {
+    backgroundColor: "rgba(63,185,80,0.15)",
+    borderColor: "rgba(63,185,80,0.4)",
+    borderWidth: 1,
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+    borderRadius: 999,
+  },
+  unblurredText: { color: "#3FB950", fontSize: 11, fontFamily: "Inter_700Bold" },
+  center: { flex: 1, justifyContent: "center", alignItems: "center", gap: 10 },
+  emptyTitle: { color: Colors.boneDim, fontSize: 15, fontFamily: "Inter_600SemiBold" },
+  card: {
+    flex: 1,
+    backgroundColor: "#1A1A2E",
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "#21262D",
+    overflow: "hidden",
+  },
+  imageWrap: { height: 170, width: "100%", backgroundColor: "#242438", position: "relative" },
+  cardImage: { width: "100%", height: "100%" },
+  placeholder: { justifyContent: "center", alignItems: "center" },
+  lockOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(0,0,0,0.35)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  lockCircle: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: "rgba(13,17,23,0.85)",
+    borderWidth: 1,
+    borderColor: Colors.gold,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  intentChip: {
+    position: "absolute",
+    top: 8,
+    left: 8,
+    backgroundColor: "rgba(13,17,23,0.8)",
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 999,
+  },
+  intentText: { color: Colors.bone, fontSize: 9, fontFamily: "Inter_600SemiBold" },
+  cardBody: { padding: 10, gap: 4 },
+  nameText: { color: Colors.bone, fontSize: 13, fontFamily: "Inter_700Bold", flexShrink: 1 },
+  campusText: { color: Colors.boneDim, fontSize: 11 },
+  matchBtn: {
+    marginTop: 6,
+    backgroundColor: "#3FB950",
+    paddingVertical: 7,
+    borderRadius: 10,
+    alignItems: "center",
+  },
+  matchBtnText: { color: "#0D1117", fontSize: 12, fontFamily: "Inter_700Bold" },
+  ctaBar: {
+    position: "absolute",
+    left: 16,
+    right: 16,
+    backgroundColor: "#161B22",
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: "rgba(201,168,76,0.5)",
+    padding: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  momoText: { color: Colors.gold, fontSize: 12, fontFamily: "Inter_700Bold" },
+  unblurBtn: {
+    backgroundColor: Colors.gold,
+    paddingHorizontal: 16,
+    paddingVertical: 9,
+    borderRadius: 999,
+  },
+  unblurBtnText: { color: "#0D1117", fontSize: 12, fontFamily: "Inter_700Bold" },
+});
