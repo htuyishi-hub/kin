@@ -88,6 +88,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="profile"
         options={{
+          href: null,
           title: t('profile.tabTitle'),
           tabBarIcon: ({ color, size }) => (
             <TabIcon name="user" color={color} size={size} />

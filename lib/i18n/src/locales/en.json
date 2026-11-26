@@ -413,6 +413,12 @@
     "verifyVoice": "Verify Voice 🎙️",
     "voiceVerified": "🎙️✓ Voice Verified"
   },
+  "chatMenu": {
+    "dates": "📍 Dates & Connection",
+    "games": "🎲 Games & Flirting",
+    "safety": "🛡️ Safety & Controls",
+    "menu": "Menu"
+  },
   "serious": {
     "tabTitle": "Serious",
     "queueTitle": "Serious Queue",

@@ -30,7 +30,7 @@ import { PendingRequestCard, type PendingRequestItem } from "@/components/Pendin
 import { StoriesBar } from "@/components/StoriesBar";
 import { Colors } from "@/constants/colors";
 import { useAuth } from "@/contexts/AuthContext";
-import { useTranslation } from "@workspace/i18n";
+import { useTranslation, changeLanguage, getCurrentLanguage } from "@workspace/i18n";
 
 type ReactionType = "campus" | "coffee" | "serious";
 
@@ -39,6 +39,8 @@ export default function DiscoverScreen() {
   const { token, userId } = useAuth();
   const { t } = useTranslation();
   const [selectedSegment, setSelectedSegment] = useState<"deck" | "posts" | "people">("deck");
+  const [mainMenuOpen, setMainMenuOpen] = useState(false);
+  const [currentLang, setCurrentLang] = useState(getCurrentLanguage());
 
   const isFeedEnabled =
     process.env.EXPO_PUBLIC_FEED_ENABLED === "true" ||
@@ -396,6 +398,15 @@ export default function DiscoverScreen() {
           <TouchableOpacity style={styles.refreshBtn} onPress={() => refetch()} activeOpacity={0.8}>
             <Feather name="rotate-cw" size={16} color={Colors.boneDim} />
           </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.refreshBtn}
+            onPress={() => setMainMenuOpen(true)}
+            activeOpacity={0.8}
+            accessibilityLabel={t("chatMenu.menu")}
+            accessibilityRole="button"
+          >
+            <Feather name="menu" size={18} color={Colors.bone} />
+          </TouchableOpacity>
         </View>
       </View>
 
@@ -607,6 +618,114 @@ export default function DiscoverScreen() {
             </TouchableOpacity>
           </View>
         </View>
+      </Modal>
+      {/* MASTER HAMBURGER DRAWER */}
+      <Modal
+        visible={mainMenuOpen}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setMainMenuOpen(false)}
+      >
+        <TouchableOpacity
+          activeOpacity={1}
+          onPress={() => setMainMenuOpen(false)}
+          style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.65)", justifyContent: "flex-end" }}
+        >
+          <TouchableOpacity
+            activeOpacity={1}
+            onPress={(e) => e.stopPropagation()}
+            style={{
+              backgroundColor: "#161B22",
+              borderTopLeftRadius: 24,
+              borderTopRightRadius: 24,
+              padding: 20,
+              paddingBottom: Math.max(insets.bottom + 16, 28),
+              borderTopWidth: 1,
+              borderColor: "#21262D",
+              gap: 10,
+            }}
+          >
+            <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
+              <Text style={{ fontFamily: "Fraunces_700Bold", fontSize: 18, color: Colors.bone }}>
+                {t("chatMenu.menu")}
+              </Text>
+              <TouchableOpacity onPress={() => setMainMenuOpen(false)} style={{ padding: 4 }}>
+                <Feather name="x" size={20} color={Colors.boneDim} />
+              </TouchableOpacity>
+            </View>
+
+            <TouchableOpacity
+              onPress={() => {
+                setMainMenuOpen(false);
+                router.push("/(tabs)/profile");
+              }}
+              style={{ flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 12, paddingHorizontal: 14, borderRadius: 14, backgroundColor: Colors.inkRaised }}
+            >
+              <Feather name="user" size={18} color={Colors.gold} />
+              <Text style={{ color: Colors.bone, fontSize: 14, fontFamily: "Inter_600SemiBold" }}>
+                {t("profile.tabTitle")}
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={() => {
+                setMainMenuOpen(false);
+                router.push("/crush" as any);
+              }}
+              style={{ flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 12, paddingHorizontal: 14, borderRadius: 14, backgroundColor: Colors.inkRaised }}
+            >
+              <Feather name="heart" size={18} color="#FF6B6B" />
+              <Text style={{ color: Colors.bone, fontSize: 14, fontFamily: "Inter_600SemiBold" }}>
+                {t("crush.title")}
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={() => {
+                setMainMenuOpen(false);
+                router.push("/(tabs)/profile");
+              }}
+              style={{ flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 12, paddingHorizontal: 14, borderRadius: 14, backgroundColor: Colors.inkRaised }}
+            >
+              <Feather name="globe" size={18} color="#38BDF8" />
+              <Text style={{ color: Colors.bone, fontSize: 14, fontFamily: "Inter_600SemiBold" }}>
+                {t("passport.title")}
+              </Text>
+            </TouchableOpacity>
+
+            <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingVertical: 10, paddingHorizontal: 14, borderRadius: 14, backgroundColor: Colors.inkRaised, marginTop: 4 }}>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+                <Feather name="sliders" size={16} color={Colors.boneDim} />
+                <Text style={{ color: Colors.bone, fontSize: 13, fontFamily: "Inter_600SemiBold" }}>
+                  {t("profile.language")}
+                </Text>
+              </View>
+              <View style={{ flexDirection: "row", gap: 6 }}>
+                {(["en", "rw"] as const).map((lang) => (
+                  <TouchableOpacity
+                    key={lang}
+                    onPress={() => {
+                      changeLanguage(lang);
+                      setCurrentLang(lang);
+                    }}
+                    style={{
+                      paddingHorizontal: 10,
+                      paddingVertical: 5,
+                      borderRadius: 8,
+                      backgroundColor: currentLang === lang ? Colors.gold : "transparent",
+                      borderWidth: 1,
+                      borderColor: currentLang === lang ? Colors.gold : Colors.divider,
+                    }}
+                  >
+                    <Text style={{ color: currentLang === lang ? "#0D1117" : Colors.boneDim, fontSize: 11, fontFamily: "Inter_700Bold" }}>
+                      {lang.toUpperCase()}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+          </TouchableOpacity>
+        </TouchableOpacity>
       </Modal>
     </View>
   );

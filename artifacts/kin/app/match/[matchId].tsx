@@ -384,6 +384,7 @@ export default function MatchScreen() {
   const [dateModalOpen, setDateModalOpen] = useState(false);
   const [liveLocationActive, setLiveLocationActive] = useState(false);
   const [liveEta, setLiveEta] = useState<{ distanceMeters: number; etaMinutes: number } | null>(null);
+  const [chatMenuOpen, setChatMenuOpen] = useState(false);
 
   useEffect(() => {
     if (!token || !matchId) return;
@@ -1050,85 +1051,20 @@ export default function MatchScreen() {
         </View>
 
         <View style={styles.headerActionsRow}>
-          {/* Date Spot Button */}
+          {liveEta && (
+            <View style={{ backgroundColor: "rgba(56,189,248,0.16)", borderColor: "rgba(56,189,248,0.4)", borderWidth: 1, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 999 }}>
+              <Text style={{ color: "#38BDF8", fontSize: 10, fontFamily: "Inter_700Bold" }}>
+                📍 {liveEta.distanceMeters}m
+              </Text>
+            </View>
+          )}
           <TouchableOpacity
             style={[styles.headerIconBtn, { backgroundColor: colors.secondary, borderColor: colors.border }]}
-            onPress={() => setDateModalOpen(true)}
-            accessibilityLabel={t("dates.title")}
+            onPress={() => setChatMenuOpen(true)}
+            accessibilityLabel={t("chatMenu.menu")}
             accessibilityRole="button"
           >
-            <Feather name="map-pin" size={16} color="#38BDF8" />
-          </TouchableOpacity>
-
-          {/* Nudge Button */}
-          <TouchableOpacity
-            style={[styles.headerIconBtn, { backgroundColor: colors.secondary, borderColor: colors.border }]}
-            onPress={() => {
-              if (!token || !matchId) return;
-              const baseUrl =
-                process.env.EXPO_PUBLIC_API_URL ??
-                process.env.VITE_API_URL ??
-                (process.env.EXPO_PUBLIC_DOMAIN
-                  ? `https://${process.env.EXPO_PUBLIC_DOMAIN}`
-                  : "https://kin-x81d.onrender.com");
-              fetch(`${baseUrl}/api/matches/${matchId}/nudge`, {
-                method: "POST",
-                headers: { Authorization: `Bearer ${token}` },
-              }).then(() => {
-                Haptics.notificationAsync?.(Haptics.NotificationFeedbackType.Success);
-              }).catch(() => {});
-            }}
-            accessibilityLabel={t("nudge.sendNudge")}
-            accessibilityRole="button"
-          >
-            <Feather name="zap" size={16} color="#C9A84C" />
-          </TouchableOpacity>
-
-          {/* Question Game Button */}
-          <TouchableOpacity
-            style={[styles.headerIconBtn, { backgroundColor: colors.secondary, borderColor: colors.border }]}
-            onPress={handleSendGamePrompt}
-            accessibilityLabel={t("playground.questionGame")}
-            accessibilityRole="button"
-          >
-            <Text style={{ fontSize: 14 }}>🎲</Text>
-          </TouchableOpacity>
-
-          {/* Report Button in Header */}
-          <TouchableOpacity
-            style={[styles.headerIconBtn, { backgroundColor: colors.secondary, borderColor: colors.border }]}
-            onPress={() => setReportModalOpen(true)}
-            accessibilityLabel={t("chat.report")}
-            accessibilityRole="button"
-          >
-            <Feather name="flag" size={16} color={colors.mutedForeground} />
-          </TouchableOpacity>
-
-          {/* Phase Completion Button */}
-          <TouchableOpacity
-            style={[
-              styles.phaseBtn,
-              {
-                backgroundColor: match.myPhaseComplete ? colors.accent + "22" : colors.secondary,
-                borderColor: match.myPhaseComplete ? colors.accent : colors.border,
-                borderWidth: 1,
-              },
-            ]}
-            onPress={() => markPhaseComplete({ matchId: String(matchId) })}
-            disabled={isPhasing || match.myPhaseComplete}
-            accessibilityLabel={match.myPhaseComplete ? t("matches.phaseCompleted") : t("matches.completePhase")}
-            accessibilityHint={t("matches.completePhase")}
-            accessibilityRole="button"
-          >
-            {isPhasing ? (
-              <ActivityIndicator size="small" color={colors.primary} />
-            ) : (
-              <Feather
-                name={match.myPhaseComplete ? "check-circle" : "check"}
-                size={18}
-                color={match.myPhaseComplete ? colors.accent : colors.mutedForeground}
-              />
-            )}
+            <Feather name="menu" size={18} color={colors.foreground} />
           </TouchableOpacity>
         </View>
       </View>
@@ -1141,77 +1077,6 @@ export default function MatchScreen() {
           </Text>
         </View>
       )}
-
-      {/* Live Date Location & Safety Bar */}
-      <View
-        style={{
-          paddingHorizontal: 12,
-          paddingVertical: 6,
-          backgroundColor: colors.secondary,
-          borderBottomWidth: 1,
-          borderBottomColor: colors.border,
-          flexDirection: "row",
-          alignItems: "center",
-          justifyContent: "space-between",
-          gap: 8,
-        }}
-      >
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 8, flex: 1 }}>
-          {liveLocationActive ? (
-            <TouchableOpacity
-              onPress={handleStopLiveLocation}
-              style={{
-                backgroundColor: "rgba(63,185,80,0.16)",
-                borderWidth: 1,
-                borderColor: "rgba(63,185,80,0.45)",
-                paddingHorizontal: 10,
-                paddingVertical: 4,
-                borderRadius: 999,
-              }}
-            >
-              <Text style={{ color: "#3FB950", fontSize: 11, fontFamily: "Inter_700Bold" }}>
-                {t("location.sharingActive")} · {t("location.stopSharing")}
-              </Text>
-            </TouchableOpacity>
-          ) : (
-            <TouchableOpacity
-              onPress={handleShareLiveLocation}
-              style={{
-                backgroundColor: "rgba(56,189,248,0.16)",
-                borderWidth: 1,
-                borderColor: "rgba(56,189,248,0.45)",
-                paddingHorizontal: 10,
-                paddingVertical: 4,
-                borderRadius: 999,
-              }}
-            >
-              <Text style={{ color: "#38BDF8", fontSize: 11, fontFamily: "Inter_700Bold" }}>
-                {t("location.shareLive")}
-              </Text>
-            </TouchableOpacity>
-          )}
-          {liveEta && (
-            <Text style={{ color: "#C9A84C", fontSize: 11, fontFamily: "Inter_600SemiBold", flexShrink: 1 }} numberOfLines={1}>
-              {t("location.eta", { meters: liveEta.distanceMeters, mins: liveEta.etaMinutes })}
-            </Text>
-          )}
-        </View>
-        <TouchableOpacity
-          onPress={handleTriggerSos}
-          style={{
-            backgroundColor: "rgba(255,107,107,0.2)",
-            borderWidth: 1,
-            borderColor: "rgba(255,107,107,0.5)",
-            paddingHorizontal: 10,
-            paddingVertical: 4,
-            borderRadius: 999,
-          }}
-        >
-          <Text style={{ color: "#FF6B6B", fontSize: 11, fontFamily: "Inter_700Bold" }}>
-            {t("location.sos")}
-          </Text>
-        </TouchableOpacity>
-      </View>
 
       <KeyboardAvoidingView
         style={{ flex: 1 }}
@@ -1702,6 +1567,168 @@ export default function MatchScreen() {
           )}
         </View>
       </KeyboardAvoidingView>
+
+      {/* Chat Hamburger Drawer */}
+      <Modal
+        visible={chatMenuOpen}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setChatMenuOpen(false)}
+      >
+        <TouchableOpacity
+          activeOpacity={1}
+          onPress={() => setChatMenuOpen(false)}
+          style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.65)", justifyContent: "flex-end" }}
+        >
+          <TouchableOpacity
+            activeOpacity={1}
+            onPress={(e) => e.stopPropagation()}
+            style={{
+              backgroundColor: colors.card,
+              borderTopLeftRadius: 24,
+              borderTopRightRadius: 24,
+              padding: 20,
+              paddingBottom: Math.max(insets.bottom + 16, 28),
+              borderTopWidth: 1,
+              borderColor: colors.border,
+              gap: 14,
+            }}
+          >
+            <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+              <Text style={{ fontFamily: "Fraunces_700Bold", fontSize: 18, color: colors.foreground }}>
+                {t("chatMenu.menu")}
+              </Text>
+              <TouchableOpacity onPress={() => setChatMenuOpen(false)} style={{ padding: 4 }}>
+                <Feather name="x" size={20} color={colors.mutedForeground} />
+              </TouchableOpacity>
+            </View>
+
+            {/* Dates & Connection */}
+            <View style={{ gap: 8 }}>
+              <Text style={{ fontSize: 11, fontFamily: "Inter_700Bold", color: colors.mutedForeground, textTransform: "uppercase" }}>
+                {t("chatMenu.dates")}
+              </Text>
+              <TouchableOpacity
+                onPress={() => {
+                  setChatMenuOpen(false);
+                  setDateModalOpen(true);
+                }}
+                style={{ flexDirection: "row", alignItems: "center", gap: 12, padding: 12, borderRadius: 14, backgroundColor: colors.secondary }}
+              >
+                <Feather name="map-pin" size={18} color="#38BDF8" />
+                <Text style={{ color: colors.foreground, fontSize: 14, fontFamily: "Inter_600SemiBold" }}>
+                  {t("dates.title")}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => {
+                  setChatMenuOpen(false);
+                  if (liveLocationActive) {
+                    handleStopLiveLocation();
+                  } else {
+                    handleShareLiveLocation();
+                  }
+                }}
+                style={{ flexDirection: "row", alignItems: "center", gap: 12, padding: 12, borderRadius: 14, backgroundColor: colors.secondary }}
+              >
+                <Feather name="navigation" size={18} color={liveLocationActive ? "#3FB950" : "#38BDF8"} />
+                <Text style={{ color: colors.foreground, fontSize: 14, fontFamily: "Inter_600SemiBold" }}>
+                  {liveLocationActive ? `${t("location.sharingActive")} · ${t("location.stopSharing")}` : t("location.shareLive")}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => {
+                  setChatMenuOpen(false);
+                  if (!isPhasing && !match.myPhaseComplete) {
+                    markPhaseComplete({ matchId: String(matchId) });
+                  }
+                }}
+                disabled={isPhasing || match.myPhaseComplete}
+                style={{ flexDirection: "row", alignItems: "center", gap: 12, padding: 12, borderRadius: 14, backgroundColor: colors.secondary, opacity: match.myPhaseComplete ? 0.6 : 1 }}
+              >
+                <Feather name={match.myPhaseComplete ? "check-circle" : "check"} size={18} color={colors.accent} />
+                <Text style={{ color: colors.foreground, fontSize: 14, fontFamily: "Inter_600SemiBold" }}>
+                  {match.myPhaseComplete ? t("matches.phaseCompleted") : t("matches.completePhase")}
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Games & Flirting */}
+            <View style={{ gap: 8 }}>
+              <Text style={{ fontSize: 11, fontFamily: "Inter_700Bold", color: colors.mutedForeground, textTransform: "uppercase" }}>
+                {t("chatMenu.games")}
+              </Text>
+              <TouchableOpacity
+                onPress={() => {
+                  setChatMenuOpen(false);
+                  handleSendGamePrompt();
+                }}
+                style={{ flexDirection: "row", alignItems: "center", gap: 12, padding: 12, borderRadius: 14, backgroundColor: colors.secondary }}
+              >
+                <Text style={{ fontSize: 16 }}>🎲</Text>
+                <Text style={{ color: colors.foreground, fontSize: 14, fontFamily: "Inter_600SemiBold" }}>
+                  {t("playground.questionGame")}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => {
+                  setChatMenuOpen(false);
+                  if (!token || !matchId) return;
+                  const baseUrl =
+                    process.env.EXPO_PUBLIC_API_URL ??
+                    process.env.VITE_API_URL ??
+                    (process.env.EXPO_PUBLIC_DOMAIN
+                      ? `https://${process.env.EXPO_PUBLIC_DOMAIN}`
+                      : "https://kin-x81d.onrender.com");
+                  fetch(`${baseUrl}/api/matches/${matchId}/nudge`, {
+                    method: "POST",
+                    headers: { Authorization: `Bearer ${token}` },
+                  }).then(() => {
+                    Haptics.notificationAsync?.(Haptics.NotificationFeedbackType.Success);
+                  }).catch(() => {});
+                }}
+                style={{ flexDirection: "row", alignItems: "center", gap: 12, padding: 12, borderRadius: 14, backgroundColor: colors.secondary }}
+              >
+                <Feather name="zap" size={18} color="#C9A84C" />
+                <Text style={{ color: colors.foreground, fontSize: 14, fontFamily: "Inter_600SemiBold" }}>
+                  {t("nudge.sendNudge")}
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Safety & Controls */}
+            <View style={{ gap: 8 }}>
+              <Text style={{ fontSize: 11, fontFamily: "Inter_700Bold", color: colors.mutedForeground, textTransform: "uppercase" }}>
+                {t("chatMenu.safety")}
+              </Text>
+              <TouchableOpacity
+                onPress={() => {
+                  setChatMenuOpen(false);
+                  handleTriggerSos();
+                }}
+                style={{ flexDirection: "row", alignItems: "center", gap: 12, padding: 12, borderRadius: 14, backgroundColor: "rgba(255,107,107,0.14)", borderWidth: 1, borderColor: "rgba(255,107,107,0.35)" }}
+              >
+                <Feather name="alert-triangle" size={18} color="#FF6B6B" />
+                <Text style={{ color: "#FF6B6B", fontSize: 14, fontFamily: "Inter_700Bold" }}>
+                  {t("location.sos")}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => {
+                  setChatMenuOpen(false);
+                  setReportModalOpen(true);
+                }}
+                style={{ flexDirection: "row", alignItems: "center", gap: 12, padding: 12, borderRadius: 14, backgroundColor: colors.secondary }}
+              >
+                <Feather name="flag" size={18} color={colors.mutedForeground} />
+                <Text style={{ color: colors.foreground, fontSize: 14, fontFamily: "Inter_600SemiBold" }}>
+                  {t("chat.report")}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
 
       {/* Message Context Action Modal */}
       <Modal

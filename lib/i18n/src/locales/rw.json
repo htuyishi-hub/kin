@@ -413,6 +413,12 @@
     "verifyVoice": "Emeza Ijwi 🎙️",
     "voiceVerified": "🎙️✓ Ijwi Ryemejwe"
   },
+  "chatMenu": {
+    "dates": "📍 Guhura & Aho Gusohokera",
+    "games": "🎲 Imikino & Impano",
+    "safety": "🛡️ Umutekano",
+    "menu": "Ibikubiyemo"
+  },
   "serious": {
     "tabTitle": "Abiyemeje",
     "queueTitle": "Umurongo w'Abiyemeje",

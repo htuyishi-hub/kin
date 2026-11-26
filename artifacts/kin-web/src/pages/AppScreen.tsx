@@ -54,7 +54,7 @@ import { TrendingView } from '@/components/TrendingView';
 import { RushModal } from '@/components/RushModal';
 import { StoriesBar } from '@/components/StoriesBar';
 import { SecretCrushCard } from '@/components/SecretCrushCard';
-import { Trophy } from 'lucide-react';
+import { Trophy, Menu } from 'lucide-react';
 
 function getIntentBadgeLabel(intent: string | null | undefined, t: (k: string) => string): string {
   const val = (intent || '').toLowerCase();
@@ -183,6 +183,8 @@ export default function AppScreen() {
 
   const [activeTab, setActiveTab] = useState<'discover' | 'admirers' | 'trending' | 'matches' | 'serious' | 'profile'>('discover');
   const [rushModalOpen, setRushModalOpen] = useState(false);
+  const [mainMenuOpen, setMainMenuOpen] = useState(false);
+  const [chatMenuOpen, setChatMenuOpen] = useState(false);
   const [admirers, setAdmirers] = useState<any[]>([]);
   const [admirersCount, setAdmirersCount] = useState(0);
   const [isAdmirersUnblurred, setIsAdmirersUnblurred] = useState(false);
@@ -2521,10 +2523,20 @@ export default function AppScreen() {
           </span>
         </div>
 
-        {/* Golden Bids Pill */}
-        <div className="flex items-center gap-1.5 bg-[#242438] border border-[#C9A84C]/40 px-2.5 py-1 rounded-full text-xs font-semibold text-[#C9A84C]">
-          <Star className="w-3.5 h-3.5 fill-current" />
-          <span>{goldenBids} {t('discover.goldenBids')}</span>
+        <div className="flex items-center gap-2">
+          {/* Golden Bids Pill */}
+          <div className="flex items-center gap-1.5 bg-[#242438] border border-[#C9A84C]/40 px-2.5 py-1 rounded-full text-xs font-semibold text-[#C9A84C]">
+            <Star className="w-3.5 h-3.5 fill-current" />
+            <span>{goldenBids} {t('discover.goldenBids')}</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setMainMenuOpen(true)}
+            aria-label={t('chatMenu.menu')}
+            className="w-9 h-9 rounded-full bg-[#1A1A2E] border border-[#21262D] text-[#F0EDE6] flex items-center justify-center hover:border-[#C9A84C] transition-colors cursor-pointer"
+          >
+            <Menu className="w-4 h-4" />
+          </button>
         </div>
       </div>
 
@@ -5026,17 +5038,165 @@ export default function AppScreen() {
           <MessageCircle className="w-5 h-5" />
           <span>{t('matches.tabTitle')}</span>
         </button>
-
-        <button
-          onClick={() => setActiveTab('profile')}
-          className={`flex flex-col items-center gap-1 text-[10px] font-semibold transition-colors cursor-pointer ${
-            activeTab === 'profile' ? 'text-[#2563EB]' : 'text-[#A8A49E]'
-          }`}
-        >
-          <User className="w-5 h-5" />
-          <span>{t('profile.tabTitle')}</span>
-        </button>
       </div>
+
+      {/* MAIN APP MASTER DRAWER (☰) */}
+      {mainMenuOpen && (
+        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-end sm:items-center justify-center p-4">
+          <div className="w-full max-w-sm bg-[#161B22] border border-[#21262D] rounded-3xl p-5 flex flex-col gap-2.5 shadow-2xl">
+            <div className="flex items-center justify-between pb-2 border-b border-[#21262D]">
+              <span className="font-serif text-base font-bold text-[#F0EDE6]">kinn</span>
+              <button type="button" onClick={() => setMainMenuOpen(false)} className="text-[#8B949E] cursor-pointer">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <button
+              type="button"
+              onClick={() => { setMainMenuOpen(false); setActiveTab('profile'); }}
+              className="w-full py-2.5 px-3.5 rounded-xl bg-[#1A1A2E] text-left text-xs font-bold text-[#F0EDE6] flex items-center gap-2.5 cursor-pointer"
+            >
+              <User className="w-4 h-4 text-[#38BDF8]" />
+              <span>{t('profile.myProfile')}</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => { setMainMenuOpen(false); setActiveTab('admirers'); }}
+              className="w-full py-2.5 px-3.5 rounded-xl bg-[#1A1A2E] text-left text-xs font-bold text-[#F0EDE6] flex items-center gap-2.5 cursor-pointer"
+            >
+              <span>💘</span>
+              <span>{t('crush.title')}</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => { setMainMenuOpen(false); setActiveTab('profile'); }}
+              className="w-full py-2.5 px-3.5 rounded-xl bg-[#1A1A2E] text-left text-xs font-bold text-[#F0EDE6] flex items-center gap-2.5 cursor-pointer"
+            >
+              <span>✈️</span>
+              <span>{t('passport.title')}</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => { setMainMenuOpen(false); setActiveTab('profile'); }}
+              className="w-full py-2.5 px-3.5 rounded-xl bg-[#1A1A2E] text-left text-xs font-bold text-[#F0EDE6] flex items-center gap-2.5 cursor-pointer"
+            >
+              <Shield className="w-4 h-4 text-[#C9A84C]" />
+              <span>{t('contacts.title')}</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => { setMainMenuOpen(false); setSelfieModalOpen(true); }}
+              className="w-full py-2.5 px-3.5 rounded-xl bg-[#1A1A2E] text-left text-xs font-bold text-[#38BDF8] flex items-center gap-2.5 cursor-pointer"
+            >
+              <BadgeCheck className="w-4 h-4" />
+              <span>{isSelfieVerified ? t('trust.verified') : t('trust.getVerified')}</span>
+            </button>
+            <div className="flex gap-2 pt-1">
+              <button
+                type="button"
+                onClick={() => handleLanguageSelect('en')}
+                className={`flex-1 py-2 rounded-xl text-xs font-bold border cursor-pointer ${currentLang === 'en' ? 'bg-[#C9A84C] text-[#0D1117] border-[#C9A84C]' : 'bg-[#1A1A2E] text-[#A8A49E] border-[#21262D]'}`}
+              >
+                English
+              </button>
+              <button
+                type="button"
+                onClick={() => handleLanguageSelect('rw')}
+                className={`flex-1 py-2 rounded-xl text-xs font-bold border cursor-pointer ${currentLang === 'rw' ? 'bg-[#C9A84C] text-[#0D1117] border-[#C9A84C]' : 'bg-[#1A1A2E] text-[#A8A49E] border-[#21262D]'}`}
+              >
+                Kinyarwanda
+              </button>
+            </div>
+            <button
+              type="button"
+              onClick={() => { setMainMenuOpen(false); handleInstallPwa(); }}
+              className="w-full py-2.5 rounded-xl bg-[#2563EB]/20 border border-[#38BDF8]/40 text-xs font-bold text-[#38BDF8] cursor-pointer"
+            >
+              📲 {t('pwa.install')}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* CHAT HAMBURGER DRAWER (☰) */}
+      {chatMenuOpen && selectedMatch && (
+        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-end sm:items-center justify-center p-4">
+          <div className="w-full max-w-sm bg-[#161B22] border border-[#21262D] rounded-3xl p-5 flex flex-col gap-3 shadow-2xl">
+            <div className="flex items-center justify-between pb-2 border-b border-[#21262D]">
+              <span className="font-serif text-base font-bold text-[#F0EDE6]">{selectedMatch.otherUserName || selectedMatch.name}</span>
+              <button type="button" onClick={() => setChatMenuOpen(false)} className="text-[#8B949E] cursor-pointer">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <span className="text-[10px] font-bold uppercase tracking-wider text-[#38BDF8]">{t('chatMenu.dates')}</span>
+            <button
+              type="button"
+              onClick={() => { setChatMenuOpen(false); setDateModalOpen(true); }}
+              className="w-full py-2.5 px-3.5 rounded-xl bg-[#1A1A2E] text-left text-xs font-bold text-[#F0EDE6] cursor-pointer"
+            >
+              📍 {t('dates.title')}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setChatMenuOpen(false);
+                if (liveLocationActive) handleStopLiveLocation();
+                else handleShareLiveLocation();
+              }}
+              className="w-full py-2.5 px-3.5 rounded-xl bg-[#1A1A2E] text-left text-xs font-bold text-[#3FB950] cursor-pointer"
+            >
+              {liveLocationActive ? `${t('location.sharingActive')} · ${t('location.stopSharing')}` : t('location.shareLive')}
+            </button>
+
+            <span className="text-[10px] font-bold uppercase tracking-wider text-[#C9A84C] pt-1">{t('chatMenu.games')}</span>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => { setChatMenuOpen(false); handleSendGamePrompt(); }}
+                className="py-2.5 px-3 rounded-xl bg-[#1A1A2E] text-xs font-bold text-[#F0EDE6] cursor-pointer"
+              >
+                🎲 {t('playground.questionGame')}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setChatMenuOpen(false);
+                  if (token && selectedMatch?.id) {
+                    apiFetch(`/api/matches/${selectedMatch.id}/nudge`, {
+                      method: 'POST',
+                      headers: { Authorization: `Bearer ${token}` },
+                    }).catch(() => {});
+                  }
+                }}
+                className="py-2.5 px-3 rounded-xl bg-[#1A1A2E] text-xs font-bold text-[#C9A84C] cursor-pointer"
+              >
+                {t('nudge.sendNudge')}
+              </button>
+            </div>
+
+            <span className="text-[10px] font-bold uppercase tracking-wider text-[#FF6B6B] pt-1">{t('chatMenu.safety')}</span>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => { setChatMenuOpen(false); handleTriggerSos(); }}
+                className="py-2.5 px-3 rounded-xl bg-[#FF6B6B]/20 border border-[#FF6B6B]/40 text-xs font-bold text-[#FF6B6B] cursor-pointer"
+              >
+                {t('location.sos')}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setChatMenuOpen(false);
+                  setReportingMatch({ reportedUserId: selectedMatch.otherUserId || selectedMatch.id, matchId: selectedMatch.id });
+                }}
+                className="py-2.5 px-3 rounded-xl bg-[#1A1A2E] text-xs font-bold text-[#A8A49E] cursor-pointer"
+              >
+                🚩 {t('chat.report')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* CREATE POST MODAL */}
       {isCreatePostModalOpen && (
