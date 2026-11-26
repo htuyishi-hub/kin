@@ -373,31 +373,21 @@ export default function DiscoverScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: Colors.night, paddingTop: paddingT }]}>
-      {/* Top Header with Intent Gating Indicator and Moderation Deck Shortcut */}
+      {/* Top Header */}
       <View style={styles.header}>
         <View style={styles.headerLeft}>
           <KLogo size={24} color={Colors.trust} />
-          <View style={styles.intentPill}>
-            <Text style={styles.intentPillLabel}>{t("profile.statsIntent")}:</Text>
-            <Text style={styles.intentPillValue}>{myIntentClass}</Text>
-          </View>
         </View>
 
         <View style={styles.headerRight}>
-          {/* Community Review Deck Shortcut for active users */}
-          {isApproverActive && isCommunityVotingEnabled && (
-            <TouchableOpacity
-              style={styles.moderationBtn}
-              onPress={() => router.push("/moderation/review")}
-              activeOpacity={0.8}
-            >
-              <Feather name="shield" size={14} color={Colors.gold} />
-              <Text style={styles.moderationBtnText}>{t("moderation.reviewQueue")}</Text>
-            </TouchableOpacity>
-          )}
-
-          <TouchableOpacity style={styles.refreshBtn} onPress={() => refetch()} activeOpacity={0.8}>
-            <Feather name="rotate-cw" size={16} color={Colors.boneDim} />
+          <TouchableOpacity
+            style={styles.refreshBtn}
+            onPress={() => router.push("/(tabs)/admirers")}
+            activeOpacity={0.8}
+            accessibilityLabel={t("activity.title")}
+            accessibilityRole="button"
+          >
+            <Feather name="bell" size={18} color={Colors.bone} />
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.refreshBtn}
@@ -564,33 +554,6 @@ export default function DiscoverScreen() {
               )}
             </View>
           )}
-          <TouchableOpacity
-            onPress={() => router.push("/rush" as any)}
-            activeOpacity={0.85}
-            style={{
-              marginHorizontal: 16,
-              marginBottom: 8,
-              paddingHorizontal: 14,
-              paddingVertical: 9,
-              borderRadius: 14,
-              backgroundColor: "rgba(255,107,107,0.16)",
-              borderWidth: 1,
-              borderColor: "rgba(255,107,107,0.4)",
-              flexDirection: "row",
-              alignItems: "center",
-              justifyContent: "space-between",
-            }}
-          >
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-              <Feather name="zap" size={14} color="#FF6B6B" />
-              <Text style={{ color: Colors.bone, fontSize: 12, fontFamily: "Inter_700Bold" }}>
-                {t("rush.liveBanner")}
-              </Text>
-            </View>
-            <Text style={{ color: Colors.gold, fontSize: 11, fontFamily: "Inter_700Bold" }}>
-              {t("rush.joinQueue")} →
-            </Text>
-          </TouchableOpacity>
           <StoriesBar />
           <TeaserSwipeDeck
             candidates={candidates}
@@ -674,6 +637,19 @@ export default function DiscoverScreen() {
             <TouchableOpacity
               onPress={() => {
                 setMainMenuOpen(false);
+                router.push("/rush" as any);
+              }}
+              style={{ flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 12, paddingHorizontal: 14, borderRadius: 14, backgroundColor: Colors.inkRaised }}
+            >
+              <Feather name="zap" size={18} color="#FF6B6B" />
+              <Text style={{ color: Colors.bone, fontSize: 14, fontFamily: "Inter_600SemiBold" }}>
+                {t("rush.title")}
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={() => {
+                setMainMenuOpen(false);
                 router.push("/(tabs)/profile");
               }}
               style={{ flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 12, paddingHorizontal: 14, borderRadius: 14, backgroundColor: Colors.inkRaised }}
@@ -681,6 +657,19 @@ export default function DiscoverScreen() {
               <Feather name="user" size={18} color={Colors.gold} />
               <Text style={{ color: Colors.bone, fontSize: 14, fontFamily: "Inter_600SemiBold" }}>
                 {t("profile.tabTitle")}
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={() => {
+                setMainMenuOpen(false);
+                router.push("/(tabs)/profile");
+              }}
+              style={{ flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 12, paddingHorizontal: 14, borderRadius: 14, backgroundColor: Colors.inkRaised }}
+            >
+              <Feather name="shield" size={18} color={Colors.gold} />
+              <Text style={{ color: Colors.bone, fontSize: 14, fontFamily: "Inter_600SemiBold" }}>
+                {t("contacts.title")}
               </Text>
             </TouchableOpacity>
 

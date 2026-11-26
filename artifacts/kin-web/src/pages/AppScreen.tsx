@@ -55,7 +55,7 @@ const RushModal = lazy(() => import('@/components/RushModal').then((m) => ({ def
 const StoriesBar = lazy(() => import('@/components/StoriesBar').then((m) => ({ default: m.StoriesBar })));
 const SecretCrushCard = lazy(() => import('@/components/SecretCrushCard').then((m) => ({ default: m.SecretCrushCard })));
 const DatingFeed = lazy(() => import('@/components/DatingFeed').then((m) => ({ default: m.DatingFeed })));
-import { Trophy, Menu, Wand2 } from 'lucide-react';
+import { Trophy, Menu, Wand2, Bell } from 'lucide-react';
 
 function formatShortName(fullName: string | null | undefined): string {
   const parts = (fullName || '').trim().split(/\s+/).filter(Boolean);
@@ -284,6 +284,7 @@ export default function AppScreen() {
   const chatAudioChunksRef = useRef<Blob[]>([]);
   const chatVoiceAudioRef = useRef<HTMLAudioElement | null>(null);
   const [wingmanLoading, setWingmanLoading] = useState(false);
+  const [notifOpen, setNotifOpen] = useState(false);
 
   // Milestones 2-6 state: search reveal, photo compliments, selfie verify, incognito, date spots, PWA install
   const [searchQuery, setSearchQuery] = useState('');
@@ -2523,32 +2524,39 @@ export default function AppScreen() {
 
   return (
     <div className="flex-1 flex flex-col justify-between bg-[#0D1117] text-[#F0EDE6] select-none relative overflow-hidden">
-      {/* App Top Bar */}
-      <div className="px-5 py-3 border-b border-[#21262D] flex items-center justify-between bg-[#0D1117]/95 z-20">
-        <div className="flex items-center gap-2">
-          <KinnLogo size={22} />
-          <span className="font-serif text-xl font-bold text-[#F0EDE6] tracking-tight">kinn</span>
-          <span className="text-[10px] font-bold text-[#C9A84C] bg-[#C9A84C]/15 border border-[#C9A84C]/30 px-2 py-0.5 rounded-full">
-            RWANDA
-          </span>
-        </div>
-
-        <div className="flex items-center gap-2">
-          {/* Golden Bids Pill */}
-          <div className="flex items-center gap-1.5 bg-[#242438] border border-[#C9A84C]/40 px-2.5 py-1 rounded-full text-xs font-semibold text-[#C9A84C]">
-            <Star className="w-3.5 h-3.5 fill-current" />
-            <span>{goldenBids} {t('discover.goldenBids')}</span>
+      {/* App Top Bar (hidden during active chat so chat header sits at top: 0) */}
+      {!(activeTab === 'matches' && selectedMatch) && (
+        <div className="px-4 h-[52px] border-b border-[#21262D] flex items-center justify-between bg-[#0D1117]/95 z-20 shrink-0">
+          <div className="flex items-center gap-2">
+            <KinnLogo size={22} />
+            <span className="font-serif text-xl font-bold text-[#F0EDE6] tracking-tight">kinn</span>
           </div>
-          <button
-            type="button"
-            onClick={() => setMainMenuOpen(true)}
-            aria-label={t('chatMenu.menu')}
-            className="w-9 h-9 rounded-full bg-[#1A1A2E] border border-[#21262D] text-[#F0EDE6] flex items-center justify-center hover:border-[#C9A84C] transition-colors cursor-pointer"
-          >
-            <Menu className="w-4 h-4" />
-          </button>
+
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setNotifOpen(true)}
+              aria-label={t('activity.title')}
+              className="relative w-9 h-9 rounded-full bg-[#1A1A2E] border border-[#21262D] text-[#F0EDE6] flex items-center justify-center hover:border-[#C9A84C] transition-colors cursor-pointer"
+            >
+              <Bell className="w-4 h-4" />
+              {admirers.length + photoCompliments.length + searchCount > 0 && (
+                <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-[#FF6B6B] text-[#0D1117] text-[10px] font-bold flex items-center justify-center">
+                  {admirers.length + photoCompliments.length + searchCount}
+                </span>
+              )}
+            </button>
+            <button
+              type="button"
+              onClick={() => setMainMenuOpen(true)}
+              aria-label={t('chatMenu.menu')}
+              className="w-9 h-9 rounded-full bg-[#1A1A2E] border border-[#21262D] text-[#F0EDE6] flex items-center justify-center hover:border-[#C9A84C] transition-colors cursor-pointer"
+            >
+              <Menu className="w-4 h-4" />
+            </button>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Main Tab Views */}
       <div className="flex-1 flex flex-col relative overflow-y-auto">
@@ -2585,18 +2593,6 @@ export default function AppScreen() {
                 </div>
               </div>
             )}
-            {/* 8 PM Rush Live Banner */}
-            <button
-              type="button"
-              onClick={() => setRushModalOpen(true)}
-              className="mx-4 mt-2 px-3.5 py-2 rounded-2xl bg-gradient-to-r from-[#FF6B6B]/20 to-[#C9A84C]/20 border border-[#FF6B6B]/40 flex items-center justify-between cursor-pointer shrink-0"
-            >
-              <div className="flex items-center gap-2">
-                <Flame className="w-4 h-4 text-[#FF6B6B]" />
-                <span className="text-xs font-bold text-[#F0EDE6]">{t('rush.liveBanner')}</span>
-              </div>
-              <span className="text-[11px] font-bold text-[#C9A84C]">{t('rush.joinQueue')} →</span>
-            </button>
             <Suspense fallback={null}>
               <StoriesBar token={token} />
             </Suspense>
@@ -3432,12 +3428,12 @@ export default function AppScreen() {
 
         {/* TAB 2: MATCHES & 3-PHASE CHAT */}
         {activeTab === 'matches' && (
-          <div className="flex-1 flex flex-col p-4 gap-3">
+          <div className={selectedMatch ? 'flex-1 flex flex-col min-h-0' : 'flex-1 flex flex-col p-4 gap-3'}>
             {selectedMatch ? (
               /* Active Conversation View */
-              <div className="flex-1 flex flex-col min-h-[480px] relative">
+              <div className="flex-1 flex flex-col min-h-0 relative">
                 {/* Chat Header */}
-                <div className="flex items-center justify-between gap-2 pb-3 border-b border-[#21262D]">
+                <div className="h-[52px] min-h-[52px] px-3 flex items-center justify-between gap-2 border-b border-[#21262D] bg-[#0D1117] shrink-0">
                   <div className="flex items-center gap-2.5 min-w-0">
                     <button
                       type="button"
@@ -3446,7 +3442,7 @@ export default function AppScreen() {
                     >
                       ←
                     </button>
-                    <div className="w-[38px] h-[38px] rounded-full bg-[#1A1A2E] border border-[#2563EB] overflow-hidden flex items-center justify-center shrink-0">
+                    <div className="w-9 h-9 rounded-full bg-[#1A1A2E] border border-[#2563EB] overflow-hidden flex items-center justify-center shrink-0">
                       {selectedMatch.otherUserPrimaryPhoto || selectedMatch.photoUrl ? (
                         <img
                           src={selectedMatch.otherUserPrimaryPhoto || selectedMatch.photoUrl}
@@ -3525,7 +3521,7 @@ export default function AppScreen() {
                       setIsNearBottom(near);
                       if (near) setShowNewMessagesPill(false);
                     }}
-                    className="flex-1 flex flex-col py-3 overflow-y-auto max-h-[380px] scroll-smooth"
+                    className="flex-1 flex flex-col px-3 py-3 overflow-y-auto scroll-smooth"
                   >
                     {chatMessages.length === 0 ? (
                       <div className="my-auto flex flex-col items-center justify-center py-12 gap-3 text-center">
@@ -5000,6 +4996,57 @@ export default function AppScreen() {
         </button>
       </div>
 
+      {/* NOTIFICATION BELL MODAL (🔔) */}
+      {notifOpen && (
+        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-end sm:items-center justify-center p-4">
+          <div className="w-full max-w-sm bg-[#161B22] border border-[#21262D] rounded-3xl p-5 flex flex-col gap-3 shadow-2xl max-h-[75vh]">
+            <div className="flex items-center justify-between pb-2 border-b border-[#21262D]">
+              <span className="font-serif text-base font-bold text-[#F0EDE6]">{t('activity.title')}</span>
+              <button type="button" onClick={() => setNotifOpen(false)} className="text-[#8B949E] cursor-pointer">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto divide-y divide-[#21262D]">
+              {admirers.length === 0 && photoCompliments.length === 0 && searchCount === 0 ? (
+                <p className="py-8 text-center text-xs text-[#8B949E]">{t('admirers.noAdmirers')}</p>
+              ) : (
+                <>
+                  {searchCount > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => { setNotifOpen(false); setActiveTab('admirers'); }}
+                      className="w-full py-2.5 text-left text-xs text-[#F0EDE6] hover:text-[#C9A84C] cursor-pointer"
+                    >
+                      🔎 {t('search.badge', { count: searchCount })}
+                    </button>
+                  )}
+                  {photoCompliments.map((c) => (
+                    <button
+                      key={c.id}
+                      type="button"
+                      onClick={() => { setNotifOpen(false); setActiveTab('admirers'); }}
+                      className="w-full py-2.5 text-left text-xs text-[#F0EDE6] hover:text-[#C9A84C] cursor-pointer"
+                    >
+                      {c.giftType === 'coffee' ? '☕' : '💬'} <span className="font-bold">{c.senderFirstName || 'Someone'}</span>: {c.commentText}
+                    </button>
+                  ))}
+                  {admirers.map((a) => (
+                    <button
+                      key={a.id}
+                      type="button"
+                      onClick={() => { setNotifOpen(false); setActiveTab('admirers'); }}
+                      className="w-full py-2.5 text-left text-xs text-[#F0EDE6] hover:text-[#C9A84C] cursor-pointer"
+                    >
+                      ❤️ <span className="font-bold">{a.fullName || a.displayName || 'Someone'}</span>
+                    </button>
+                  ))}
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* MAIN APP MASTER DRAWER (☰) */}
       {mainMenuOpen && (
         <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-end sm:items-center justify-center p-4">
@@ -5010,6 +5057,14 @@ export default function AppScreen() {
                 <X className="w-5 h-5" />
               </button>
             </div>
+            <button
+              type="button"
+              onClick={() => { setMainMenuOpen(false); setRushModalOpen(true); }}
+              className="w-full py-2.5 px-3.5 rounded-xl bg-[#1A1A2E] text-left text-xs font-bold text-[#F0EDE6] flex items-center gap-2.5 cursor-pointer"
+            >
+              <Flame className="w-4 h-4 text-[#FF6B6B]" />
+              <span>{t('rush.title')}</span>
+            </button>
             <button
               type="button"
               onClick={() => { setMainMenuOpen(false); setActiveTab('profile'); }}

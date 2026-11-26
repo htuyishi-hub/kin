@@ -997,7 +997,7 @@ export default function MatchScreen() {
   }
 
   const isMyTurnFirst = !match.firstMessageSent && match.assignedFirstUserId !== userId;
-  const paddingTop = isWeb ? 67 : insets.top;
+  const paddingTop = isWeb ? 0 : insets.top;
   const paddingBottom = isWeb ? 34 : insets.bottom;
 
   return (
@@ -1005,7 +1005,13 @@ export default function MatchScreen() {
       <View
         style={[
           styles.header,
-          { paddingTop: paddingTop + 12, borderBottomColor: colors.border, backgroundColor: colors.card },
+          {
+            paddingTop,
+            paddingBottom: 0,
+            height: paddingTop + 52,
+            borderBottomColor: colors.border,
+            backgroundColor: colors.card,
+          },
         ]}
       >
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
@@ -1014,8 +1020,8 @@ export default function MatchScreen() {
         <View style={{ marginRight: 10 }}>
           <ProfilePhoto
             url={(match as any).otherUserPrimaryPhoto ?? null}
-            size={38}
-            borderRadius={19}
+            size={36}
+            borderRadius={18}
           />
         </View>
         <View style={[styles.headerInfo, { minWidth: 0 }]}>
