@@ -199,6 +199,22 @@ router.get("/me", requireAuth, async (req, res) => {
       .where(eq(profilePhotosTable.userId, p.id));
     const photoCount = photoCountRow?.count ?? 0;
 
+    const hasPhotoAndPhone = photoCount >= 1 && Boolean(p.phoneNumber);
+    let effectiveProfile = p;
+    if (hasPhotoAndPhone && (p.accountStatus !== "active" || !p.isVerified)) {
+      try {
+        await db
+          .update(profilesTable)
+          .set({ accountStatus: "active", isVerified: true })
+          .where(eq(profilesTable.id, p.id));
+        effectiveProfile = { ...p, accountStatus: "active", isVerified: true };
+      } catch (autoErr) {
+        console.warn("[GET /me] Auto-activate failed:", autoErr);
+      }
+    }
+
+    const effectiveVerified = Boolean(isVerified || hasPhotoAndPhone);
+
     // Fetch confirmed voucher details for Trust Chain badge safely
     let vouchedBy: any = null;
     try {
@@ -226,18 +242,18 @@ router.get("/me", requireAuth, async (req, res) => {
       console.warn("[GET /me] Could not fetch vouch details:", vouchErr);
     }
 
-    const accountStatus = p.accountStatus ?? (isVerified || earlyAccess ? "active" : "waitlisted");
+    const accountStatus = effectiveProfile.accountStatus ?? (effectiveVerified || earlyAccess ? "active" : "waitlisted");
     const isVerifiedActive =
-      isVerified &&
+      effectiveVerified &&
       accountStatus === "active" &&
-      p.profileActive !== false &&
-      p.profilePaused !== true;
+      effectiveProfile.profileActive !== false &&
+      effectiveProfile.profilePaused !== true;
 
     const inviteCode = p.inviteCode ?? null;
     const inviteLink = inviteCode ? `${baseUrl}/invite/${inviteCode}` : null;
 
     res.json({
-      ...mapProfile(p),
+      ...mapProfile(effectiveProfile),
       photoCount,
       account_status: accountStatus,
       accountStatus: accountStatus,
@@ -246,7 +262,7 @@ router.get("/me", requireAuth, async (req, res) => {
       inviteCode: inviteCode,
       inviteLink: inviteLink,
       invite_count: p.inviteCount ?? 0,
-      is_verified: isVerified,
+      is_verified: effectiveVerified,
       institution_verified: p?.institutionVerified ?? false,
       institution: p?.institution ?? null,
       verification_method: p?.verificationMethod ?? null,

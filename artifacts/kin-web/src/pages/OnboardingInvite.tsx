@@ -134,7 +134,7 @@ export default function OnboardingInvite() {
       <div className="flex flex-col items-center gap-2 pb-2">
         <button
           type="button"
-          onClick={() => setLocation('/onboarding/waiting')}
+          onClick={() => setLocation('/app')}
           className="w-full py-3 px-4 border border-[#21262D] rounded-full text-xs font-semibold text-[#A8A49E] hover:text-[#F0EDE6] hover:border-[#A8A49E]/40 transition-all flex items-center justify-center gap-2 cursor-pointer"
         >
           <Clock className="w-4 h-4 text-[#C9A84C]" />

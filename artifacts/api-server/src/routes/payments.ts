@@ -75,12 +75,15 @@ router.post("/payments/initiate", requireAuth, async (req, res) => {
       .where(eq(profilesTable.id, userId));
   }
 
+  const ussdDialerUrl = `tel:*182*8*1*623507*${amountRwf}%23`;
+
   res.json({
     id: payment!.id,
     productType: payment!.productType,
     amountRwf: payment!.amountRwf,
     status: payment!.status,
     fulfilled: payment!.fulfilled ?? false,
+    ussdDialerUrl,
     createdAt: payment!.createdAt?.toISOString() ?? new Date().toISOString(),
     completedAt: payment!.completedAt?.toISOString() ?? null,
   });

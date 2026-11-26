@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { eq, and, or, inArray, asc, desc } from "drizzle-orm";
+import { eq, and, or, inArray, asc, desc, ne, isNull, count } from "drizzle-orm";
 import { db, matchesTable, profilesTable, messagesTable, profilePhotosTable, exitSurveysTable, paymentsTable } from "@workspace/db";
 import { requireAuth, type AuthedRequest } from "../middlewares/auth.js";
 import { getStorageAdmin } from "../lib/storage.js";
@@ -125,11 +125,28 @@ router.get("/matches", requireAuth, async (req, res) => {
   const otherMap = new Map(others.map((o) => [o.id, o]));
   const photoMap = await resolveMatchPhotos(otherIds);
 
+  const matchIds = matches.map((m) => m.id);
+  const unreadRows = await db
+    .select({
+      matchId: messagesTable.matchId,
+      cnt: count(),
+    })
+    .from(messagesTable)
+    .where(
+      and(
+        inArray(messagesTable.matchId, matchIds),
+        ne(messagesTable.senderId, userId),
+        isNull(messagesTable.readAt),
+      ),
+    )
+    .groupBy(messagesTable.matchId);
+  const unreadMap = new Map(unreadRows.map((r) => [r.matchId, Number(r.cnt)]));
+
   const result = matches.map((m) => {
     const otherId = m.userA === userId ? m.userB : m.userA;
     const other = otherMap.get(otherId);
     if (!other) return null;
-    return mapMatch(m, userId, other, photoMap.get(otherId) ?? null, 0);
+    return mapMatch(m, userId, other, photoMap.get(otherId) ?? null, unreadMap.get(m.id) ?? 0);
   }).filter(Boolean);
 
   res.json(result);

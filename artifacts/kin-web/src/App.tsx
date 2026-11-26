@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { Suspense, lazy, useEffect } from "react";
 import { Switch, Route, Router as WouterRouter, useLocation } from "wouter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -8,25 +8,25 @@ import { MobileShell } from "@/components/layout/MobileShell";
 import { Navbar } from "@/components/layout/navbar";
 import { Footer } from "@/components/layout/footer";
 
-// Mobile Screen Replicas
-import WelcomeScreen from "@/pages/WelcomeScreen";
-import EmailScreen from "@/pages/EmailScreen";
-import SignInScreen from "@/pages/SignInScreen";
-import ForgotAccountScreen from "@/pages/ForgotAccountScreen";
-import OtpScreen from "@/pages/OtpScreen";
-import OnboardingPersonal from "@/pages/OnboardingPersonal";
-import OnboardingOccupation from "@/pages/OnboardingOccupation";
-import OnboardingUr from "@/pages/OnboardingUr";
-import OnboardingInvite from "@/pages/OnboardingInvite";
-import OnboardingWaiting from "@/pages/OnboardingWaiting";
-import AppScreen from "@/pages/AppScreen";
-import AuthCallback from "@/pages/AuthCallback";
+// Mobile Screen Replicas (Code-split)
+const WelcomeScreen = lazy(() => import("@/pages/WelcomeScreen"));
+const EmailScreen = lazy(() => import("@/pages/EmailScreen"));
+const SignInScreen = lazy(() => import("@/pages/SignInScreen"));
+const ForgotAccountScreen = lazy(() => import("@/pages/ForgotAccountScreen"));
+const OtpScreen = lazy(() => import("@/pages/OtpScreen"));
+const OnboardingPersonal = lazy(() => import("@/pages/OnboardingPersonal"));
+const OnboardingOccupation = lazy(() => import("@/pages/OnboardingOccupation"));
+const OnboardingUr = lazy(() => import("@/pages/OnboardingUr"));
+const OnboardingInvite = lazy(() => import("@/pages/OnboardingInvite"));
+const OnboardingWaiting = lazy(() => import("@/pages/OnboardingWaiting"));
+const AppScreen = lazy(() => import("@/pages/AppScreen"));
+const AuthCallback = lazy(() => import("@/pages/AuthCallback"));
 
-// Marketing & Fallback Pages
-import Home from "@/pages/home";
-import Terms from "@/pages/terms";
-import DownloadPage from "@/pages/DownloadPage";
-import NotFound from "@/pages/not-found";
+// Marketing & Fallback Pages (Code-split)
+const Home = lazy(() => import("@/pages/home"));
+const Terms = lazy(() => import("@/pages/terms"));
+const DownloadPage = lazy(() => import("@/pages/DownloadPage"));
+const NotFound = lazy(() => import("@/pages/not-found"));
 
 const queryClient = new QueryClient();
 
@@ -101,7 +101,9 @@ function App() {
       <AuthProvider>
         <TooltipProvider>
           <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
-            <Router />
+            <Suspense fallback={<div className="min-h-screen bg-[#0D1117]" />}>
+              <Router />
+            </Suspense>
           </WouterRouter>
           <Toaster />
         </TooltipProvider>

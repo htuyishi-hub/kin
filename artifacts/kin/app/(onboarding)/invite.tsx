@@ -248,7 +248,7 @@ export default function InviteVerificationScreen() {
             backgroundColor: isVerified ? colors.primary : colors.muted,
           },
         ]}
-        onPress={() => router.replace(isVerified ? "/(tabs)" : "/(onboarding)/waiting")}
+        onPress={() => router.replace("/(tabs)")}
         activeOpacity={0.85}
       >
         <Text

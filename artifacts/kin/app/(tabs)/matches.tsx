@@ -15,6 +15,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTranslation } from "@workspace/i18n";
 
 import { useColors } from "@/hooks/useColors";
+import { ProfilePhoto } from "@/components/ProfilePhoto";
 
 export default function MatchesScreen() {
   const colors = useColors();
@@ -67,8 +68,12 @@ export default function MatchesScreen() {
               onPress={() => router.push(`/match/${item.id}` as any)}
               activeOpacity={0.8}
             >
-              <View style={[styles.avatar, { backgroundColor: colors.secondary }]}>
-                <Feather name="user" size={24} color={colors.mutedForeground} />
+              <View style={{ marginRight: 14 }}>
+                <ProfilePhoto
+                  url={(item as any).otherUserPrimaryPhoto ?? null}
+                  size={52}
+                  borderRadius={26}
+                />
               </View>
               <View style={styles.matchInfo}>
                 <View style={styles.matchTop}>

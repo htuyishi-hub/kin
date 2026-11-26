@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import React, { Suspense, lazy, useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useLocation } from 'wouter';
 import {
   Flame,
@@ -50,10 +50,10 @@ import { useAuth } from '@/contexts/AuthContext';
 import { getSupabaseClient } from '@/lib/supabase';
 import { encryptMessage, decryptMessage } from '@/lib/e2eeService';
 import { apiFetch, API_BASE } from '@/lib/api';
-import { TrendingView } from '@/components/TrendingView';
-import { RushModal } from '@/components/RushModal';
-import { StoriesBar } from '@/components/StoriesBar';
-import { SecretCrushCard } from '@/components/SecretCrushCard';
+const TrendingView = lazy(() => import('@/components/TrendingView').then((m) => ({ default: m.TrendingView })));
+const RushModal = lazy(() => import('@/components/RushModal').then((m) => ({ default: m.RushModal })));
+const StoriesBar = lazy(() => import('@/components/StoriesBar').then((m) => ({ default: m.StoriesBar })));
+const SecretCrushCard = lazy(() => import('@/components/SecretCrushCard').then((m) => ({ default: m.SecretCrushCard })));
 import { Trophy, Menu, Wand2 } from 'lucide-react';
 
 function formatShortName(fullName: string | null | undefined): string {
@@ -2596,7 +2596,9 @@ export default function AppScreen() {
               </div>
               <span className="text-[11px] font-bold text-[#C9A84C]">{t('rush.joinQueue')} →</span>
             </button>
-            <StoriesBar token={token} />
+            <Suspense fallback={null}>
+              <StoriesBar token={token} />
+            </Suspense>
             {/* Segmented Control */}
             {(isFeedEnabled || isPeopleEnabled) && (
               <div className="px-4 py-2 border-b border-[#21262D] bg-[#0D1117]/80 flex gap-2 shrink-0">
@@ -4240,13 +4242,15 @@ export default function AppScreen() {
 
             {/* Secret Crush Matcher (Confidential 3 Slots) */}
             {activityFilter === 'all' && (
-              <SecretCrushCard
-                token={token}
-                onMatched={(mId) => {
-                  setActiveTab('matches');
-                  if (mId) setSelectedMatch({ id: mId } as any);
-                }}
-              />
+              <Suspense fallback={null}>
+                <SecretCrushCard
+                  token={token}
+                  onMatched={(mId) => {
+                    setActiveTab('matches');
+                    if (mId) setSelectedMatch({ id: mId } as any);
+                  }}
+                />
+              </Suspense>
             )}
 
             {/* Received Photo Compliments & Virtual Drinks */}
@@ -4411,7 +4415,11 @@ export default function AppScreen() {
         )}
 
         {/* TAB: TRENDING (MOST WANTED) */}
-        {activeTab === 'trending' && <TrendingView token={token} />}
+        {activeTab === 'trending' && (
+          <Suspense fallback={null}>
+            <TrendingView token={token} />
+          </Suspense>
+        )}
 
         {/* TAB 3: SERIOUS INTENT QUEUE */}
         {activeTab === 'serious' && (
@@ -5392,18 +5400,20 @@ export default function AppScreen() {
           </div>
         </div>
       )}
-      <RushModal
-        open={rushModalOpen}
-        onClose={() => setRushModalOpen(false)}
-        token={token}
-        currentUserId={user?.id}
-        onMatched={(matchId) => {
-          setActiveTab('matches');
-          if (matchId) {
-            setSelectedMatch({ id: matchId } as any);
-          }
-        }}
-      />
+      <Suspense fallback={null}>
+        <RushModal
+          open={rushModalOpen}
+          onClose={() => setRushModalOpen(false)}
+          token={token}
+          currentUserId={user?.id}
+          onMatched={(matchId) => {
+            setActiveTab('matches');
+            if (matchId) {
+              setSelectedMatch({ id: matchId } as any);
+            }
+          }}
+        />
+      </Suspense>
     </div>
   );
 }
