@@ -27,6 +27,7 @@ import { TeaserCandidate, TeaserSwipeDeck } from "@/components/TeaserSwipeDeck";
 import { PostsFeed } from "@/components/PostsFeed";
 import { PeopleList } from "@/components/PeopleList";
 import { PendingRequestCard, type PendingRequestItem } from "@/components/PendingRequestCard";
+import { StoriesBar } from "@/components/StoriesBar";
 import { Colors } from "@/constants/colors";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTranslation } from "@workspace/i18n";
@@ -562,6 +563,7 @@ export default function DiscoverScreen() {
               {t("rush.joinQueue")} →
             </Text>
           </TouchableOpacity>
+          <StoriesBar />
           <TeaserSwipeDeck
             candidates={candidates}
             onSwipeRight={handleSwipeRight}

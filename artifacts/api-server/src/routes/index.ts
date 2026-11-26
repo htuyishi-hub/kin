@@ -24,6 +24,8 @@ import datesRouter from "./dates.js";
 import contactsRouter from "./contacts.js";
 import leaderboardRouter from "./leaderboard.js";
 import rushRouter from "./rush.js";
+import storiesRouter from "./stories.js";
+import crushRouter from "./crush.js";
 import { requireAuth } from "../middlewares/auth.js";
 import { verifyURRegistration } from "./urVerification.js";
 
@@ -54,6 +56,8 @@ router.use(datesRouter);
 router.use(contactsRouter);
 router.use(leaderboardRouter);
 router.use(rushRouter);
+router.use(storiesRouter);
+router.use(crushRouter);
 
 // Phase 2: UR registration verification
 router.post("/me/ur/verify-registration", requireAuth, verifyURRegistration);

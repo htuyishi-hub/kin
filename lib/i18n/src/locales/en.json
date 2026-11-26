@@ -389,6 +389,30 @@
     "matchReply": "Match & Reply",
     "gift": "Virtual Gift"
   },
+  "stories": {
+    "title": "Stories",
+    "addStory": "Your Story",
+    "replyPlaceholder": "Reply with Rose 🌹 · 100 RWF",
+    "sendRose": "🌹 100 RWF",
+    "postCta": "Post Story"
+  },
+  "crush": {
+    "title": "Secret Crush 💘",
+    "addCrush": "Add Crush",
+    "slots": "{{count}} / 3",
+    "matchedBanner": "Mutual Secret Crush! 🎉",
+    "unlockSlots": "Unlock More · 200 RWF",
+    "inviteSecretly": "Invite Secretly"
+  },
+  "vibe": {
+    "matchScore": "🔥 {{score}}/3 Vibe",
+    "weekend": "Weekend",
+    "firstDate": "First Date",
+    "getaway": "Getaway",
+    "faculty": "Faculty",
+    "verifyVoice": "Verify Voice 🎙️",
+    "voiceVerified": "🎙️✓ Voice Verified"
+  },
   "serious": {
     "tabTitle": "Serious",
     "queueTitle": "Serious Queue",

@@ -301,6 +301,12 @@ router.get("/match-queue", requireAuth, async (req, res) => {
       isFreeTonight: Boolean((c as any).isFreeTonight),
       freeTonightNote: (c as any).freeTonightNote ?? null,
       isOnline: Boolean(c.lastActive && c.lastActive > new Date(Date.now() - 15 * 60 * 1000)),
+      facultyFlair: (c as any).facultyFlair ?? null,
+      isVoiceVerified: Boolean((c as any).isVoiceVerified),
+      vibeScore:
+        ((myProfile as any).vibeWeekend && (myProfile as any).vibeWeekend === (c as any).vibeWeekend ? 1 : 0) +
+        ((myProfile as any).vibeFirstDate && (myProfile as any).vibeFirstDate === (c as any).vibeFirstDate ? 1 : 0) +
+        ((myProfile as any).vibeGetaway && (myProfile as any).vibeGetaway === (c as any).vibeGetaway ? 1 : 0),
       approvedBy: approvedByMap.get(c.id) ?? null,
       vouchedBy: approvedByMap.get(c.id) ?? null,
     };

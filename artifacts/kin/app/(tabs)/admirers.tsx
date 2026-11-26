@@ -217,6 +217,31 @@ export default function AdmirersScreen() {
         })}
       </ScrollView>
 
+      {activityFilter === "all" && (
+        <TouchableOpacity
+          onPress={() => router.push("/crush" as any)}
+          activeOpacity={0.85}
+          style={{
+            marginHorizontal: 16,
+            marginBottom: 8,
+            paddingHorizontal: 14,
+            paddingVertical: 10,
+            borderRadius: 14,
+            backgroundColor: "rgba(255,107,107,0.14)",
+            borderWidth: 1,
+            borderColor: "rgba(255,107,107,0.4)",
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "space-between",
+          }}
+        >
+          <Text style={{ color: Colors.bone, fontSize: 13, fontFamily: "Inter_700Bold" }}>
+            {t("crush.title")}
+          </Text>
+          <Feather name="chevron-right" size={16} color="#FF6B6B" />
+        </TouchableOpacity>
+      )}
+
       {(activityFilter === "all" || activityFilter === "searches") && searchCount > 0 && (
         <View style={styles.searchBanner}>
           <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8 }}>

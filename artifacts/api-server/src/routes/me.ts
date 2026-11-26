@@ -83,6 +83,11 @@ function mapProfile(p: typeof profilesTable.$inferSelect) {
     freeTonightNote: (p as any).freeTonightNote ?? null,
     passportCity: (p as any).passportCity ?? null,
     passportUntil: (p as any).passportUntil ? new Date((p as any).passportUntil).toISOString() : null,
+    facultyFlair: (p as any).facultyFlair ?? null,
+    isVoiceVerified: Boolean((p as any).isVoiceVerified),
+    vibeWeekend: (p as any).vibeWeekend ?? null,
+    vibeFirstDate: (p as any).vibeFirstDate ?? null,
+    vibeGetaway: (p as any).vibeGetaway ?? null,
     communityVotingEnabled: process.env.COMMUNITY_VOTING_ENABLED === "true",
     createdAt: p.createdAt ? new Date(p.createdAt).toISOString() : new Date().toISOString(),
     lastActive: p.lastActive ? new Date(p.lastActive).toISOString() : new Date().toISOString(),
@@ -1077,6 +1082,40 @@ router.post("/me/location", requireAuth, async (req, res) => {
     neighborhoodName: detectedNeighborhood,
     profile: updated ? mapProfile(updated) : null,
   });
+});
+
+// PATCH /me/vibe — Update 3-Question Vibe Check & Faculty Flair
+router.patch("/me/vibe", requireAuth, async (req, res) => {
+  const userId = (req as AuthedRequest).userId;
+  const { vibeWeekend, vibeFirstDate, vibeGetaway, facultyFlair } = req.body as {
+    vibeWeekend?: string;
+    vibeFirstDate?: string;
+    vibeGetaway?: string;
+    facultyFlair?: string;
+  };
+  const updates: Record<string, unknown> = {};
+  if (typeof vibeWeekend === "string") updates.vibeWeekend = vibeWeekend;
+  if (typeof vibeFirstDate === "string") updates.vibeFirstDate = vibeFirstDate;
+  if (typeof vibeGetaway === "string") updates.vibeGetaway = vibeGetaway;
+  if (typeof facultyFlair === "string") updates.facultyFlair = facultyFlair.trim().slice(0, 60);
+
+  const [updated] = await db
+    .update(profilesTable)
+    .set(updates as any)
+    .where(eq(profilesTable.id, userId))
+    .returning();
+  res.json({ success: true, profile: updated ? mapProfile(updated) : null });
+});
+
+// POST /me/verify-voice — Mark profile as voice verified
+router.post("/me/verify-voice", requireAuth, async (req, res) => {
+  const userId = (req as AuthedRequest).userId;
+  const [updated] = await db
+    .update(profilesTable)
+    .set({ isVoiceVerified: true } as any)
+    .where(eq(profilesTable.id, userId))
+    .returning();
+  res.json({ success: true, isVoiceVerified: true, profile: updated ? mapProfile(updated) : null });
 });
 
 // UR registration verification

@@ -389,6 +389,30 @@
     "matchReply": "Huza & Subiza",
     "gift": "Impano"
   },
+  "stories": {
+    "title": "Stories",
+    "addStory": "Story Yawe",
+    "replyPlaceholder": "Subiza n'Urubuto 🌹 · 100 RWF",
+    "sendRose": "🌹 100 RWF",
+    "postCta": "Shyiraho Story"
+  },
+  "crush": {
+    "title": "Secret Crush 💘",
+    "addCrush": "Ongeraho",
+    "slots": "{{count}} / 3",
+    "matchedBanner": "Mwahuje mu Ibanga! 🎉",
+    "unlockSlots": "Fungura Izindi · 200 RWF",
+    "inviteSecretly": "Tumira mu Ibanga"
+  },
+  "vibe": {
+    "matchScore": "🔥 {{score}}/3 Vibe",
+    "weekend": "Weekend",
+    "firstDate": "First Date",
+    "getaway": "Urugendo",
+    "faculty": "Ishami",
+    "verifyVoice": "Emeza Ijwi 🎙️",
+    "voiceVerified": "🎙️✓ Ijwi Ryemejwe"
+  },
   "serious": {
     "tabTitle": "Abiyemeje",
     "queueTitle": "Umurongo w'Abiyemeje",

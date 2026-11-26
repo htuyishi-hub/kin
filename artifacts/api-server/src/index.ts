@@ -41,6 +41,50 @@ async function ensureDatabaseSchema() {
     await pool.query("ALTER TABLE profiles ADD COLUMN IF NOT EXISTS longitude DOUBLE PRECISION DEFAULT NULL;");
     await pool.query("ALTER TABLE profiles ADD COLUMN IF NOT EXISTS neighborhood_name TEXT DEFAULT NULL;");
     await pool.query("ALTER TABLE profiles ADD COLUMN IF NOT EXISTS location_updated_at TIMESTAMPTZ DEFAULT NULL;");
+    await pool.query("ALTER TABLE profiles ADD COLUMN IF NOT EXISTS faculty_flair TEXT DEFAULT NULL;");
+    await pool.query("ALTER TABLE profiles ADD COLUMN IF NOT EXISTS is_voice_verified BOOLEAN NOT NULL DEFAULT FALSE;");
+    await pool.query("ALTER TABLE profiles ADD COLUMN IF NOT EXISTS vibe_weekend TEXT DEFAULT NULL;");
+    await pool.query("ALTER TABLE profiles ADD COLUMN IF NOT EXISTS vibe_first_date TEXT DEFAULT NULL;");
+    await pool.query("ALTER TABLE profiles ADD COLUMN IF NOT EXISTS vibe_getaway TEXT DEFAULT NULL;");
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS stories (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+        media_url TEXT NOT NULL,
+        caption TEXT DEFAULT NULL,
+        location_name TEXT DEFAULT NULL,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        expires_at TIMESTAMPTZ NOT NULL DEFAULT (NOW() + INTERVAL '24 hours')
+      );
+    `);
+    await pool.query("CREATE INDEX IF NOT EXISTS idx_stories_user ON stories(user_id);");
+    await pool.query("CREATE INDEX IF NOT EXISTS idx_stories_expires ON stories(expires_at DESC);");
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS secret_crushes (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+        target_phone TEXT NOT NULL,
+        target_user_id UUID REFERENCES profiles(id) ON DELETE SET NULL,
+        is_matched BOOLEAN NOT NULL DEFAULT FALSE,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        CONSTRAINT uq_user_crush UNIQUE (user_id, target_phone)
+      );
+    `);
+    await pool.query("CREATE INDEX IF NOT EXISTS idx_crush_target_phone ON secret_crushes(target_phone);");
+    await pool.query("CREATE INDEX IF NOT EXISTS idx_crush_user ON secret_crushes(user_id);");
+    await pool.query(`
+      DO $$
+      BEGIN
+        IF NOT EXISTS (
+          SELECT 1 FROM pg_publication_tables
+          WHERE pubname = 'supabase_realtime' AND schemaname = 'public' AND tablename = 'stories'
+        ) THEN
+          ALTER PUBLICATION supabase_realtime ADD TABLE public.stories;
+        END IF;
+      EXCEPTION WHEN undefined_object THEN
+        NULL;
+      END $$;
+    `);
     await pool.query(`
       CREATE TABLE IF NOT EXISTS date_location_sessions (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

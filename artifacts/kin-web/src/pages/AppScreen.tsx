@@ -52,6 +52,8 @@ import { encryptMessage, decryptMessage } from '@/lib/e2eeService';
 import { apiFetch, API_BASE } from '@/lib/api';
 import { TrendingView } from '@/components/TrendingView';
 import { RushModal } from '@/components/RushModal';
+import { StoriesBar } from '@/components/StoriesBar';
+import { SecretCrushCard } from '@/components/SecretCrushCard';
 import { Trophy } from 'lucide-react';
 
 function getIntentBadgeLabel(intent: string | null | undefined, t: (k: string) => string): string {
@@ -2573,6 +2575,7 @@ export default function AppScreen() {
               </div>
               <span className="text-[11px] font-bold text-[#C9A84C]">{t('rush.joinQueue')} →</span>
             </button>
+            <StoriesBar token={token} />
             {/* Segmented Control */}
             {(isFeedEnabled || isPeopleEnabled) && (
               <div className="px-4 py-2 border-b border-[#21262D] bg-[#0D1117]/80 flex gap-2 shrink-0">
@@ -3113,6 +3116,20 @@ export default function AppScreen() {
                                   </span>
                                 )}
                               </div>
+                              {((currentProfile as any).facultyFlair || ((currentProfile as any).vibeScore ?? 0) > 0) && (
+                                <div className="flex flex-wrap gap-1.5 mt-1">
+                                  {(currentProfile as any).facultyFlair && (
+                                    <span className="bg-[#2563EB]/25 border border-[#38BDF8]/40 text-[#38BDF8] text-[10px] font-bold px-2 py-0.5 rounded-full">
+                                      {(currentProfile as any).facultyFlair}
+                                    </span>
+                                  )}
+                                  {((currentProfile as any).vibeScore ?? 0) > 0 && (
+                                    <span className="bg-[#3FB950]/20 border border-[#3FB950]/40 text-[#3FB950] text-[10px] font-bold px-2 py-0.5 rounded-full">
+                                      {t('vibe.matchScore', { score: (currentProfile as any).vibeScore })}
+                                    </span>
+                                  )}
+                                </div>
+                              )}
                             </div>
                           </div>
 
@@ -4277,6 +4294,17 @@ export default function AppScreen() {
               ))}
             </div>
 
+            {/* Secret Crush Matcher (Confidential 3 Slots) */}
+            {activityFilter === 'all' && (
+              <SecretCrushCard
+                token={token}
+                onMatched={(mId) => {
+                  setActiveTab('matches');
+                  if (mId) setSelectedMatch({ id: mId } as any);
+                }}
+              />
+            )}
+
             {/* Received Photo Compliments & Virtual Drinks */}
             {(activityFilter === 'all' || activityFilter === 'compliments') && photoCompliments.length > 0 && (
               <div className="flex flex-col gap-2">
@@ -4506,6 +4534,74 @@ export default function AppScreen() {
                       </button>
                     )}
                   </div>
+                </div>
+              </div>
+
+              {/* Vibe Check & Faculty Flair */}
+              <div className="p-4 bg-[#1A1A2E] border border-[#21262D] rounded-2xl flex flex-col gap-3">
+                <span className="text-sm font-semibold text-[#F0EDE6]">{t('vibe.faculty')}</span>
+                <div className="flex flex-wrap gap-1.5">
+                  {['🩺 Medicine / CHUK', '⚖️ Law / UR Huye', '💻 Software Eng / CST', '📊 Business'].map((fl) => (
+                    <button
+                      key={fl}
+                      type="button"
+                      onClick={() => {
+                        if (!token) return;
+                        apiFetch('/api/me/vibe', {
+                          method: 'PATCH',
+                          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                          body: JSON.stringify({ facultyFlair: fl }),
+                        }).catch(() => {});
+                      }}
+                      className="px-2.5 py-1 rounded-full bg-[#161B22] border border-[#21262D] hover:border-[#38BDF8] text-[11px] font-semibold text-[#F0EDE6] cursor-pointer"
+                    >
+                      {fl}
+                    </button>
+                  ))}
+                </div>
+                <div className="grid grid-cols-3 gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!token) return;
+                      apiFetch('/api/me/vibe', {
+                        method: 'PATCH',
+                        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                        body: JSON.stringify({ vibeWeekend: 'kimihurura' }),
+                      }).catch(() => {});
+                    }}
+                    className="py-1.5 rounded-xl bg-[#161B22] border border-[#21262D] text-[11px] font-semibold text-[#CBD5E1] cursor-pointer"
+                  >
+                    {t('vibe.weekend')}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!token) return;
+                      apiFetch('/api/me/vibe', {
+                        method: 'PATCH',
+                        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                        body: JSON.stringify({ vibeFirstDate: 'coffee' }),
+                      }).catch(() => {});
+                    }}
+                    className="py-1.5 rounded-xl bg-[#161B22] border border-[#21262D] text-[11px] font-semibold text-[#CBD5E1] cursor-pointer"
+                  >
+                    {t('vibe.firstDate')}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!token) return;
+                      apiFetch('/api/me/vibe', {
+                        method: 'PATCH',
+                        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                        body: JSON.stringify({ vibeGetaway: 'rubavu' }),
+                      }).catch(() => {});
+                    }}
+                    className="py-1.5 rounded-xl bg-[#161B22] border border-[#21262D] text-[11px] font-semibold text-[#CBD5E1] cursor-pointer"
+                  >
+                    {t('vibe.getaway')}
+                  </button>
                 </div>
               </div>
 

@@ -546,6 +546,24 @@ export function TeaserSwipeDeck({
                     </View>
                   )}
                 </View>
+                {((currentCandidate as any).facultyFlair || ((currentCandidate as any).vibeScore ?? 0) > 0) && (
+                  <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: 4 }}>
+                    {!!(currentCandidate as any).facultyFlair && (
+                      <View style={{ backgroundColor: "rgba(37,99,235,0.25)", borderWidth: 1, borderColor: "rgba(56,189,248,0.4)", paddingHorizontal: 8, paddingVertical: 2, borderRadius: 999 }}>
+                        <Text style={{ color: "#38BDF8", fontSize: 10, fontFamily: "Inter_700Bold" }}>
+                          {(currentCandidate as any).facultyFlair}
+                        </Text>
+                      </View>
+                    )}
+                    {((currentCandidate as any).vibeScore ?? 0) > 0 && (
+                      <View style={{ backgroundColor: "rgba(63,185,80,0.2)", borderWidth: 1, borderColor: "rgba(63,185,80,0.4)", paddingHorizontal: 8, paddingVertical: 2, borderRadius: 999 }}>
+                        <Text style={{ color: "#3FB950", fontSize: 10, fontFamily: "Inter_700Bold" }}>
+                          {t("vibe.matchScore", { score: (currentCandidate as any).vibeScore })}
+                        </Text>
+                      </View>
+                    )}
+                  </View>
+                )}
               </View>
             </View>
 

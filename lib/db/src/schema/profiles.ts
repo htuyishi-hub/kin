@@ -74,6 +74,11 @@ export const profilesTable = pgTable("profiles", {
   longitude: doublePrecision("longitude"),
   neighborhoodName: text("neighborhood_name"),
   locationUpdatedAt: timestamp("location_updated_at", { withTimezone: true }),
+  facultyFlair: text("faculty_flair"),
+  isVoiceVerified: boolean("is_voice_verified").default(false).notNull(),
+  vibeWeekend: text("vibe_weekend"),
+  vibeFirstDate: text("vibe_first_date"),
+  vibeGetaway: text("vibe_getaway"),
   profileActive: boolean("profile_active").default(true),
   profilePaused: boolean("profile_paused").default(false),
 

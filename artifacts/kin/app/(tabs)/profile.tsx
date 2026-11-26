@@ -919,6 +919,51 @@ export default function ProfileScreen() {
             </TouchableOpacity>
           </View>
 
+          {/* Vibe Check & Faculty Flair */}
+          <View style={{ backgroundColor: Colors.inkRaised, borderRadius: 14, padding: 12, gap: 8, borderWidth: 1, borderColor: "rgba(255,255,255,0.06)" }}>
+            <Text style={{ color: Colors.bone, fontSize: 13, fontFamily: "Inter_600SemiBold" }}>{t('vibe.faculty')}</Text>
+            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6 }}>
+              {["🩺 Medicine / CHUK", "⚖️ Law / UR Huye", "💻 Software Eng / CST"].map((fl) => (
+                <TouchableOpacity
+                  key={fl}
+                  onPress={() => {
+                    if (!token) return;
+                    fetch(`${apiBaseUrl}/api/me/vibe`, {
+                      method: "PATCH",
+                      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+                      body: JSON.stringify({ facultyFlair: fl }),
+                    }).catch(() => {});
+                  }}
+                  style={{ backgroundColor: Colors.ink, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 999 }}
+                >
+                  <Text style={{ color: Colors.bone, fontSize: 11, fontFamily: "Inter_600SemiBold" }}>{fl}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            <View style={{ flexDirection: "row", gap: 6 }}>
+              {[
+                { key: "vibeWeekend", val: "kimihurura", label: t("vibe.weekend") },
+                { key: "vibeFirstDate", val: "coffee", label: t("vibe.firstDate") },
+                { key: "vibeGetaway", val: "rubavu", label: t("vibe.getaway") },
+              ].map((v) => (
+                <TouchableOpacity
+                  key={v.key}
+                  onPress={() => {
+                    if (!token) return;
+                    fetch(`${apiBaseUrl}/api/me/vibe`, {
+                      method: "PATCH",
+                      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+                      body: JSON.stringify({ [v.key]: v.val }),
+                    }).catch(() => {});
+                  }}
+                  style={{ flex: 1, backgroundColor: Colors.ink, paddingVertical: 7, borderRadius: 10, alignItems: "center" }}
+                >
+                  <Text style={{ color: Colors.boneDim, fontSize: 11, fontFamily: "Inter_600SemiBold" }}>{v.label}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+
           {/* Free Tonight Switch */}
           <View style={styles.actionRow}>
             <Feather name="moon" size={18} color="#3FB950" />

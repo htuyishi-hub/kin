@@ -125,6 +125,33 @@ export const dateLocationSessionsTable = pgTable("date_location_sessions", {
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
+// Kinn 24-Hour Ephemeral Stories
+export const storiesTable = pgTable("stories", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: uuid("user_id").notNull().references(() => profilesTable.id, { onDelete: "cascade" }),
+  mediaUrl: text("media_url").notNull(),
+  caption: text("caption"),
+  locationName: text("location_name"),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+}, (table) => [
+  index("idx_stories_user").on(table.userId),
+  index("idx_stories_expires").on(table.expiresAt),
+]);
+
+// Secret Crush Confidential Matcher
+export const secretCrushesTable = pgTable("secret_crushes", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: uuid("user_id").notNull().references(() => profilesTable.id, { onDelete: "cascade" }),
+  targetPhone: text("target_phone").notNull(),
+  targetUserId: uuid("target_user_id").references(() => profilesTable.id, { onDelete: "set null" }),
+  isMatched: boolean("is_matched").default(false).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+}, (table) => [
+  index("idx_crush_target_phone").on(table.targetPhone),
+  index("idx_crush_user").on(table.userId),
+]);
+
 export type OtpSession = typeof otpSessionsTable.$inferSelect;
 export type TrustEvent = typeof trustEventsTable.$inferSelect;
 export type Report = typeof reportsTable.$inferSelect;
@@ -135,3 +162,5 @@ export type BlockedContact = typeof blockedContactsTable.$inferSelect;
 export type PopularityVote = typeof popularityVotesTable.$inferSelect;
 export type RushSession = typeof rushSessionsTable.$inferSelect;
 export type DateLocationSession = typeof dateLocationSessionsTable.$inferSelect;
+export type Story = typeof storiesTable.$inferSelect;
+export type SecretCrush = typeof secretCrushesTable.$inferSelect;
