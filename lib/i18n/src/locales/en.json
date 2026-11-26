@@ -187,6 +187,8 @@
     "superLike": "Super Like",
     "fullProfile": "Profile Details",
     "feed": "Feed",
+    "views": "{{count}} views",
+    "policyBlocked": "Commercial ads, links, or phone numbers are not allowed",
     "swipesLeft": "{{count}} swipes left",
     "outOfSwipesTitle": "Out of Swipes",
     "inviteWhatsAppButton": "Invite 2 friends on WhatsApp for 30 more swipes",

@@ -187,6 +187,8 @@
     "superLike": "Super Like",
     "fullProfile": "Amakuru Arambuye",
     "feed": "Ibishya",
+    "views": "Yarebwe {{count}}",
+    "policyBlocked": "Kwamamaza, link, cyangwa nimero za telefone ntibyemewe",
     "swipesLeft": "Hasigaye {{count}}",
     "outOfSwipesTitle": "Swipes Zashize",
     "inviteWhatsAppButton": "Tumira inshuti 2 kuri WhatsApp ubone swipes 30",

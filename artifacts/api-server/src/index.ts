@@ -46,6 +46,8 @@ async function ensureDatabaseSchema() {
     await pool.query("ALTER TABLE profiles ADD COLUMN IF NOT EXISTS vibe_weekend TEXT DEFAULT NULL;");
     await pool.query("ALTER TABLE profiles ADD COLUMN IF NOT EXISTS vibe_first_date TEXT DEFAULT NULL;");
     await pool.query("ALTER TABLE profiles ADD COLUMN IF NOT EXISTS vibe_getaway TEXT DEFAULT NULL;");
+    await pool.query("ALTER TABLE posts ADD COLUMN IF NOT EXISTS location_name TEXT DEFAULT 'Kigali';");
+    await pool.query("ALTER TABLE posts ADD COLUMN IF NOT EXISTS tags TEXT[] DEFAULT '{}';");
     await pool.query(`
       CREATE TABLE IF NOT EXISTS stories (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
