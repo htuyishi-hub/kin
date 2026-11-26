@@ -48,6 +48,7 @@ async function ensureDatabaseSchema() {
     await pool.query("ALTER TABLE profiles ADD COLUMN IF NOT EXISTS vibe_getaway TEXT DEFAULT NULL;");
     await pool.query("ALTER TABLE posts ADD COLUMN IF NOT EXISTS location_name TEXT DEFAULT 'Kigali';");
     await pool.query("ALTER TABLE posts ADD COLUMN IF NOT EXISTS tags TEXT[] DEFAULT '{}';");
+    await pool.query("ALTER TABLE posts ADD COLUMN IF NOT EXISTS music_title TEXT DEFAULT NULL;");
     await pool.query(`
       CREATE TABLE IF NOT EXISTS stories (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -59,8 +60,20 @@ async function ensureDatabaseSchema() {
         expires_at TIMESTAMPTZ NOT NULL DEFAULT (NOW() + INTERVAL '24 hours')
       );
     `);
+    await pool.query("ALTER TABLE stories ADD COLUMN IF NOT EXISTS highlight_category TEXT DEFAULT NULL;");
+    await pool.query("ALTER TABLE stories ADD COLUMN IF NOT EXISTS is_highlight BOOLEAN NOT NULL DEFAULT FALSE;");
     await pool.query("CREATE INDEX IF NOT EXISTS idx_stories_user ON stories(user_id);");
     await pool.query("CREATE INDEX IF NOT EXISTS idx_stories_expires ON stories(expires_at DESC);");
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS story_views (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        story_id UUID NOT NULL REFERENCES stories(id) ON DELETE CASCADE,
+        viewer_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+        viewed_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        CONSTRAINT uq_story_viewer UNIQUE (story_id, viewer_id)
+      );
+    `);
+    await pool.query("CREATE INDEX IF NOT EXISTS idx_story_views_story ON story_views(story_id);");
     await pool.query(`
       CREATE TABLE IF NOT EXISTS secret_crushes (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

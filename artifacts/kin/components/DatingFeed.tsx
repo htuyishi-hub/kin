@@ -25,6 +25,7 @@ export interface MobileFeedPost {
   photoUrls?: string[];
   caption: string;
   locationName: string;
+  musicTitle?: string | null;
   likesCount: number;
   viewsCount?: number;
   createdAt: string;
@@ -195,6 +196,27 @@ export function DatingFeed({
                         {item.user.campus ? ` • 🎓 ${item.user.campus}` : ""}
                       </Text>
                     </TouchableOpacity>
+                    {!!item.musicTitle && (
+                      <View
+                        style={{
+                          marginTop: 4,
+                          alignSelf: "flex-start",
+                          flexDirection: "row",
+                          alignItems: "center",
+                          gap: 4,
+                          paddingHorizontal: 8,
+                          paddingVertical: 2,
+                          borderRadius: 999,
+                          backgroundColor: "#1A1A2E",
+                          borderWidth: 1,
+                          borderColor: "rgba(201,168,76,0.35)",
+                        }}
+                      >
+                        <Text style={{ fontSize: 10, color: Colors.gold, fontFamily: "Inter_600SemiBold" }} numberOfLines={1}>
+                          🎵 {item.musicTitle}
+                        </Text>
+                      </View>
+                    )}
                   </View>
                 </View>
               </View>
@@ -230,7 +252,12 @@ export function DatingFeed({
                 )}
                 {burstPostId === item.postId && (
                   <View style={styles.burstOverlay} pointerEvents="none">
-                    <Text style={{ fontSize: 72 }}>❤️</Text>
+                    <Text style={{ fontSize: 76 }}>❤️</Text>
+                    <Text style={{ position: "absolute", top: "34%", left: "26%", fontSize: 24 }}>💖</Text>
+                    <Text style={{ position: "absolute", top: "36%", right: "26%", fontSize: 22 }}>✨</Text>
+                    <Text style={{ position: "absolute", bottom: "34%", left: "30%", fontSize: 22 }}>💗</Text>
+                    <Text style={{ position: "absolute", bottom: "36%", right: "30%", fontSize: 20 }}>❤️</Text>
+                    <Text style={{ position: "absolute", top: "26%", fontSize: 18 }}>✨</Text>
                   </View>
                 )}
               </View>

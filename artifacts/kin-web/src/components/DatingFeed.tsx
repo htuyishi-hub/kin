@@ -24,6 +24,7 @@ export interface FeedPostItem {
   photoUrls?: string[];
   caption: string;
   locationName: string;
+  musicTitle?: string | null;
   likesCount: number;
   viewsCount?: number;
   createdAt: string;
@@ -58,6 +59,16 @@ const RWANDA_SPOTS = [
 
 const LIFESTYLE_TAGS = ['Afrobeats', 'Coffee', 'Fashion', 'Travel', 'Fitness', 'Tech'];
 
+const VIBE_TRACKS = [
+  '',
+  'Bruce Melodie — Katapilla',
+  'Meddy — Slowly',
+  'The Ben — Why',
+  'Chriss Eazy — Stop',
+  'Ayra Starr — Rush',
+  'Burna Boy — Last Last',
+];
+
 export function DatingFeed({ token, onCompliment, onMatched, onReport }: DatingFeedProps) {
   const { t } = useTranslation();
   const [posts, setPosts] = useState<FeedPostItem[]>([]);
@@ -73,6 +84,7 @@ export function DatingFeed({ token, onCompliment, onMatched, onReport }: DatingF
   const [createOpen, setCreateOpen] = useState(false);
   const [newCaption, setNewCaption] = useState('');
   const [newLocation, setNewLocation] = useState('Question Coffee, Gishushu');
+  const [newMusic, setNewMusic] = useState('Bruce Melodie — Katapilla');
   const [newTags, setNewTags] = useState<string[]>(['Coffee']);
   const [newPhotoUrls, setNewPhotoUrls] = useState<string[]>([]);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
@@ -178,6 +190,7 @@ export function DatingFeed({ token, onCompliment, onMatched, onReport }: DatingF
           caption: newCaption.trim(),
           locationName: newLocation,
           tags: newTags,
+          musicTitle: newMusic || undefined,
         }),
       });
       if (!res.ok) {
@@ -294,6 +307,12 @@ export function DatingFeed({ token, onCompliment, onMatched, onReport }: DatingF
                           </span>
                         )}
                       </div>
+                      {post.musicTitle && (
+                        <div className="mt-1 inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#1A1A2E] border border-[#C9A84C]/35 text-[10px] font-semibold text-[#C9A84C]">
+                          <span>🎵</span>
+                          <span className="truncate max-w-[180px]">{post.musicTitle}</span>
+                        </div>
+                      )}
                     </div>
                   </div>
 
@@ -400,6 +419,11 @@ export function DatingFeed({ token, onCompliment, onMatched, onReport }: DatingF
                   {burstPostId === post.postId && (
                     <div className="absolute inset-0 flex items-center justify-center pointer-events-none bg-black/15">
                       <Heart className="w-24 h-24 text-[#FF6B6B] fill-current drop-shadow-[0_0_24px_rgba(255,107,107,0.85)] animate-ping" />
+                      <span className="absolute -translate-x-12 -translate-y-12 text-2xl animate-bounce">💖</span>
+                      <span className="absolute translate-x-14 -translate-y-10 text-xl animate-bounce">✨</span>
+                      <span className="absolute -translate-x-8 translate-y-12 text-xl animate-ping">❤️</span>
+                      <span className="absolute translate-x-10 translate-y-12 text-2xl animate-bounce">💗</span>
+                      <span className="absolute -translate-y-16 text-lg animate-ping">✨</span>
                     </div>
                   )}
                 </div>
@@ -584,6 +608,18 @@ export function DatingFeed({ token, onCompliment, onMatched, onReport }: DatingF
               {RWANDA_SPOTS.map((spot) => (
                 <option key={spot} value={spot}>
                   📍 {spot}
+                </option>
+              ))}
+            </select>
+
+            <select
+              value={newMusic}
+              onChange={(e) => setNewMusic(e.target.value)}
+              className="w-full bg-[#0D1117] border border-[#21262D] rounded-xl px-3 py-2 text-xs text-[#C9A84C] outline-none"
+            >
+              {VIBE_TRACKS.map((track) => (
+                <option key={track || 'none'} value={track}>
+                  {track ? `🎵 ${track}` : '🎵 —'}
                 </option>
               ))}
             </select>

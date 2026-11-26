@@ -73,6 +73,7 @@ router.get("/feed", requireAuth, async (req, res) => {
       viewsCount: postsTable.impressions,
       locationName: sql<string | null>`${postsTable}.location_name`,
       postTags: sql<string[] | null>`${postsTable}.tags`,
+      musicTitle: sql<string | null>`${postsTable}.music_title`,
       createdAt: postsTable.createdAt,
       fullName: profilesTable.fullName,
       dateOfBirth: profilesTable.dateOfBirth,
@@ -186,6 +187,7 @@ router.get("/feed", requireAuth, async (req, res) => {
       photoUrls,
       caption: r.caption || r.bio || "",
       locationName: loc,
+      musicTitle: r.musicTitle ?? null,
       likesCount: r.likesCount ?? 0,
       viewsCount: (r.viewsCount ?? 0) + 1,
       createdAt: r.createdAt?.toISOString() ?? new Date().toISOString(),
@@ -322,11 +324,12 @@ router.get("/feed", requireAuth, async (req, res) => {
 // POST /api/feed/posts — Create 1-5 photo lifestyle post (Purity & Terms Policy enforced)
 router.post("/feed/posts", requireAuth, async (req, res) => {
   const userId = (req as AuthedRequest).userId;
-  const { photoUrls, caption, locationName, tags } = req.body as {
+  const { photoUrls, caption, locationName, tags, musicTitle } = req.body as {
     photoUrls?: string[];
     caption?: string;
     locationName?: string;
     tags?: string[];
+    musicTitle?: string;
   };
 
   const cleanCaption = (caption || "").trim();
@@ -356,6 +359,7 @@ router.post("/feed/posts", requireAuth, async (req, res) => {
   const cleanTags = Array.isArray(tags)
     ? tags.map((t) => String(t).replace(/^#/, "").trim()).filter(Boolean).slice(0, 6)
     : [];
+  const cleanMusic = musicTitle ? String(musicTitle).trim().slice(0, 80) : null;
 
   const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
 
@@ -374,7 +378,7 @@ router.post("/feed/posts", requireAuth, async (req, res) => {
 
   if (created?.id) {
     await db.execute(
-      sql`UPDATE posts SET location_name = ${cleanLocation}, tags = ${cleanTags} WHERE id = ${created.id}`,
+      sql`UPDATE posts SET location_name = ${cleanLocation}, tags = ${cleanTags}, music_title = ${cleanMusic} WHERE id = ${created.id}`,
     );
   }
 
@@ -384,6 +388,7 @@ router.post("/feed/posts", requireAuth, async (req, res) => {
     caption: cleanCaption,
     locationName: cleanLocation,
     tags: cleanTags,
+    musicTitle: cleanMusic,
     viewsCount: 1,
   });
 });
