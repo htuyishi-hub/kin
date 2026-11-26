@@ -414,15 +414,15 @@
     "voiceVerified": "🎙️✓ Ijwi Ryemejwe"
   },
   "chatMenu": {
-    "dates": "📍 Guhura & Aho Gusohokera",
+    "dates": "📍 Guhura",
     "games": "🎲 Imikino",
     "safety": "🛡️ Umutekano",
-    "menu": "Ibikubiyemo",
-    "online": "Ku murongo",
-    "activeRecently": "Aherutse kugaragara",
-    "wingman": "AI Wingman",
-    "giftTray": "Impano",
-    "viewProfile": "Reba Umwirondoro"
+    "menu": "Menu",
+    "online": "Ariho",
+    "activeRecently": "Ntariho",
+    "wingman": "AI Igisubizo",
+    "giftTray": "Tanga Impano",
+    "viewProfile": "Umwirondoro"
   },
   "serious": {
     "tabTitle": "Abiyemeje",

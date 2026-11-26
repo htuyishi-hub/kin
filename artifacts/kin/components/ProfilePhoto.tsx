@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { Image } from 'expo-image';
+import { Feather } from '@expo/vector-icons';
 import { Colors } from '../constants/colors';
 
 type Props = {
@@ -20,7 +21,9 @@ export function ProfilePhoto({
 
   if (!url) {
     return (
-      <View style={[styles.placeholder, { width: size, height: size, borderRadius }]} />
+      <View style={[styles.placeholder, { width: size, height: size, borderRadius, justifyContent: 'center', alignItems: 'center' }]}>
+        <Feather name="user" size={Math.round(size * 0.45)} color={Colors.boneDim} />
+      </View>
     );
   }
 

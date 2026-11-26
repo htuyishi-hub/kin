@@ -1,9 +1,39 @@
 import { Router } from "express";
-import { eq, and, or, inArray } from "drizzle-orm";
+import { eq, and, or, inArray, asc, desc } from "drizzle-orm";
 import { db, matchesTable, profilesTable, messagesTable, profilePhotosTable, exitSurveysTable, paymentsTable } from "@workspace/db";
 import { requireAuth, type AuthedRequest } from "../middlewares/auth.js";
+import { getStorageAdmin } from "../lib/storage.js";
 
 const router = Router();
+
+async function resolveMatchPhotos(userIds: string[]): Promise<Map<string, string>> {
+  const photoMap = new Map<string, string>();
+  if (userIds.length === 0) return photoMap;
+
+  const rows = await db
+    .select()
+    .from(profilePhotosTable)
+    .where(inArray(profilePhotosTable.userId, userIds))
+    .orderBy(desc(profilePhotosTable.isPrimary), asc(profilePhotosTable.sortOrder));
+
+  const admin = getStorageAdmin();
+  for (const p of rows) {
+    if (photoMap.has(p.userId)) continue;
+    if (admin && p.storagePath) {
+      try {
+        const { data } = await admin.storage.from("profile-photos").createSignedUrl(p.storagePath, 300);
+        if (data?.signedUrl) {
+          photoMap.set(p.userId, data.signedUrl);
+          continue;
+        }
+      } catch {}
+    }
+    if (p.publicUrl) {
+      photoMap.set(p.userId, p.publicUrl);
+    }
+  }
+  return photoMap;
+}
 
 function calculateAge(dateOfBirth: string): number {
   const dob = new Date(dateOfBirth);
@@ -92,13 +122,8 @@ router.get("/matches", requireAuth, async (req, res) => {
     .from(profilesTable)
     .where(inArray(profilesTable.id, otherIds));
 
-  const photos = await db
-    .select()
-    .from(profilePhotosTable)
-    .where(and(inArray(profilePhotosTable.userId, otherIds), eq(profilePhotosTable.isPrimary, true)));
-
   const otherMap = new Map(others.map((o) => [o.id, o]));
-  const photoMap = new Map(photos.map((p) => [p.userId, p.storagePath]));
+  const photoMap = await resolveMatchPhotos(otherIds);
 
   const result = matches.map((m) => {
     const otherId = m.userA === userId ? m.userB : m.userA;
@@ -140,17 +165,14 @@ router.get("/matches/:matchId", requireAuth, async (req, res) => {
     return;
   }
 
-  const photo = await db
-    .select()
-    .from(profilePhotosTable)
-    .where(and(eq(profilePhotosTable.userId, otherId), eq(profilePhotosTable.isPrimary, true)))
-    .limit(1);
+  const photoMap = await resolveMatchPhotos([otherId]);
+  const primaryPhotoUrl = photoMap.get(otherId) ?? null;
 
   const milieuCards = buildMilieuCards(me[0], other[0]);
 
   const introductionCard = `${other[0].fullName}, meet someone who shares your values.\nLike you, ${other[0].fullName?.split(" ")[0]} has been vouched for by people in their community and is looking for ${match.conversationPhase === 1 ? "a meaningful connection" : "the same things you are"}. ${milieuCards.length > 0 ? milieuCards[0] : "You both value honesty and community trust."}\n\nWe think you two should talk.`;
 
-  const baseMatch = mapMatch(match, userId, other[0], photo[0]?.storagePath ?? null, 0);
+  const baseMatch = mapMatch(match, userId, other[0], primaryPhotoUrl, 0);
 
   res.json({
     ...baseMatch,
@@ -166,7 +188,7 @@ router.get("/matches/:matchId", requireAuth, async (req, res) => {
       city: other[0].city ?? null,
       primaryIntent: other[0].primaryIntent ?? null,
       vouchCount: other[0].vouchCount ?? 0,
-      primaryPhotoPath: photo[0]?.storagePath ?? null,
+      primaryPhotoPath: primaryPhotoUrl,
       bio: other[0].bio ?? null,
       tags: (other[0].tags as string[]) ?? [],
       voiceIntroPath: other[0].voiceIntroPath ?? null,

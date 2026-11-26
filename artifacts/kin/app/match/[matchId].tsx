@@ -27,8 +27,10 @@ import { useTranslation, getCurrentLanguage } from "@workspace/i18n";
 
 function formatShortName(fullName: string | null | undefined): string {
   const parts = (fullName || "").trim().split(/\s+/).filter(Boolean);
-  if (parts.length <= 1) return parts[0] || "";
-  return `${parts[0]} ${parts[1][0]}.`;
+  if (parts.length === 0) return "";
+  const first = parts[0].length > 12 ? `${parts[0].slice(0, 11)}…` : parts[0];
+  if (parts.length === 1) return first;
+  return `${first} ${parts[1][0]}.`;
 }
 
 import { useAuth } from "@/contexts/AuthContext";
