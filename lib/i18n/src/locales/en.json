@@ -414,10 +414,15 @@
     "voiceVerified": "🎙️✓ Voice Verified"
   },
   "chatMenu": {
-    "dates": "📍 Dates & Connection",
-    "games": "🎲 Games & Flirting",
+    "dates": "📍 Dates & Meetup",
+    "games": "🎲 Games",
     "safety": "🛡️ Safety & Controls",
-    "menu": "Menu"
+    "menu": "Menu",
+    "online": "Online",
+    "activeRecently": "Active recently",
+    "wingman": "AI Wingman",
+    "giftTray": "Gift Tray",
+    "viewProfile": "View Profile"
   },
   "serious": {
     "tabTitle": "Serious",

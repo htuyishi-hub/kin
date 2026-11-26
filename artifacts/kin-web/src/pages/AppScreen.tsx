@@ -54,7 +54,16 @@ import { TrendingView } from '@/components/TrendingView';
 import { RushModal } from '@/components/RushModal';
 import { StoriesBar } from '@/components/StoriesBar';
 import { SecretCrushCard } from '@/components/SecretCrushCard';
-import { Trophy, Menu } from 'lucide-react';
+import { Trophy, Menu, Wand2 } from 'lucide-react';
+
+function formatShortName(fullName: string | null | undefined): string {
+  const parts = (fullName || '').trim().split(/\s+/).filter(Boolean);
+  if (parts.length <= 1) return parts[0] || '';
+  if ((parts[0] + ' ' + parts[1]).length <= 14) {
+    return `${parts[0]} ${parts[1][0]}.`;
+  }
+  return `${parts[0]} ${parts[1][0]}.`;
+}
 
 function getIntentBadgeLabel(intent: string | null | undefined, t: (k: string) => string): string {
   const val = (intent || '').toLowerCase();
@@ -274,6 +283,7 @@ export default function AppScreen() {
   const chatMediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chatAudioChunksRef = useRef<Blob[]>([]);
   const chatVoiceAudioRef = useRef<HTMLAudioElement | null>(null);
+  const [wingmanLoading, setWingmanLoading] = useState(false);
 
   // Milestones 2-6 state: search reveal, photo compliments, selfie verify, incognito, date spots, PWA install
   const [searchQuery, setSearchQuery] = useState('');
@@ -3406,16 +3416,16 @@ export default function AppScreen() {
               /* Active Conversation View */
               <div className="flex-1 flex flex-col min-h-[480px] relative">
                 {/* Chat Header */}
-                <div className="flex items-center justify-between pb-3 border-b border-[#21262D]">
-                  <div className="flex items-center gap-2.5">
+                <div className="flex items-center justify-between gap-2 pb-3 border-b border-[#21262D]">
+                  <div className="flex items-center gap-2.5 min-w-0">
                     <button
                       type="button"
                       onClick={() => setSelectedMatch(null)}
-                      className="text-sm font-medium text-[#FF6B6B] hover:opacity-80 transition-opacity cursor-pointer p-1"
+                      className="text-sm font-medium text-[#FF6B6B] hover:opacity-80 transition-opacity cursor-pointer p-1 shrink-0"
                     >
                       ←
                     </button>
-                    <div className="w-9 h-9 rounded-full bg-[#1A1A2E] border border-[#2563EB] overflow-hidden flex items-center justify-center">
+                    <div className="w-[38px] h-[38px] rounded-full bg-[#1A1A2E] border border-[#2563EB] overflow-hidden flex items-center justify-center shrink-0">
                       {selectedMatch.otherUserPrimaryPhoto || selectedMatch.photoUrl ? (
                         <img
                           src={selectedMatch.otherUserPrimaryPhoto || selectedMatch.photoUrl}
@@ -3426,125 +3436,52 @@ export default function AppScreen() {
                         <User className="w-5 h-5 text-[#A8A49E]" />
                       )}
                     </div>
-                    <div>
+                    <div className="min-w-0">
                       <div className="flex items-center gap-1.5">
-                        <h3 className="font-bold text-sm text-[#F0EDE6] leading-tight">
-                          {selectedMatch.otherUserName || selectedMatch.name}
+                        <h3 className="truncate max-w-[130px] sm:max-w-[200px] font-semibold text-base text-[#F0EDE6] leading-tight">
+                          {formatShortName(selectedMatch.otherUserName || selectedMatch.name)}
                         </h3>
-                        <span className="w-2 h-2 rounded-full bg-[#3FB950] shadow-[0_0_6px_#3FB950]" title={t('playground.activeNow')} />
                         {(selectedMatch.streakCount ?? 0) > 0 && (
-                          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-[#F59E0B]/15 text-[#F59E0B] border border-[#F59E0B]/30">
+                          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-[#F59E0B]/15 text-[#F59E0B] border border-[#F59E0B]/30 shrink-0">
                             {t('playground.streakDays', { count: selectedMatch.streakCount })}
                           </span>
                         )}
                       </div>
                       <div className="flex items-center gap-2 mt-0.5">
                         {isOtherTyping ? (
-                          <span className="text-[10px] font-medium text-emerald-400 animate-pulse flex items-center gap-1">
+                          <span className="text-[11px] font-semibold text-emerald-400 animate-pulse flex items-center gap-1">
                             <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block" />
                             {t('chat.typing')}
                           </span>
+                        ) : selectedMatch.otherUserLastActive &&
+                          Date.now() - new Date(selectedMatch.otherUserLastActive).getTime() < 15 * 60 * 1000 ? (
+                          <span className="text-[11px] font-semibold text-emerald-400 flex items-center gap-1">
+                            <span>🟢</span>
+                            <span>{t('chatMenu.online')}</span>
+                          </span>
                         ) : (
-                          <div className="flex items-center gap-2">
-                            <span className="text-[10px] font-semibold text-[#2563EB]">
-                              {t('matches.phase', { phase: selectedMatch.conversationPhase || 1 })}
-                            </span>
-                            {selectedMatch.expiresAt && (
-                              <span className="text-[10px] font-semibold text-[#A8A49E] flex items-center gap-0.5">
-                                <Clock className="w-2.5 h-2.5" />
-                                {t('matches.hoursLeft', {
-                                  count: Math.max(0, Math.ceil((new Date(selectedMatch.expiresAt).getTime() - Date.now()) / 3600000)),
-                                })}
-                              </span>
-                            )}
-                          </div>
+                          <span className="text-[11px] text-[#8B949E]">
+                            {t('chatMenu.activeRecently')}
+                          </span>
                         )}
                       </div>
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-2">
-                    {/* Date Spot Button */}
-                    <button
-                      type="button"
-                      onClick={() => setDateModalOpen(true)}
-                      title={t('dates.title')}
-                      aria-label={t('dates.title')}
-                      className="p-2 rounded-full border border-[#21262D] bg-[#1A1A2E] text-[#38BDF8] hover:border-[#38BDF8]/60 transition-all cursor-pointer"
-                    >
-                      <MapPin className="w-4 h-4" />
-                    </button>
-
-                    {/* Nudge Button */}
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (!token || !selectedMatch?.id) return;
-                        apiFetch(`/api/matches/${selectedMatch.id}/nudge`, {
-                          method: 'POST',
-                          headers: { Authorization: `Bearer ${token}` },
-                        }).catch(() => {});
-                      }}
-                      title={t('nudge.sendNudge')}
-                      aria-label={t('nudge.sendNudge')}
-                      className="p-2 rounded-full border border-[#21262D] bg-[#1A1A2E] text-[#C9A84C] hover:border-[#C9A84C]/60 transition-all cursor-pointer"
-                    >
-                      <span className="text-xs font-bold">⚡</span>
-                    </button>
-
-                    {/* Question Game Button */}
-                    <button
-                      type="button"
-                      onClick={handleSendGamePrompt}
-                      title={t('playground.questionGame')}
-                      aria-label={t('playground.questionGame')}
-                      className="p-2 rounded-full border border-[#21262D] bg-[#1A1A2E] text-[#C9A84C] hover:border-[#C9A84C]/60 transition-all cursor-pointer"
-                    >
-                      <Dices className="w-4 h-4" />
-                    </button>
-                    {/* Voice Intro Player in Chat Header */}
-                    {(selectedMatch.voiceIntroPath || selectedMatch.otherUser?.voiceIntroPath) && (
-                      <button
-                        type="button"
-                        onClick={() => toggleCandidateVoice(selectedMatch.voiceIntroPath || selectedMatch.otherUser?.voiceIntroPath)}
-                        className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#1A1A2E] border border-[#C9A84C]/40 text-[#C9A84C] text-[11px] font-semibold hover:border-[#C9A84C] transition-colors cursor-pointer"
-                      >
-                        {playingCandidateAudio ? <Pause className="w-3 h-3 fill-current" /> : <Play className="w-3 h-3 fill-current" />}
-                        <Volume2 className="w-3 h-3" />
-                      </button>
+                  <div className="flex items-center gap-2 shrink-0">
+                    {liveEta && (
+                      <span className="px-2.5 py-1 rounded-full bg-[#2563EB]/20 border border-[#38BDF8]/40 text-[#38BDF8] text-[10px] font-bold">
+                        📍 {liveEta.distanceMeters}m
+                      </span>
                     )}
-
-                    {/* Report Match Button */}
                     <button
                       type="button"
-                      onClick={() => setReportingMatch({ reportedUserId: selectedMatch.otherUserId || selectedMatch.id, matchId: selectedMatch.id })}
-                      title={t('chat.report')}
-                      aria-label={t('chat.report')}
-                      className="p-2 rounded-full border border-[#21262D] bg-[#1A1A2E] text-[#A8A49E] hover:text-[#FF6B6B] hover:border-[#FF6B6B]/40 transition-all cursor-pointer"
+                      onClick={() => setChatMenuOpen(true)}
+                      title={t('chatMenu.menu')}
+                      aria-label={t('chatMenu.menu')}
+                      className="p-2 rounded-full border border-[#21262D] bg-[#1A1A2E] text-[#F0EDE6] hover:border-[#C9A84C] transition-all cursor-pointer"
                     >
-                      <Flag className="w-4 h-4" />
-                    </button>
-
-                    {/* Complete Phase Button */}
-                    <button
-                      type="button"
-                      onClick={handleCompletePhase}
-                      disabled={isCompletingPhase || selectedMatch?.myPhaseComplete}
-                      title={selectedMatch?.myPhaseComplete ? t('matches.phaseCompleted') : t('matches.completePhase')}
-                      aria-label={selectedMatch?.myPhaseComplete ? t('matches.phaseCompleted') : t('matches.completePhase')}
-                      className={`p-2 rounded-full border transition-all cursor-pointer ${
-                        selectedMatch?.myPhaseComplete
-                          ? 'border-emerald-500/50 bg-emerald-500/10 text-emerald-400 cursor-default'
-                          : 'border-[#21262D] bg-[#1A1A2E] text-[#A8A49E] hover:text-[#F0EDE6] hover:border-[#2563EB]'
-                      } disabled:opacity-70`}
-                    >
-                      {isCompletingPhase ? (
-                        <Loader2 className="w-4 h-4 animate-spin text-[#2563EB]" />
-                      ) : selectedMatch?.myPhaseComplete ? (
-                        <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-                      ) : (
-                        <Check className="w-4 h-4" />
-                      )}
+                      <Menu className="w-4 h-4" />
                     </button>
                   </div>
                 </div>
@@ -3556,41 +3493,6 @@ export default function AppScreen() {
                     <span>{t('matches.reconnecting')}</span>
                   </div>
                 )}
-
-                {/* Live Date Location & Safety Bar */}
-                <div className="px-4 py-1.5 bg-[#161B22]/90 border-b border-[#21262D] flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-2 min-w-0">
-                    {liveLocationActive ? (
-                      <button
-                        type="button"
-                        onClick={handleStopLiveLocation}
-                        className="px-2.5 py-1 rounded-full bg-[#3FB950]/15 border border-[#3FB950]/40 text-[#3FB950] text-[10px] font-bold cursor-pointer"
-                      >
-                        {t('location.sharingActive')} · {t('location.stopSharing')}
-                      </button>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={handleShareLiveLocation}
-                        className="px-2.5 py-1 rounded-full bg-[#2563EB]/15 border border-[#38BDF8]/40 text-[#38BDF8] text-[10px] font-bold cursor-pointer"
-                      >
-                        {t('location.shareLive')}
-                      </button>
-                    )}
-                    {liveEta && (
-                      <span className="text-[10px] font-semibold text-[#C9A84C] truncate">
-                        {t('location.eta', { meters: liveEta.distanceMeters, mins: liveEta.etaMinutes })}
-                      </span>
-                    )}
-                  </div>
-                  <button
-                    type="button"
-                    onClick={handleTriggerSos}
-                    className="px-2.5 py-1 rounded-full bg-[#FF6B6B]/20 border border-[#FF6B6B]/50 text-[#FF6B6B] text-[10px] font-bold shrink-0 cursor-pointer"
-                  >
-                    {t('location.sos')}
-                  </button>
-                </div>
 
                 {/* Messages List Area */}
                 <div className="flex-1 relative flex flex-col min-h-0">
@@ -4055,16 +3957,8 @@ export default function AppScreen() {
                   <div className="flex items-end gap-2 pt-2 border-t border-[#21262D]">
                     <button
                       type="button"
-                      onClick={() => setGiftTrayOpen((prev) => !prev)}
-                      className="w-10 h-10 rounded-full bg-[#1A1A2E] border border-[#21262D] text-[#C9A84C] flex items-center justify-center hover:border-[#C9A84C] transition-colors cursor-pointer shrink-0 mb-0.5"
-                      title={t('playground.giftRose')}
-                    >
-                      <Gift className="w-4 h-4" />
-                    </button>
-                    <button
-                      type="button"
                       onClick={handleToggleChatVoiceRecord}
-                      className={`w-10 h-10 rounded-full border flex items-center justify-center transition-colors cursor-pointer shrink-0 mb-0.5 ${
+                      className={`w-9 h-9 rounded-full border flex items-center justify-center transition-colors cursor-pointer shrink-0 mb-0.5 ${
                         chatRecording
                           ? 'bg-[#EF4444]/20 border-[#EF4444] text-[#EF4444] animate-pulse'
                           : 'bg-[#1A1A2E] border-[#21262D] text-[#38BDF8] hover:border-[#38BDF8]'
@@ -4072,6 +3966,37 @@ export default function AppScreen() {
                       title={chatRecording ? t('playground.recording') : t('playground.recordVoice')}
                     >
                       {chatRecording ? <Square className="w-4 h-4 fill-current" /> : <Mic className="w-4 h-4" />}
+                    </button>
+                    <button
+                      type="button"
+                      disabled={wingmanLoading}
+                      onClick={async () => {
+                        if (!token || !selectedMatch || wingmanLoading) return;
+                        setWingmanLoading(true);
+                        try {
+                          const lastMsg = chatMessages[chatMessages.length - 1]?.content || '';
+                          const res = await apiFetch('/api/ai/wingman', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                            body: JSON.stringify({
+                              matchId: selectedMatch.id,
+                              partnerName: selectedMatch.otherUserName || selectedMatch.name,
+                              lastMessage: lastMsg,
+                              language: currentLang,
+                            }),
+                          });
+                          if (res.ok) {
+                            const data = await res.json();
+                            if (data?.suggestion) setInputMessage(data.suggestion);
+                          }
+                        } catch {}
+                        setWingmanLoading(false);
+                      }}
+                      className="w-9 h-9 rounded-full bg-[#1A1A2E] border border-[#21262D] text-[#A855F7] flex items-center justify-center hover:border-[#A855F7] transition-colors cursor-pointer shrink-0 mb-0.5 disabled:opacity-50"
+                      title={t('chatMenu.wingman')}
+                      aria-label={t('chatMenu.wingman')}
+                    >
+                      {wingmanLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Wand2 className="w-4 h-4" />}
                     </button>
                     <textarea
                       ref={textareaRef}
@@ -4098,13 +4023,21 @@ export default function AppScreen() {
                           }
                         }
                       }}
-                      className="flex-1 bg-[#1A1A2E] border border-[#21262D] focus:border-[#2563EB] rounded-2xl px-4 py-2 text-sm text-[#F0EDE6] placeholder-[#4A4742] outline-none resize-none max-h-[120px] leading-relaxed"
+                      className="flex-1 bg-[#1A1A2E] border border-[#21262D] focus:border-[#2563EB] rounded-2xl px-3.5 py-2 text-sm text-[#F0EDE6] placeholder-[#4A4742] outline-none resize-none max-h-[120px] leading-relaxed"
                     />
+                    <button
+                      type="button"
+                      onClick={() => setGiftTrayOpen((prev) => !prev)}
+                      className="w-9 h-9 rounded-full bg-[#1A1A2E] border border-[#21262D] text-[#C9A84C] flex items-center justify-center hover:border-[#C9A84C] transition-colors cursor-pointer shrink-0 mb-0.5"
+                      title={t('playground.giftRose')}
+                    >
+                      <Gift className="w-4 h-4" />
+                    </button>
                     <button
                       type="button"
                       onClick={() => handleSendMessage()}
                       disabled={isSendingMessage || !inputMessage.trim()}
-                      className="w-10 h-10 rounded-full bg-[#2563EB] text-[#F0EDE6] flex items-center justify-center hover:bg-[#1A4DB8] transition-colors disabled:opacity-40 cursor-pointer shrink-0 mb-0.5"
+                      className="w-9 h-9 rounded-full bg-[#2563EB] text-[#F0EDE6] flex items-center justify-center hover:bg-[#1A4DB8] transition-colors disabled:opacity-40 cursor-pointer shrink-0 mb-0.5"
                       aria-label={t('matches.send')}
                     >
                       <Send className="w-4 h-4" />
@@ -5159,22 +5092,34 @@ export default function AppScreen() {
               </button>
               <button
                 type="button"
-                onClick={() => {
-                  setChatMenuOpen(false);
-                  if (token && selectedMatch?.id) {
-                    apiFetch(`/api/matches/${selectedMatch.id}/nudge`, {
-                      method: 'POST',
-                      headers: { Authorization: `Bearer ${token}` },
-                    }).catch(() => {});
-                  }
-                }}
+                onClick={() => { setChatMenuOpen(false); setGiftTrayOpen(true); }}
                 className="py-2.5 px-3 rounded-xl bg-[#1A1A2E] text-xs font-bold text-[#C9A84C] cursor-pointer"
               >
-                {t('nudge.sendNudge')}
+                🎁 {t('chatMenu.giftTray')}
               </button>
             </div>
 
             <span className="text-[10px] font-bold uppercase tracking-wider text-[#FF6B6B] pt-1">{t('chatMenu.safety')}</span>
+            <button
+              type="button"
+              onClick={() => {
+                setChatMenuOpen(false);
+                const text = t('safety.shareDateText', {
+                  name: selectedMatch.otherUserName || selectedMatch.name || '',
+                  spot: 'Kigali',
+                  time: dateTimeText,
+                  link: `https://kinn.ink/p/${selectedMatch.otherUserId || selectedMatch.id}`,
+                });
+                if (navigator.share) {
+                  navigator.share({ text }).catch(() => {});
+                } else {
+                  window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank', 'noopener,noreferrer');
+                }
+              }}
+              className="w-full py-2.5 px-3.5 rounded-xl bg-[#1A1A2E] text-left text-xs font-bold text-[#38BDF8] cursor-pointer"
+            >
+              {t('safety.shareDateBestie')}
+            </button>
             <div className="grid grid-cols-2 gap-2">
               <button
                 type="button"

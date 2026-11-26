@@ -415,9 +415,14 @@
   },
   "chatMenu": {
     "dates": "📍 Guhura & Aho Gusohokera",
-    "games": "🎲 Imikino & Impano",
+    "games": "🎲 Imikino",
     "safety": "🛡️ Umutekano",
-    "menu": "Ibikubiyemo"
+    "menu": "Ibikubiyemo",
+    "online": "Ku murongo",
+    "activeRecently": "Aherutse kugaragara",
+    "wingman": "AI Wingman",
+    "giftTray": "Impano",
+    "viewProfile": "Reba Umwirondoro"
   },
   "serious": {
     "tabTitle": "Abiyemeje",

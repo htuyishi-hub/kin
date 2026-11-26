@@ -23,7 +23,13 @@ import {
 import { KeyboardAvoidingView } from "react-native-keyboard-controller";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useQueryClient } from "@tanstack/react-query";
-import { useTranslation } from "@workspace/i18n";
+import { useTranslation, getCurrentLanguage } from "@workspace/i18n";
+
+function formatShortName(fullName: string | null | undefined): string {
+  const parts = (fullName || "").trim().split(/\s+/).filter(Boolean);
+  if (parts.length <= 1) return parts[0] || "";
+  return `${parts[0]} ${parts[1][0]}.`;
+}
 
 import { useAuth } from "@/contexts/AuthContext";
 import { useColors } from "@/hooks/useColors";
@@ -385,6 +391,7 @@ export default function MatchScreen() {
   const [liveLocationActive, setLiveLocationActive] = useState(false);
   const [liveEta, setLiveEta] = useState<{ distanceMeters: number; etaMinutes: number } | null>(null);
   const [chatMenuOpen, setChatMenuOpen] = useState(false);
+  const [wingmanLoading, setWingmanLoading] = useState(false);
 
   useEffect(() => {
     if (!token || !matchId) return;
@@ -1002,12 +1009,22 @@ export default function MatchScreen() {
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
           <Feather name="arrow-left" size={22} color={colors.foreground} />
         </TouchableOpacity>
-        <View style={styles.headerInfo}>
+        <View style={{ marginRight: 10 }}>
+          <ProfilePhoto
+            url={(match as any).otherUserPrimaryPhoto ?? null}
+            size={38}
+            borderRadius={19}
+          />
+        </View>
+        <View style={[styles.headerInfo, { minWidth: 0 }]}>
           <View style={styles.headerNameRow}>
-            <Text style={[styles.headerName, { color: colors.foreground }]}>
-              {match.otherUserName}
+            <Text
+              style={[styles.headerName, { color: colors.foreground, flexShrink: 1 }]}
+              numberOfLines={1}
+              ellipsizeMode="tail"
+            >
+              {formatShortName(match.otherUserName)}
             </Text>
-            <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: "#22C55E" }} />
             {((match as any).streakCount ?? 0) > 0 && (
               <View style={{ backgroundColor: "rgba(245,158,11,0.18)", paddingHorizontal: 6, paddingVertical: 2, borderRadius: 999 }}>
                 <Text style={{ color: "#F59E0B", fontSize: 10, fontFamily: "Inter_700Bold" }}>
@@ -1015,37 +1032,24 @@ export default function MatchScreen() {
                 </Text>
               </View>
             )}
-            {!!(match as any).otherUser?.voiceIntroPath && (
-              <MatchVoicePlayer
-                path={(match as any).otherUser.voiceIntroPath}
-                durationMs={(match as any).otherUser.voiceIntroDurationMs}
-                colors={colors}
-              />
-            )}
           </View>
           <View style={styles.subHeaderRow}>
             {isOtherTyping ? (
               <View style={styles.typingIndicatorRow}>
-                <View style={[styles.typingDot, { backgroundColor: "#22C55E" }]} />
-                <Text style={[styles.typingText, { color: "#22C55E" }]}>
+                <View style={[styles.typingDot, { backgroundColor: "#34D399" }]} />
+                <Text style={[styles.typingText, { color: "#34D399" }]}>
                   {t("chat.typing")}
                 </Text>
               </View>
+            ) : (match as any).otherUserLastActive &&
+              Date.now() - new Date((match as any).otherUserLastActive).getTime() < 15 * 60 * 1000 ? (
+              <Text style={{ color: "#34D399", fontSize: 11, fontFamily: "Inter_600SemiBold" }}>
+                🟢 {t("chatMenu.online")}
+              </Text>
             ) : (
-              <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-                <View style={[styles.phasePill, { backgroundColor: colors.secondary }]}>
-                  <Text style={[styles.phaseText, { color: colors.primary }]}>
-                    {t("matches.phase", { phase })}: {phaseLabels[phase] ?? ""}
-                  </Text>
-                </View>
-                {!!match.expiresAt && (
-                  <Text style={{ color: colors.mutedForeground, fontSize: 10 }}>
-                    ⏰ {t("matches.hoursLeft", {
-                      count: Math.max(0, Math.ceil((new Date(match.expiresAt).getTime() - Date.now()) / 3600000)),
-                    })}
-                  </Text>
-                )}
-              </View>
+              <Text style={{ color: colors.mutedForeground, fontSize: 11, fontFamily: "Inter_400Regular" }}>
+                {t("chatMenu.activeRecently")}
+              </Text>
             )}
           </View>
         </View>
@@ -1499,17 +1503,11 @@ export default function MatchScreen() {
           ) : (
             <>
               <TouchableOpacity
-                onPress={() => setGiftTrayOpen((prev) => !prev)}
-                style={{ width: 38, height: 38, borderRadius: 19, backgroundColor: colors.background, borderWidth: 1, borderColor: colors.border, alignItems: "center", justifyContent: "center" }}
-              >
-                <Feather name="gift" size={17} color="#C9A84C" />
-              </TouchableOpacity>
-              <TouchableOpacity
                 onPress={handleToggleChatVoiceRecord}
                 style={{
-                  width: 38,
-                  height: 38,
-                  borderRadius: 19,
+                  width: 36,
+                  height: 36,
+                  borderRadius: 18,
                   backgroundColor: chatRecorderState.isRecording ? "rgba(239,68,68,0.2)" : colors.background,
                   borderWidth: 1,
                   borderColor: chatRecorderState.isRecording ? "#EF4444" : colors.border,
@@ -1519,9 +1517,61 @@ export default function MatchScreen() {
               >
                 <Feather
                   name={chatRecorderState.isRecording ? "square" : "mic"}
-                  size={17}
+                  size={16}
                   color={chatRecorderState.isRecording ? "#EF4444" : "#38BDF8"}
                 />
+              </TouchableOpacity>
+              <TouchableOpacity
+                disabled={wingmanLoading}
+                onPress={async () => {
+                  if (!token || !matchId || wingmanLoading) return;
+                  setWingmanLoading(true);
+                  const baseUrl =
+                    process.env.EXPO_PUBLIC_API_URL ??
+                    process.env.VITE_API_URL ??
+                    (process.env.EXPO_PUBLIC_DOMAIN
+                      ? `https://${process.env.EXPO_PUBLIC_DOMAIN}`
+                      : "https://kin-x81d.onrender.com");
+                  try {
+                    const lastMsg = messages[messages.length - 1]?.content || "";
+                    const res = await fetch(`${baseUrl}/api/ai/wingman`, {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+                      body: JSON.stringify({
+                        matchId: String(matchId),
+                        partnerName: match.otherUserName,
+                        lastMessage: lastMsg,
+                        language: getCurrentLanguage(),
+                      }),
+                    });
+                    if (res.ok) {
+                      const data = await res.json();
+                      if (data?.suggestion) {
+                        setContent(data.suggestion);
+                        Haptics.impactAsync?.(Haptics.ImpactFeedbackStyle.Light);
+                      }
+                    }
+                  } catch {}
+                  setWingmanLoading(false);
+                }}
+                accessibilityLabel={t("chatMenu.wingman")}
+                style={{
+                  width: 36,
+                  height: 36,
+                  borderRadius: 18,
+                  backgroundColor: colors.background,
+                  borderWidth: 1,
+                  borderColor: colors.border,
+                  alignItems: "center",
+                  justifyContent: "center",
+                  opacity: wingmanLoading ? 0.5 : 1,
+                }}
+              >
+                {wingmanLoading ? (
+                  <ActivityIndicator size="small" color="#A855F7" />
+                ) : (
+                  <Text style={{ fontSize: 15 }}>🪄</Text>
+                )}
               </TouchableOpacity>
               <TextInput
                 ref={inputRef}
@@ -1549,6 +1599,12 @@ export default function MatchScreen() {
                 blurOnSubmit={false}
                 returnKeyType="default"
               />
+              <TouchableOpacity
+                onPress={() => setGiftTrayOpen((prev) => !prev)}
+                style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: colors.background, borderWidth: 1, borderColor: colors.border, alignItems: "center", justifyContent: "center" }}
+              >
+                <Feather name="gift" size={16} color="#C9A84C" />
+              </TouchableOpacity>
               <TouchableOpacity
                 style={[
                   styles.sendBtn,
@@ -1673,25 +1729,13 @@ export default function MatchScreen() {
               <TouchableOpacity
                 onPress={() => {
                   setChatMenuOpen(false);
-                  if (!token || !matchId) return;
-                  const baseUrl =
-                    process.env.EXPO_PUBLIC_API_URL ??
-                    process.env.VITE_API_URL ??
-                    (process.env.EXPO_PUBLIC_DOMAIN
-                      ? `https://${process.env.EXPO_PUBLIC_DOMAIN}`
-                      : "https://kin-x81d.onrender.com");
-                  fetch(`${baseUrl}/api/matches/${matchId}/nudge`, {
-                    method: "POST",
-                    headers: { Authorization: `Bearer ${token}` },
-                  }).then(() => {
-                    Haptics.notificationAsync?.(Haptics.NotificationFeedbackType.Success);
-                  }).catch(() => {});
+                  setGiftTrayOpen(true);
                 }}
                 style={{ flexDirection: "row", alignItems: "center", gap: 12, padding: 12, borderRadius: 14, backgroundColor: colors.secondary }}
               >
-                <Feather name="zap" size={18} color="#C9A84C" />
+                <Feather name="gift" size={18} color="#C9A84C" />
                 <Text style={{ color: colors.foreground, fontSize: 14, fontFamily: "Inter_600SemiBold" }}>
-                  {t("nudge.sendNudge")}
+                  {t("chatMenu.giftTray")}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -1701,6 +1745,24 @@ export default function MatchScreen() {
               <Text style={{ fontSize: 11, fontFamily: "Inter_700Bold", color: colors.mutedForeground, textTransform: "uppercase" }}>
                 {t("chatMenu.safety")}
               </Text>
+              <TouchableOpacity
+                onPress={() => {
+                  setChatMenuOpen(false);
+                  const text = t("safety.shareDateText", {
+                    name: match.otherUserName || "",
+                    spot: "Kigali",
+                    time: dateTimeText,
+                    link: `https://kinn.ink/p/${match.otherUserId || match.id}`,
+                  });
+                  Share.share({ message: text }).catch(() => {});
+                }}
+                style={{ flexDirection: "row", alignItems: "center", gap: 12, padding: 12, borderRadius: 14, backgroundColor: colors.secondary }}
+              >
+                <Feather name="shield" size={18} color="#38BDF8" />
+                <Text style={{ color: colors.foreground, fontSize: 14, fontFamily: "Inter_600SemiBold" }}>
+                  {t("safety.shareDateBestie")}
+                </Text>
+              </TouchableOpacity>
               <TouchableOpacity
                 onPress={() => {
                   setChatMenuOpen(false);
