@@ -27,6 +27,7 @@ import rushRouter from "./rush.js";
 import storiesRouter from "./stories.js";
 import crushRouter from "./crush.js";
 import aiRouter from "./ai.js";
+import feedRouter from "./feed.js";
 import { requireAuth } from "../middlewares/auth.js";
 import { verifyURRegistration } from "./urVerification.js";
 
@@ -60,6 +61,7 @@ router.use(rushRouter);
 router.use(storiesRouter);
 router.use(crushRouter);
 router.use(aiRouter);
+router.use(feedRouter);
 
 // Phase 2: UR registration verification
 router.post("/me/ur/verify-registration", requireAuth, verifyURRegistration);

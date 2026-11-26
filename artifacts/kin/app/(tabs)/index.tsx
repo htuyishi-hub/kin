@@ -28,6 +28,7 @@ import { PostsFeed } from "@/components/PostsFeed";
 import { PeopleList } from "@/components/PeopleList";
 import { PendingRequestCard, type PendingRequestItem } from "@/components/PendingRequestCard";
 import { StoriesBar } from "@/components/StoriesBar";
+import { DatingFeed } from "@/components/DatingFeed";
 import { Colors } from "@/constants/colors";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTranslation, changeLanguage, getCurrentLanguage } from "@workspace/i18n";
@@ -38,7 +39,7 @@ export default function DiscoverScreen() {
   const insets = useSafeAreaInsets();
   const { token, userId } = useAuth();
   const { t } = useTranslation();
-  const [selectedSegment, setSelectedSegment] = useState<"deck" | "posts" | "people">("deck");
+  const [selectedSegment, setSelectedSegment] = useState<"deck" | "feed" | "posts" | "people">("deck");
   const [mainMenuOpen, setMainMenuOpen] = useState(false);
   const [currentLang, setCurrentLang] = useState(getCurrentLanguage());
 
@@ -410,56 +411,66 @@ export default function DiscoverScreen() {
         </View>
       </View>
 
-      {/* Segmented Control (Deck, Posts, People) */}
-      {(isFeedEnabled || isPeopleEnabled) && (
-        <View style={styles.segmentContainer}>
+      {/* Segmented Control (Deck, Feed, Posts, People) */}
+      <View style={styles.segmentContainer}>
+        <TouchableOpacity
+          style={[styles.segmentBtn, selectedSegment === "deck" && styles.segmentBtnActive]}
+          onPress={() => setSelectedSegment("deck")}
+          activeOpacity={0.8}
+        >
+          <Text
+            style={[styles.segmentBtnText, selectedSegment === "deck" && styles.segmentBtnTextActive]}
+          >
+            {t("posts.deck")}
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.segmentBtn, selectedSegment === "feed" && styles.segmentBtnActive]}
+          onPress={() => setSelectedSegment("feed")}
+          activeOpacity={0.8}
+        >
+          <Text
+            style={[styles.segmentBtnText, selectedSegment === "feed" && styles.segmentBtnTextActive]}
+          >
+            📸 {t("discover.feed")}
+          </Text>
+        </TouchableOpacity>
+
+        {isFeedEnabled && (
           <TouchableOpacity
-            style={[styles.segmentBtn, selectedSegment === "deck" && styles.segmentBtnActive]}
-            onPress={() => setSelectedSegment("deck")}
+            style={[styles.segmentBtn, selectedSegment === "posts" && styles.segmentBtnActive]}
+            onPress={() => setSelectedSegment("posts")}
             activeOpacity={0.8}
           >
             <Text
-              style={[styles.segmentBtnText, selectedSegment === "deck" && styles.segmentBtnTextActive]}
+              style={[
+                styles.segmentBtnText,
+                selectedSegment === "posts" && styles.segmentBtnTextActive,
+              ]}
             >
-              {t("posts.deck")}
+              {t("posts.title")}
             </Text>
           </TouchableOpacity>
+        )}
 
-          {isFeedEnabled && (
-            <TouchableOpacity
-              style={[styles.segmentBtn, selectedSegment === "posts" && styles.segmentBtnActive]}
-              onPress={() => setSelectedSegment("posts")}
-              activeOpacity={0.8}
+        {isPeopleEnabled && (
+          <TouchableOpacity
+            style={[styles.segmentBtn, selectedSegment === "people" && styles.segmentBtnActive]}
+            onPress={() => setSelectedSegment("people")}
+            activeOpacity={0.8}
+          >
+            <Text
+              style={[
+                styles.segmentBtnText,
+                selectedSegment === "people" && styles.segmentBtnTextActive,
+              ]}
             >
-              <Text
-                style={[
-                  styles.segmentBtnText,
-                  selectedSegment === "posts" && styles.segmentBtnTextActive,
-                ]}
-              >
-                {t("posts.title")}
-              </Text>
-            </TouchableOpacity>
-          )}
-
-          {isPeopleEnabled && (
-            <TouchableOpacity
-              style={[styles.segmentBtn, selectedSegment === "people" && styles.segmentBtnActive]}
-              onPress={() => setSelectedSegment("people")}
-              activeOpacity={0.8}
-            >
-              <Text
-                style={[
-                  styles.segmentBtnText,
-                  selectedSegment === "people" && styles.segmentBtnTextActive,
-                ]}
-              >
-                {t("posts.people")}
-              </Text>
-            </TouchableOpacity>
-          )}
-        </View>
-      )}
+              {t("posts.people")}
+            </Text>
+          </TouchableOpacity>
+        )}
+      </View>
 
       {/* MATCH NOTIFICATION OVERLAY */}
       {matchNotification && (
@@ -470,7 +481,13 @@ export default function DiscoverScreen() {
       )}
 
       {/* Main Content Area */}
-      {selectedSegment === "posts" && isFeedEnabled ? (
+      {selectedSegment === "feed" ? (
+        <DatingFeed
+          apiBaseUrl={apiBaseUrl}
+          token={token}
+          onMatched={(mId) => router.push(`/match/${mId}` as any)}
+        />
+      ) : selectedSegment === "posts" && isFeedEnabled ? (
         <PostsFeed apiBaseUrl={apiBaseUrl} token={token} userId={userId ?? null} />
       ) : selectedSegment === "people" && isPeopleEnabled ? (
         <PeopleList apiBaseUrl={apiBaseUrl} token={token} userId={userId ?? null} />

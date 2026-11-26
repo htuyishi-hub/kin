@@ -54,6 +54,7 @@ const TrendingView = lazy(() => import('@/components/TrendingView').then((m) => 
 const RushModal = lazy(() => import('@/components/RushModal').then((m) => ({ default: m.RushModal })));
 const StoriesBar = lazy(() => import('@/components/StoriesBar').then((m) => ({ default: m.StoriesBar })));
 const SecretCrushCard = lazy(() => import('@/components/SecretCrushCard').then((m) => ({ default: m.SecretCrushCard })));
+const DatingFeed = lazy(() => import('@/components/DatingFeed').then((m) => ({ default: m.DatingFeed })));
 import { Trophy, Menu, Wand2 } from 'lucide-react';
 
 function formatShortName(fullName: string | null | undefined): string {
@@ -374,7 +375,7 @@ export default function AppScreen() {
   const [isDecliningRequest, setIsDecliningRequest] = useState(false);
   const [sentRequestIds, setSentRequestIds] = useState<Set<string>>(new Set());
 
-  const [discoverSegment, setDiscoverSegment] = useState<'deck' | 'posts' | 'people'>('deck');
+  const [discoverSegment, setDiscoverSegment] = useState<'deck' | 'feed' | 'posts' | 'people'>('deck');
   const [posts, setPosts] = useState<WebPostItem[]>([]);
   const [isLoadingPosts, setIsLoadingPosts] = useState(false);
   const [, setPostsCursor] = useState<string | null>(null);
@@ -2600,46 +2601,65 @@ export default function AppScreen() {
               <StoriesBar token={token} />
             </Suspense>
             {/* Segmented Control */}
-            {(isFeedEnabled || isPeopleEnabled) && (
-              <div className="px-4 py-2 border-b border-[#21262D] bg-[#0D1117]/80 flex gap-2 shrink-0">
+            <div className="px-4 py-2 border-b border-[#21262D] bg-[#0D1117]/80 flex gap-2 shrink-0">
+              <button
+                onClick={() => setDiscoverSegment('deck')}
+                className={`px-3 py-1 text-xs font-semibold rounded-lg transition-colors cursor-pointer ${
+                  discoverSegment === 'deck'
+                    ? 'bg-[#1A1A2E] text-[#C9A84C] border border-[#C9A84C]/40'
+                    : 'text-[#A8A49E] hover:text-[#F0EDE6]'
+                }`}
+              >
+                {t('posts.deck')}
+              </button>
+              <button
+                onClick={() => setDiscoverSegment('feed')}
+                className={`px-3 py-1 text-xs font-semibold rounded-lg transition-colors cursor-pointer ${
+                  discoverSegment === 'feed'
+                    ? 'bg-[#1A1A2E] text-[#C9A84C] border border-[#C9A84C]/40'
+                    : 'text-[#A8A49E] hover:text-[#F0EDE6]'
+                }`}
+              >
+                📸 {t('discover.feed')}
+              </button>
+              {isFeedEnabled && (
                 <button
-                  onClick={() => setDiscoverSegment('deck')}
+                  onClick={() => setDiscoverSegment('posts')}
                   className={`px-3 py-1 text-xs font-semibold rounded-lg transition-colors cursor-pointer ${
-                    discoverSegment === 'deck'
+                    discoverSegment === 'posts'
                       ? 'bg-[#1A1A2E] text-[#C9A84C] border border-[#C9A84C]/40'
                       : 'text-[#A8A49E] hover:text-[#F0EDE6]'
                   }`}
                 >
-                  {t('posts.deck')}
+                  {t('posts.title')}
                 </button>
-                {isFeedEnabled && (
-                  <button
-                    onClick={() => setDiscoverSegment('posts')}
-                    className={`px-3 py-1 text-xs font-semibold rounded-lg transition-colors cursor-pointer ${
-                      discoverSegment === 'posts'
-                        ? 'bg-[#1A1A2E] text-[#C9A84C] border border-[#C9A84C]/40'
-                        : 'text-[#A8A49E] hover:text-[#F0EDE6]'
-                    }`}
-                  >
-                    {t('posts.title')}
-                  </button>
-                )}
-                {isPeopleEnabled && (
-                  <button
-                    onClick={() => setDiscoverSegment('people')}
-                    className={`px-3 py-1 text-xs font-semibold rounded-lg transition-colors cursor-pointer ${
-                      discoverSegment === 'people'
-                        ? 'bg-[#1A1A2E] text-[#C9A84C] border border-[#C9A84C]/40'
-                        : 'text-[#A8A49E] hover:text-[#F0EDE6]'
-                    }`}
-                  >
-                    {t('posts.people')}
-                  </button>
-                )}
-              </div>
-            )}
+              )}
+              {isPeopleEnabled && (
+                <button
+                  onClick={() => setDiscoverSegment('people')}
+                  className={`px-3 py-1 text-xs font-semibold rounded-lg transition-colors cursor-pointer ${
+                    discoverSegment === 'people'
+                      ? 'bg-[#1A1A2E] text-[#C9A84C] border border-[#C9A84C]/40'
+                      : 'text-[#A8A49E] hover:text-[#F0EDE6]'
+                  }`}
+                >
+                  {t('posts.people')}
+                </button>
+              )}
+            </div>
 
-            {discoverSegment === 'posts' && isFeedEnabled ? (
+            {discoverSegment === 'feed' ? (
+              <Suspense fallback={null}>
+                <DatingFeed
+                  token={token}
+                  onCompliment={() => setComplimentModalOpen(true)}
+                  onMatched={(mId) => {
+                    setActiveTab('matches');
+                    if (mId) setSelectedMatch({ id: mId } as any);
+                  }}
+                />
+              </Suspense>
+            ) : discoverSegment === 'posts' && isFeedEnabled ? (
               <div className="flex-1 flex flex-col overflow-hidden">
                 {/* Notice bar & Create Post button */}
                 <div className="px-4 py-2 bg-[#161B22] border-b border-[#21262D] flex items-center justify-between text-xs text-[#A8A49E] shrink-0">

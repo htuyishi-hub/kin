@@ -106,7 +106,7 @@ export function StoriesBar({ token }: { token: string | null }) {
             }}
             className="shrink-0 flex flex-col items-center gap-1 cursor-pointer"
           >
-            <div className="w-12 h-12 rounded-full p-0.5 bg-gradient-to-tr from-[#FF6B6B] via-[#C9A84C] to-[#38BDF8]">
+            <div className="w-12 h-12 rounded-full p-0.5 bg-gradient-to-tr from-[#3FB950] via-[#C9A84C] to-[#FF6B6B] shadow-[0_0_10px_rgba(63,185,80,0.3)]">
               {g.avatarUrl ? (
                 <img src={g.avatarUrl} alt={g.displayName} className="w-full h-full rounded-full object-cover border border-[#0D1117]" />
               ) : (
