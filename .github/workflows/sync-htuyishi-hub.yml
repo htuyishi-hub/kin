@@ -11,8 +11,13 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: sync-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   sync:
+    if: ${{ !github.event.deleted }}
     runs-on: ubuntu-latest
     steps:
       - name: Check out source repository
