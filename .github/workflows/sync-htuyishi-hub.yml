@@ -1,0 +1,36 @@
+name: Sync to deployment repository
+
+on:
+  push:
+    branches:
+      - '**'
+    tags:
+      - '**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Push updated ref to deployment repository
+        env:
+          DESTINATION_TOKEN: ${{ secrets.HTUYISH_HUB_TOKEN }}
+          DESTINATION_URL: https://github.com/htuyishi-hub/kin.git
+        run: |
+          if [ -z "$DESTINATION_TOKEN" ]; then
+            echo "::error::Add the HTUYISH_HUB_TOKEN secret with write access to htuyishi-hub/kin."
+            exit 1
+          fi
+
+          auth_header="$(printf 'x-access-token:%s' "$DESTINATION_TOKEN" | base64 --wrap=0)"
+          git -c http.https://github.com/.extraheader="AUTHORIZATION: basic $auth_header" \
+            push "$DESTINATION_URL" "$GITHUB_REF:$GITHUB_REF"
